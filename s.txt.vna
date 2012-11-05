@@ -1,0 +1,17 @@
+*Node data
+Assemblage-6
+Assemblage-7
+Assemblage-8
+Assemblage-9
+Assemblage-10
+*Tie data
+From To Edge Weight
+Assemblage-7 Assemblage-8, 1, 4
+Assemblage-9 Assemblage-10, 1, 4
+Assemblage-6 Assemblage-7, 1, 4
+Assemblage-8 Assemblage-9, 1, 4
+Assemblage-7 Assemblage-8, 1, 4
+Assemblage-9 Assemblage-10, 1, 4
+Assemblage-6 Assemblage-7, 1, 4
+Assemblage-8 Assemblage-9, 1, 4
+
