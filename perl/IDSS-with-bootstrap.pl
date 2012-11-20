@@ -5,6 +5,7 @@ use Graph::Directed;
 use Graph::Writer::VCG;
 use Graph::Writer::Dot;
 use Math::Combinatorics;
+use Excel::Writer::XLSX;
 use Getopt::Long qw(HelpMessage);
 use Pod::Usage;
 use Time::HiRes;
@@ -13,14 +14,15 @@ use Statistics::Descriptive;
 
 
 my $debug = 0;
-my $filterflag = 0;  ## do you want to try to output all of the solutions (filtered for non trivial)
-my $largestOnly = 0;  ## only output the largest set of solutions
-my $individualfileoutput=0;  ## create files for all the indivdual networks
-my $bootstrap = 0; ## flag for bootstrap 
+my $filterflag = 0;           ## do you want to try to output all of the solutions (filtered for non trivial)
+my $largestOnly = 0;  #       # only output the largest set of solutions
+my $individualfileoutput=0;   ## create files for all the indivdual networks
+my $bootstrap = 0;            ## flag for bootstrap 
 my $man = 0;
 my $help = 0;
 my $inputfile;
 my $bootstrapdebug = 0;
+my $excel = 0;                ## flag for excel file output
 
 # process command line options; if none, print a usage/help message.  
 # note - manual page for explaining the options, what they do, and how to use them
@@ -35,6 +37,7 @@ GetOptions(
   'indivfiles' => \$individualfileoutput,
   'help' => sub { HelpMessage() },
   'input=s' => \$inputfile,
+  'excel' => \$excel,
   man => \$man) or pod2usage(2);
 
 
@@ -49,6 +52,7 @@ if ($DEBUG) {
    $bootstrap or print "bootstrap is off\n";
    $largestOnly or print "output largest solutions is off\n";
    $individualfileoutput or print "individual network file output is off\n";
+   $excel or print "excel output is off"
 }
 
 # start the clock
@@ -340,7 +344,7 @@ while ($currentMaxSeriationSize < $maxSeriations) {
                               my $xerror=0;
                               my $stop=0;
                               my $ccount=1;
-                              my @EE = $network->edges;
+                              my @EE = $network->unique_edges;
                               my $numEdges = scalar(@EE);
                               my $change;
                               $DEBUG and print " Type $i:   Case A (1, M) : Potentially can add $label ";
@@ -415,7 +419,7 @@ while ($currentMaxSeriationSize < $maxSeriations) {
                               ## first check to see if there is already and X in this column somewhere else.
 								      #print "mismatch!\n";
                               my @edgelist=();
-                              my @EE = $network->edges;
+                              my @EE = $network->unique_edges;
                               my $numEdges = scalar(@EE);
                               my $xerror=0;
                               my $ccount=1;
@@ -472,7 +476,7 @@ while ($currentMaxSeriationSize < $maxSeriations) {
                               my $xerror=0;
                               my $stop=0;
                               my $ccount=1;
-                              my @EE = $network->edges;
+                              my @EE = $network->unique_edges;
                               my $numEdges = scalar(@EE);
                               $DEBUG and print "Type $i: Case C (-1, M) Potentially can add $label and vert $v ";
                               $DEBUG and print "because score is -1 and the comparison is M.\n";   
@@ -886,6 +890,7 @@ while( $ptr1 < $numrows ) {
 }
 
 
+
 ###########################################
 
 print "Now printing output file... \n";
@@ -919,7 +924,7 @@ foreach  my $network ( @uniqueArray ) {
 	my $E = $network->edges;
 	if ($largestOnly) {
      if ($E==$maxEdges) {
-	     my @Edges=$network->edges;
+	     my @Edges=$network->unique_edges;
 		  foreach my $e (@Edges) {
                      if (!$bootstrap) { $perror{ @$e[0]."-".@$e[1] }=0.0; 
                            $pvalue{ @$e[0]."-".@$e[1] }=0.0; 
@@ -931,7 +936,7 @@ foreach  my $network ( @uniqueArray ) {
 		  } 
 	  }
     } else {
-		   my @Edges=$network->edges;
+		   my @Edges=$network->unique_edges;
 		   foreach my $e (@Edges) {
 		     if (!$bootstrap) { $perror{ @$e[0]."-".@$e[1] }=0.0; 
                         pvalue{ @$e[0]."-".@$e[1] }=0.0; 
@@ -944,10 +949,16 @@ foreach  my $network ( @uniqueArray ) {
 }
 
 print OUTFILE "\n";
-my $end = Time::HiRes::gettimeofday();
-print "Time for processing:  ";
-printf("%.2f", $end - $start);
-print " seconds.\n"; 
+
+###########################################
+if ($excel) {
+   print "Now printing excel output file... \n";
+}
+
+
+
+printf ("Time for processing: %.2f seconds\n", Time::HiRes::gettimeofday() - $start);
+
 __END__
 
     =head1 IDSS-with-bootstrap.pl
