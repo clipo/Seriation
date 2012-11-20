@@ -950,17 +950,10 @@ foreach  my $network ( @uniqueArray ) {
 
 print OUTFILE "\n";
 
-
-
 ###########################################
-
 if ($excel) {
-   
    print "Now printing excel output file... \n";
-
 }
-
-
 
 
 
