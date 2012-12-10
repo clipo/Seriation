@@ -1,0 +1,292 @@
+%% This is file `elsarticle-template-2-harv.tex',
+%%
+%% Copyright 2009 Elsevier Ltd
+%%
+%% This file is part of the 'Elsarticle Bundle'.
+%% ---------------------------------------------
+%%
+%% It may be distributed under the conditions of the LaTeX Project Public
+%% License, either version 1.2 of this license or (at your option) any
+%% later version.  The latest version of this license is in
+%%    http://www.latex-project.org/lppl.txt
+%% and version 1.2 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%%
+%% The list of all files belonging to the 'Elsarticle Bundle' is
+%% given in the file `manifest.txt'.
+%%
+%% Template article for Elsevier's document class `elsarticle'
+%% with harvard style bibliographic references
+%%
+%% $Id: elsarticle-template-2-harv.tex 155 2009-10-08 05:35:05Z rishi $
+%% $URL: http://lenova.river-valley.com/svn/elsbst/trunk/elsarticle-template-2-harv.tex $
+%%
+\documentclass[preprint,times,authoryear,12pt]{elsarticle}
+
+
+%% The amssymb package provides various useful mathematical symbols
+\usepackage{amssymb,amsmath}
+
+
+%%%%%%%%%% Remove the following before submission %%%%%%%%%%%%%%%%%%
+
+\usepackage{mathspec,xltxtra,xunicode}
+%\usepackage{unicode-math}
+\defaultfontfeatures{Scale=MatchLowercase}
+%\setmainfont[Mapping=tex-text,Numbers=OldStyle]{Palatino LT Std}
+\setmainfont[Ligatures=TeX,Numbers=OldStyle]{Minion Pro}
+\setsansfont[Mapping=tex-text]{ITC Legacy Sans Std Medium}
+\setmonofont{Bitstream Vera Sans Mono}
+\setmathfont(Digits,Latin,Greek)[Script=Math,Uppercase=Italic,Lowercase=Italic]{Minion Math}
+\setmathfont[range={\mathbfup->\mathup}]{MinionMath-Semibold.otf}
+\setmathfont[range={\mathbfit->\mathit}]{MinionMath-Semibold.otf}
+\setmathfont[range={\mathit->\mathit}]{MinionMath-Regular.otf}
+
+%%%%%%%%%% Remove the above before submission %%%%%%%%%%%%%%%%%%
+
+
+%% The amsthm package provides extended theorem environments
+%% \usepackage{amsthm}
+
+%% The lineno packages adds line numbers. Start line numbering with
+%% \begin{linenumbers}, end it with \end{linenumbers}. Or switch it on
+%% for the whole article with \linenumbers after \end{frontmatter}.
+\usepackage{lineno}
+\usepackage{graphicx}
+\usepackage{xspace}
+\usepackage{bm}
+\usepackage{longtable}
+\usepackage{hyphenat}
+\usepackage{lipsum}
+
+
+\journal{Journal of Anthropological Archaeology}
+
+\begin{document}
+
+\begin{frontmatter}
+
+
+\title{Combinatorial Structure of the Deterministic Seriation Method with Multiple Spatial Solutions}
+
+\author{Mark E. Madsen}
+\address{Department of Anthropology, Box 353100, University of Washington, Seattle WA, 98195 USA}
+\ead{mark@madsenlab.org}
+\ead[url]{http://madsenlab.org}
+
+\author{Carl P. Lipo}
+\address{Department of Anthropology and IIRMES, 1250 Bellflower Blvd, California State University at Long Beach, Long Beach CA, 90840 USA}
+\ead{Carl.Lipo@csulb.edu}
+\ead[url]{http://lipolab.org}
+
+
+\begin{abstract}
+\lipsum[1]
+\end{abstract}
+
+\begin{keyword}
+seriation \sep combinatorics \sep algorithms \sep cultural transmission
+%\MSC[2010]{91D99}
+\end{keyword}
+
+\end{frontmatter}
+
+% line numbers to facilitating editing drafts
+\linenumbers
+
+
+%%% Setup the R context %%%
+<<setup, include=FALSE>>=
+library(ggplot2)
+
+assemblages <- 63
+biggest_solution <- 63
+df <- data.frame(rbind(c(0, 0, 0, 0, 0, 0, 0, 0)))
+colnames(df) <- c("SolutionSize", "Combinations", "Permutations", "NonemptyPartitions", "Seconds", "Days", "Months", "Years")
+
+
+partitions_63_nonempty <- c(1., 4.61169*10^18, 1.9076*10^29, 3.54461*10^36, 9.03498*10^41, 
+                            1.46612*10^46, 3.4559*10^49, 1.94257*10^52, 3.59062*10^54, 
+                            2.71973*10^56, 9.87897*10^57, 1.93258*10^59, 2.22363*10^60, 
+                            1.61137*10^61, 7.76382*10^61, 2.59817*10^62, 6.25869*10^62, 
+                            1.11783*10^63, 1.51746*10^63, 1.59892*10^63, 1.33135*10^63, 
+                            8.89653*10^62, 4.83527*10^62, 2.16251*10^62, 8.04026*10^61, 
+                            2.50763*10^61, 6.61279*10^60, 1.48488*10^60, 2.85687*10^59, 
+                            4.73578*10^58, 6.79727*10^57, 8.48437*10^56, 9.2455*10^55, 
+                            8.82582*10^54, 7.40286*10^53, 5.4702*10^52, 3.569*10^51, 
+                            2.05998*10^50, 1.05351*10^49, 4.77992*10^47, 1.92583*10^46, 
+                            6.89448*10^44, 2.19378*10^43, 6.20403*10^41, 1.5587*10^40, 
+                            3.47628*10^38, 6.87377*10^36, 1.20301*10^35, 1.85934*10^33, 
+                            2.53061*10^31, 3.02205*10^29, 3.15235*10^27, 2.85621*10^25, 
+                            2.2322*10^23, 1.49155*10^21, 8.42613*10^18, 3.96605*10^16, 
+                            1.52526*10^14, 4.66453*10^11, 1.09007*10^9, 1.82671*10^6, 1953., 1.)
+
+
+
+
+
+
+
+permutations_to_test <- function(biggest_solution, assemblages) {
+  perm <- numeric(biggest_solution)
+  for(n in 3:biggest_solution) {
+    perm[n] <- choose(assemblages, n) * ( factorial(n) / 2 )
+  }
+  perm
+}
+
+
+
+
+times_for_solution_size <- function(biggest_solution, assemblages, df) {
+  secs_per_trial <- 0.01
+  servers <- 16
+  cores <- 8
+  perm <- permutations_to_test(biggest_solution, assemblages)
+
+  
+  parallelism <- servers * cores
+  
+  total_trials <- sum(perm)
+  trial_batches <- total_trials / parallelism
+  
+  days_in_avg_month <- 30.4368
+  time_batches_sec <- trial_batches * secs_per_trial
+  time_batches_days <- time_batches_sec / 86400
+  time_batches_months <- time_batches_days / days_in_avg_month
+  time_batches_years <- time_batches_days / 365.25
+  
+  comb <- choose(assemblages, biggest_solution)
+  part <- partitions_63_nonempty[biggest_solution]
+  
+  times <- c(biggest_solution, comb, total_trials, part, time_batches_sec, time_batches_days, time_batches_months, time_batches_years)
+  df <- rbind(df, times)
+  
+  df
+}
+
+@
+
+
+
+
+%% main text
+\section{Introduction}
+
+\lipsum[3-5]
+
+
+\section{Scaling of Seriation Solutions with Problem Size}
+\label{sec:wf-model}
+
+\lipsum[2-3]
+
+\begin{equation}
+\label{eq:esd}
+\mathbb{P}_{\theta,n}(a_i, \ldots, a_n) = \frac{n!}{\theta^{(n)}} \prod^n_{j=1} \frac{(\theta/j)^{a_j}}{a_j!}
+\end{equation}
+
+\lipsum[2]
+
+<<>>=
+
+times_for_solution_size <- function(biggest_solution, assemblages, df) {
+  secs_per_trial <- 0.01
+  servers <- 16
+  cores <- 8
+  perm <- permutations_to_test(biggest_solution, assemblages)
+
+  
+  parallelism <- servers * cores
+  
+  total_trials <- sum(perm)
+  trial_batches <- total_trials / parallelism
+  
+  days_in_avg_month <- 30.4368
+  time_batches_sec <- trial_batches * secs_per_trial
+  time_batches_days <- time_batches_sec / 86400
+  time_batches_months <- time_batches_days / days_in_avg_month
+  time_batches_years <- time_batches_days / 365.25
+  
+  comb <- choose(assemblages, biggest_solution)
+  part <- partitions_63_nonempty[biggest_solution]
+  
+  times <- c(biggest_solution, comb, total_trials, part, time_batches_sec, time_batches_days, time_batches_months, time_batches_years)
+  df <- rbind(df, times)
+  
+  df
+}
+
+
+for(size in 3:biggest_solution) {
+  df <- times_for_solution_size(size, assemblages, df)
+}
+@
+
+
+
+\section{Discussion and Conclusions}
+\label{sec:conclusions}
+
+\lipsum[4-7]
+
+\section{Acknowledgements}
+foo bar.
+
+
+%% The Appendices part is started with the command \appendix;
+%% appendix sections are then done as normal sections
+%% \appendix
+
+%% \section{}
+%% \label{}
+
+
+
+%% References with bibTeX database:
+
+\bibliographystyle{model2-names}
+\bibliography{biblio/ct-proposal}
+
+
+
+%
+%\begin{figure*}
+%%\centering
+%	\includegraphics[angle=90, scale=0.75]{unscaled_kn_by_duration_stacked.pdf}
+%	\caption{Mean value of $K_n$ for \timeavd samples, plotted against assemblage duration in simulation steps, for each level of $\theta$ in the study.  Note that the ``onset'' of \timeav effects (as measured by increased $K_n$), is quite gradual at low $\theta$, while high innovation rates display increased richness with very minor amounts of \timeav.}
+%	\label{fig:unscaled_kn}
+%\end{figure*}
+
+
+
+\begin{table}
+\begin{tabular}{|c|c|c|}
+\hline
+TA Duration & Min Sample Size & Max Sample Size \\ 
+  \hline
+  1 & 130494 & 247491 \\ 
+    3 & 4497 & 43494 \\ 
+    7 & 1926 & 18639 \\ 
+   15 & 897 & 8694 \\ 
+   31 & 435 & 4209 \\ 
+   62 & 216 & 2103 \\ 
+  125 & 105 & 1038 \\ 
+  250 & 516 & 981 \\ 
+  500 & 255 & 486 \\ 
+  1000 & 114 & 228 \\ 
+  2000 &  57 & 114 \\ 
+  4000 &  27 &  54 \\ 
+  8000 &  12 &  16 \\ 
+  \hline
+\end{tabular}
+\caption{Breakdown of sample sizes for analysis of trait richness ($K_n$), by size of time-averaging ``window.''  Some values of $\theta$ required larger numbers of simulation runs to achieve stable result, thus the difference between samples sizes at the same TA duration.}
+\label{tab:sample-size-kn}
+\end{table}
+
+
+
+\end{document}
+
+%%
+%% End of file `elsarticle-template-2-harv.tex'.

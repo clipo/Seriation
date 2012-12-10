@@ -1,0 +1,8 @@
+#!/bin/bash
+
+KNITR_SRC=seriation-combinatorics.Rnw
+LATEX_ROOT=seriation-combinatorics
+
+export PATH=$PATH:/usr/texbin:/usr/local/bin
+Rscript -e "library(knitr); knit('$KNITR_SRC')"
+latexmk -pdf $LATEX_ROOT
