@@ -44,7 +44,6 @@
 
 %%%%%%%%%% Remove the above before submission %%%%%%%%%%%%%%%%%%
 
-
 %% The amsthm package provides extended theorem environments
 %% \usepackage{amsthm}
 
@@ -58,16 +57,19 @@
 \usepackage{longtable}
 \usepackage{hyphenat}
 \usepackage{lipsum}
-
+\usepackage{url}
+\usepackage{madsen-macros}
 
 \journal{Journal of Anthropological Archaeology}
+
+
 
 \begin{document}
 
 \begin{frontmatter}
 
 
-\title{Combinatorial Structure of the Deterministic Seriation Method with Multiple Spatial Solutions}
+\title{RESEARCH NOTE:\\ Combinatorial Structure of the Deterministic Seriation Method with Multiple Spatial Solutions}
 
 \author{Mark E. Madsen}
 \address{Department of Anthropology, Box 353100, University of Washington, Seattle WA, 98195 USA}
@@ -98,72 +100,8 @@ seriation \sep combinatorics \sep algorithms \sep cultural transmission
 %%% Setup the R context %%%
 <<setup, include=FALSE>>=
 library(ggplot2)
-
-assemblages <- 63
-biggest_solution <- 63
-df <- data.frame(rbind(c(0, 0, 0, 0, 0, 0, 0, 0)))
-colnames(df) <- c("SolutionSize", "Combinations", "Permutations", "NonemptyPartitions", "Seconds", "Days", "Months", "Years")
-
-
-partitions_63_nonempty <- c(1., 4.61169*10^18, 1.9076*10^29, 3.54461*10^36, 9.03498*10^41, 
-                            1.46612*10^46, 3.4559*10^49, 1.94257*10^52, 3.59062*10^54, 
-                            2.71973*10^56, 9.87897*10^57, 1.93258*10^59, 2.22363*10^60, 
-                            1.61137*10^61, 7.76382*10^61, 2.59817*10^62, 6.25869*10^62, 
-                            1.11783*10^63, 1.51746*10^63, 1.59892*10^63, 1.33135*10^63, 
-                            8.89653*10^62, 4.83527*10^62, 2.16251*10^62, 8.04026*10^61, 
-                            2.50763*10^61, 6.61279*10^60, 1.48488*10^60, 2.85687*10^59, 
-                            4.73578*10^58, 6.79727*10^57, 8.48437*10^56, 9.2455*10^55, 
-                            8.82582*10^54, 7.40286*10^53, 5.4702*10^52, 3.569*10^51, 
-                            2.05998*10^50, 1.05351*10^49, 4.77992*10^47, 1.92583*10^46, 
-                            6.89448*10^44, 2.19378*10^43, 6.20403*10^41, 1.5587*10^40, 
-                            3.47628*10^38, 6.87377*10^36, 1.20301*10^35, 1.85934*10^33, 
-                            2.53061*10^31, 3.02205*10^29, 3.15235*10^27, 2.85621*10^25, 
-                            2.2322*10^23, 1.49155*10^21, 8.42613*10^18, 3.96605*10^16, 
-                            1.52526*10^14, 4.66453*10^11, 1.09007*10^9, 1.82671*10^6, 1953., 1.)
-
-
-
-
-
-
-
-permutations_to_test <- function(biggest_solution, assemblages) {
-  perm <- numeric(biggest_solution)
-  for(n in 3:biggest_solution) {
-    perm[n] <- choose(assemblages, n) * ( factorial(n) / 2 )
-  }
-  perm
-}
-
-
-
-
-times_for_solution_size <- function(biggest_solution, assemblages, df) {
-  secs_per_trial <- 0.01
-  servers <- 16
-  cores <- 8
-  perm <- permutations_to_test(biggest_solution, assemblages)
-
-  
-  parallelism <- servers * cores
-  
-  total_trials <- sum(perm)
-  trial_batches <- total_trials / parallelism
-  
-  days_in_avg_month <- 30.4368
-  time_batches_sec <- trial_batches * secs_per_trial
-  time_batches_days <- time_batches_sec / 86400
-  time_batches_months <- time_batches_days / days_in_avg_month
-  time_batches_years <- time_batches_days / 365.25
-  
-  comb <- choose(assemblages, biggest_solution)
-  part <- partitions_63_nonempty[biggest_solution]
-  
-  times <- c(biggest_solution, comb, total_trials, part, time_batches_sec, time_batches_days, time_batches_months, time_batches_years)
-  df <- rbind(df, times)
-  
-  df
-}
+library(randtoolbox)
+library(xtable)
 
 @
 
@@ -173,33 +111,19 @@ times_for_solution_size <- function(biggest_solution, assemblages, df) {
 %% main text
 \section{Introduction}
 
-\lipsum[3-5]
+\lipsum[1-2]
 
 
-\section{Scaling of Seriation Solutions with Problem Size}
-\label{sec:wf-model}
+\section{Single Seriation Combinatorics}
+\label{sec:single-seriation}
 
-\lipsum[2-3]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<sscalc,include=FALSE,tidy=TRUE>>=
+parallelism <- 64  # number of cores for parallel testing of possible solutions
+secs_per_trial <- 0.005  # 5 millseconds per trial
 
-\begin{equation}
-\label{eq:esd}
-\mathbb{P}_{\theta,n}(a_i, \ldots, a_n) = \frac{n!}{\theta^{(n)}} \prod^n_{j=1} \frac{(\theta/j)^{a_j}}{a_j!}
-\end{equation}
-
-\lipsum[2]
-
-<<>>=
-
-times_for_solution_size <- function(biggest_solution, assemblages, df) {
-  secs_per_trial <- 0.01
-  servers <- 16
-  cores <- 8
-  perm <- permutations_to_test(biggest_solution, assemblages)
-
-  
-  parallelism <- servers * cores
-  
-  total_trials <- sum(perm)
+single_seriation_stats <- function(n) {
+  total_trials <- (factorial(n) / 2)
   trial_batches <- total_trials / parallelism
   
   days_in_avg_month <- 30.4368
@@ -207,21 +131,126 @@ times_for_solution_size <- function(biggest_solution, assemblages, df) {
   time_batches_days <- time_batches_sec / 86400
   time_batches_months <- time_batches_days / days_in_avg_month
   time_batches_years <- time_batches_days / 365.25
-  
-  comb <- choose(assemblages, biggest_solution)
-  part <- partitions_63_nonempty[biggest_solution]
-  
-  times <- c(biggest_solution, comb, total_trials, part, time_batches_sec, time_batches_days, time_batches_months, time_batches_years)
-  df <- rbind(df, times)
-  
-  df
+  times <- c(n, total_trials, time_batches_sec,time_batches_years)
 }
 
+sscomb <- data.frame(matrix(ncol=3,nrow=0))
 
-for(size in 3:biggest_solution) {
-  df <- times_for_solution_size(size, assemblages, df)
+nseq <- c(seq(from=4, to=10, by=2), 12, 13, 14, 15, 16, seq(from=20, to=100, by=20))
+
+for(n in nseq) {
+  sscomb <- rbind(sscomb, single_seriation_stats(n))
 }
+
+colnames(sscomb) <- c("N", "Seriation Solutions", "Seconds","Years")
+capt <- paste("Number of unique seriation solutions and parallel processing time for sets of assemblages $4 < n < 100$, testing solutions across",parallelism,"cores, assuming 5ms per trial",sep=" ")
+
 @
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Seriation, whether employing class frequencies or simple occurrence to order assemblages, yields solutions which are permutations of the set of assemblages.  Because we cannot determine the ``polarity'' of a seriation solution---which ends represent early and late---from the class data alone, a unique seriation solution is thus formally a pair of mirror-image permutations:
+
+\begin{equation}
+\{a,d,b,c,e\} \equiv \{e,c,b,d,a\}
+\end{equation}
+
+This means that a set of $n$ assemblages can yield $n! / 2$ distinct solutions, regardless of whether solutions are composed of ordered similarity matrices or``Fordian'' frequency curves.  With small numbers of assemblages, enumeration and testing of all possible solutions is easy, even without parallel testing across many processors.  The ability to test solutions by enumeration quickly breaks down with only a modest number of assemblages.  Table \ref{tab:ss-stats} gives the number of unique solutions for selected problem sizes between 4 and 100 assemblages, and estimates of processing time to enumerate and test all solutions, assuming a cluster of 64 cores, and 5ms per solution test.\footnote{These assumptions concerning per-trial processing time and parallelism are arbitrary but within reach of social scientists given Amazon's EC2 cloud computing infrastructure, without requiring formal ``supercomputer'' access.  Modification by a factor of 10 has little effect on the results, perhaps shifting feasibility upward slightly before combinatorial explosion occurs.}  With 10 assemblages, we can test all solutions quickly enough that even a serial algorithm on a single core will be adequate to find the global best solution in a matter of hours, with parallelism improving this to real time responses.  
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<sstable,echo=FALSE,results=asis>>=
+
+xt2 <- xtable(sscomb, align="|c|c|r|r|r|", display=c("d","d","g","g","g"),caption=capt,label="tab:ss-stats")
+print(xt2, include.rownames=FALSE)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+13 assemblages will turn out to be the practical limit for direct enumeration, even given parallel processing with circa-2012 technology, with total processing time of nearly 3 days running 64 cores at full capacity.\footnote{Realistically, almost nobody would contemplate doing this, given the expense of the computing time relative to the value of guaranteeing the optimal solution, but the hypothetical example demonstrates that such solutions are \emph{feasible}.}  Problems involving 14 and 15 assemblages reach the point where large clusters require more than a month and 19 months respectively, to solve.  Beyond 15 assemblages, a ``combinatorial explosion'' sets in, with 20 assemblages requiring more than 3 million years, before solution times quickly exceed the lifetime of the universe.  
+
+In short, top-down enumerative methods are feasible for small sets of assemblages, and given widespread availability of multiple core computers, seriation packages should employ enumeration for small problems, or to build and test smaller parts of larger seriation solutions, as we describe in Section \ref{sec:algo-mult-large}.  
+
+\section{Deterministic Seriation with Multiple Solution Groups}
+\label{sec:seriation-groups}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<subsets-calc,include=FALSE,tidy=TRUE>>=
+
+ex_num_sol_init <- c(3,4,6,8)
+assem <- c(20, 40, 60)
+max_assem <- max(assem)
+subset_incr <- 5
+
+max_subset_labels <- c(ex_num_sol_init, seq(from=10, to=max_assem/2, by=subset_incr))
+max_rows <- length(max_subset_labels)
+
+cnames <-c("Subset Size (m)")
+subsets <- data.frame(matrix(ncol=0,nrow=max_rows))
+# The subset sizes are the first column
+subsets <- cbind(subsets, max_subset_labels)
+
+# Create columns for each assemblage size, picking out the {n,k} for the desired subset sizes
+for(n in assem) {
+  # add the assemblage size as a colname
+  cnames <- c(cnames, as.character(n))
+  
+  # calculate additional subset sizes based on the size of the assemblage, up to 1/2*N since {n,k} peaks there
+  more_subsets <- seq(from=10, to=n/2, by=subset_incr)
+  subsets_selected <- c(ex_num_sol_init, more_subsets)
+  
+  # calculate the stirling numbers of the second kind
+  # the output of stirling() is a zero-based array for substantive reasons, 
+  # so to pull out the appropriate values in a 1-based array index language, add one to 
+  # all indices...
+  stirl <- stirling(n)
+  col <- stirl[subsets_selected + 1]
+  
+  # since this is a data frame, pad the rest of the column with NA
+  num_NA_needed <- max_rows - length(col)
+  col <- c(col, rep(NA_integer_, num_NA_needed))
+  
+  subsets <- cbind(subsets, col)
+}
+
+colnames(subsets) <- cnames
+
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+In an earlier paper \citep{Lipo1997}, we introduced an iterative method for finding deterministic solutions to the frequency seriation problem by partitioning assemblages into subsets, each of which meets the unimodal ordering principle, within tolerance limits governed by sample size.  \citet{Lipo2001b} extended and refined the method in his dissertation research.  Our initial work on the method employed a combination of automated calculations (e.g., bootstrap significance tests for pairwise orderings), and manual sorting of assemblages into groups and specific positions (using an Excel macro package available at \url{http://lipolab.org/seriation.html}).  Figure \ref{fig:mult-seriation-groups} is an example of seriation with multiple solution groups, from Lipo's dissertation research in the \LMV.  
+
+\begin{figure*}
+%\centering
+	\includegraphics[scale=0.75]{lipo-figure-4-4.pdf}
+	\caption{Example of a deterministic frequency seriation with assemblages partitioned into multiple subsets or solution groups.  From \citet{Lipo2001b}, Figure 4.4.}
+	\label{fig:mult-seriation-groups}
+\end{figure*}
+
+Our initial work suggests assemblages seriate together into groups reflecting variation in the intensity of \ct among assemblages, over their duration of accumulation. In most cases, solution groups tend to be spatiotemporally compact, and form clusters when mapped on the landscape, although long-distance connections between past communities can also yield patterns which are more complex and less cohensive when mapped.  Madsen's dissertation research is aimed at tying the properties seriation solution groups to their causes in regional patterns of interaction and the dynamics of specific \ct models.  
+
+From a combinatorial standpoint, seriation with multiple solution groups can be structured as follows.  We begin with $n$ assemblages in total, and seek a solution or solutions whereby we end up with $m$ solution groups, where $m < n$.  Each solution must have at least one assemblage, and in practice will often have 3 or more (singletons may indicate assemblages which simply do not ``fit'' with anything else in the data set).  The number of ways that $n$ objects can be partitioned into $m$ non-empty subsets is given by the Stirling numbers of the second kind, which are given by the recursion equation:
+
+\begin{equation}
+\stirlingsubset{k}{n} = 
+\end{equation}
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<subsets-table,echo=FALSE,results=asis>>=
+
+capt2 <- paste("Number of ways to form m subsets (seriation solutions) from 20, 40, and 60 assemblages")
+xt3 <- xtable(subsets, align="|c|c|r|r|r|", display=c("d","d","g","g","g"),caption=capt2, label="tab:subsets")
+print(xt3, include.rownames=FALSE)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Multiple Seriation Group Algorithm for Large Problem Sizes}
+\label{sec:algo-mult-large}
+
 
 
 
@@ -250,13 +279,8 @@ foo bar.
 
 
 
-%
-%\begin{figure*}
-%%\centering
-%	\includegraphics[angle=90, scale=0.75]{unscaled_kn_by_duration_stacked.pdf}
-%	\caption{Mean value of $K_n$ for \timeavd samples, plotted against assemblage duration in simulation steps, for each level of $\theta$ in the study.  Note that the ``onset'' of \timeav effects (as measured by increased $K_n$), is quite gradual at low $\theta$, while high innovation rates display increased richness with very minor amounts of \timeav.}
-%	\label{fig:unscaled_kn}
-%\end{figure*}
+
+
 
 
 
