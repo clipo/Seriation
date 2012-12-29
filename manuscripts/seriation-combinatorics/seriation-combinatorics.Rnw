@@ -37,10 +37,10 @@
 \setmainfont[Ligatures=TeX,Numbers=OldStyle]{Minion Pro}
 \setsansfont[Mapping=tex-text]{ITC Legacy Sans Std Medium}
 \setmonofont{Bitstream Vera Sans Mono}
-\setmathfont(Digits,Latin,Greek)[Script=Math,Uppercase=Italic,Lowercase=Italic]{Minion Math}
-\setmathfont[range={\mathbfup->\mathup}]{MinionMath-Semibold.otf}
-\setmathfont[range={\mathbfit->\mathit}]{MinionMath-Semibold.otf}
-\setmathfont[range={\mathit->\mathit}]{MinionMath-Regular.otf}
+\setmathfont(Digits,Latin,Greek)[Script=Math,Uppercase=Italic,Lowercase=Italic]{Minion Math Semibold}
+\setmathfont[range={\mathbfup->\mathup}]{MinionMath-Bold.otf}
+\setmathfont[range={\mathbfit->\mathit}]{MinionMath-Bold.otf}
+\setmathfont[range={\mathit->\mathit}]{MinionMath-Bold.otf}
 
 %%%%%%%%%% Remove the above before submission %%%%%%%%%%%%%%%%%%
 
@@ -60,7 +60,7 @@
 \usepackage{url}
 \usepackage{madsen-macros}
 
-\journal{Journal of Anthropological Archaeology}
+\journal{Unnamed Journal}
 
 
 
@@ -102,7 +102,7 @@ seriation \sep combinatorics \sep algorithms \sep cultural transmission
 library(ggplot2)
 library(randtoolbox)
 library(xtable)
-
+options(tikzDefaultEngine = "xetex")
 @
 
 
@@ -111,7 +111,7 @@ library(xtable)
 %% main text
 \section{Introduction}
 
-\lipsum[1-2]
+
 
 
 \section{Single Seriation Combinatorics}
@@ -149,12 +149,11 @@ capt <- paste("Number of unique seriation solutions and parallel processing time
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Seriation, whether employing class frequencies or simple occurrence to order assemblages, yields solutions which are permutations of the set of assemblages.  Because we cannot determine the ``polarity'' of a seriation solution---which ends represent early and late---from the class data alone, a unique seriation solution is thus formally a pair of mirror-image permutations:
-
 \begin{equation}
 \{a,d,b,c,e\} \equiv \{e,c,b,d,a\}
 \end{equation}
 
-This means that a set of $n$ assemblages can yield $n! / 2$ distinct solutions, regardless of whether solutions are composed of ordered similarity matrices or``Fordian'' frequency curves.  With small numbers of assemblages, enumeration and testing of all possible solutions is easy, even without parallel testing across many processors.  The ability to test solutions by enumeration quickly breaks down with only a modest number of assemblages.  Table \ref{tab:ss-stats} gives the number of unique solutions for selected problem sizes between 4 and 100 assemblages, and estimates of processing time to enumerate and test all solutions, assuming a cluster of 64 cores, and 5ms per solution test.\footnote{These assumptions concerning per-trial processing time and parallelism are arbitrary but within reach of social scientists given Amazon's EC2 cloud computing infrastructure, without requiring formal ``supercomputer'' access.  Modification by a factor of 10 has little effect on the results, perhaps shifting feasibility upward slightly before combinatorial explosion occurs.}  With 10 assemblages, we can test all solutions quickly enough that even a serial algorithm on a single core will be adequate to find the global best solution in a matter of hours, with parallelism improving this to real time responses.  
+This means that a set of $n$ assemblages can yield $n! / 2$ distinct solutions, regardless of whether solutions are composed of ordered similarity matrices or``Fordian'' frequency curves.  With small numbers of assemblages, enumeration and testing of all possible solutions is easy, even without parallel testing across many processors.  The ability to test solutions by enumeration quickly breaks down with only a modest number of assemblages.  Table \ref{tab:ss-stats} gives the number of unique solutions for selected problem sizes between 4 and 100 assemblages, and estimates of processing time to enumerate and test all solutions, assuming a cluster of \Sexpr{parallelism} cores, and \Sexpr{secs_per_trial} seconds per solution test.\footnote{These assumptions concerning per-trial processing time and parallelism are arbitrary but within reach of social scientists given Amazon's EC2 cloud computing infrastructure, without requiring formal ``supercomputer'' access.  Modification by a factor of 10 has little effect on the results, perhaps shifting feasibility upward slightly before combinatorial explosion occurs.}  With 10 assemblages, we can test all solutions quickly enough that even a serial algorithm on a single core will be adequate to find the global best solution in a matter of hours, with parallelism improving this to real time responses.  
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<sstable,echo=FALSE,results=asis>>=
@@ -164,7 +163,7 @@ print(xt2, include.rownames=FALSE)
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-13 assemblages will turn out to be the practical limit for direct enumeration, even given parallel processing with circa-2012 technology, with total processing time of nearly 3 days running 64 cores at full capacity.\footnote{Realistically, almost nobody would contemplate doing this, given the expense of the computing time relative to the value of guaranteeing the optimal solution, but the hypothetical example demonstrates that such solutions are \emph{feasible}.}  Problems involving 14 and 15 assemblages reach the point where large clusters require more than a month and 19 months respectively, to solve.  Beyond 15 assemblages, a ``combinatorial explosion'' sets in, with 20 assemblages requiring more than 3 million years, before solution times quickly exceed the lifetime of the universe.  
+A typical characteristic of many combinatorial algorithms is that small changes in problem size can have massive changes in processing time.  13 assemblages will turn out to be the practical limit for direct enumeration, even given parallel processing with circa-2012 technology, with total processing time of nearly 3 days running 64 cores at full capacity.\footnote{Realistically, almost nobody would contemplate doing this, given the expense of the computing time relative to the value of guaranteeing the optimal solution, but the hypothetical example demonstrates that such solutions are \emph{feasible}.}  Problems involving 14 and 15 assemblages reach the point where large clusters require more than a month and 19 months respectively, to solve.  Beyond 15 assemblages, a ``combinatorial explosion'' sets in, with 20 assemblages requiring more than 3 million years, before solution times quickly exceed the lifetime of the universe.  
 
 In short, top-down enumerative methods are feasible for small sets of assemblages, and given widespread availability of multiple core computers, seriation packages should employ enumeration for small problems, or to build and test smaller parts of larger seriation solutions, as we describe in Section \ref{sec:algo-mult-large}.  
 
@@ -182,7 +181,7 @@ subset_incr <- 5
 max_subset_labels <- c(ex_num_sol_init, seq(from=10, to=max_assem/2, by=subset_incr))
 max_rows <- length(max_subset_labels)
 
-cnames <-c("Subset Size (m)")
+cnames <-c("# of Solution Groups (m)")
 subsets <- data.frame(matrix(ncol=0,nrow=max_rows))
 # The subset sizes are the first column
 subsets <- cbind(subsets, max_subset_labels)
@@ -218,25 +217,12 @@ colnames(subsets) <- cnames
 In an earlier paper \citep{Lipo1997}, we introduced an iterative method for finding deterministic solutions to the frequency seriation problem by partitioning assemblages into subsets, each of which meets the unimodal ordering principle, within tolerance limits governed by sample size.  \citet{Lipo2001b} extended and refined the method in his dissertation research.  Our initial work on the method employed a combination of automated calculations (e.g., bootstrap significance tests for pairwise orderings), and manual sorting of assemblages into groups and specific positions (using an Excel macro package available at \url{http://lipolab.org/seriation.html}).  Figure \ref{fig:mult-seriation-groups} is an example of seriation with multiple solution groups, from Lipo's dissertation research in the \LMV.  
 
 \begin{figure*}
-%\centering
-	\includegraphics[scale=0.75]{lipo-figure-4-4.pdf}
+	\includegraphics[scale=0.75]{images/lipo-figure-4-4.pdf}
 	\caption{Example of a deterministic frequency seriation with assemblages partitioned into multiple subsets or solution groups.  From \citet{Lipo2001b}, Figure 4.4.}
 	\label{fig:mult-seriation-groups}
 \end{figure*}
 
 Our initial work suggests assemblages seriate together into groups reflecting variation in the intensity of \ct among assemblages, over their duration of accumulation. In most cases, solution groups tend to be spatiotemporally compact, and form clusters when mapped on the landscape, although long-distance connections between past communities can also yield patterns which are more complex and less cohensive when mapped.  Madsen's dissertation research is aimed at tying the properties seriation solution groups to their causes in regional patterns of interaction and the dynamics of specific \ct models.  
-
-From a combinatorial standpoint, seriation with multiple solution groups can be structured as follows.  We begin with $n$ assemblages in total, and seek a solution or solutions whereby we end up with $m$ solution groups, where $m < n$.  Each solution must have at least one assemblage, and in practice will often have 3 or more (singletons may indicate assemblages which simply do not ``fit'' with anything else in the data set).  The number of ways that $n$ objects can be partitioned into $m$ non-empty subsets is given by the Stirling numbers of the second kind, which are given by the recursion equation:
-
-\begin{equation}
-\stirlingsubset{k}{n} = 
-\end{equation}
-
-
-
-
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<subsets-table,echo=FALSE,results=asis>>=
@@ -247,8 +233,128 @@ print(xt3, include.rownames=FALSE)
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+In this section, the goal is to understand the complexity of the multiple seriation groups problem, constructing reasonable upper bounds for a given problem size, even if some problems encountered in real analyses do not approach the worst case.  From a combinatorial standpoint, seriation with multiple solution groups has the following structure.  
+We begin with $n$ assemblages in total, and seek a solution or solutions whereby we end up with $m$ solution groups, where $m < n$.  Each solution must have at least one assemblage, and in practice will often have 3 or more (singletons may indicate assemblages which simply do not ``fit'' with anything else in the data set).  The number of ways that $n$ objects can be partitioned into $m$ non-empty subsets (or solution groups) is given by the Stirling numbers of the second kind, which are given by the recursion equation:
+\begin{equation}
+\stirlingsubset{n}{m} = m \stirlingsubset{n-1}{m} + \stirlingsubset{n-1}{m-1}
+\end{equation}
+Table \ref{tab:subsets} gives the number of ways to form a specific number of subsets (or seriation solution groups) from sets of assemblages ranging from 20 to 60.  Each column runs from 3 solution groups to half of the number of assemblages, since the number of possible subsets is maximized just before $n/2$ and declines thereafter (Figure \ref{fig:subsets-graph}).  
 
-\section{Multiple Seriation Group Algorithm for Large Problem Sizes}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<subsets-graph,echo=FALSE,warning=FALSE,out.width=3.5in,fig.pos=h!,fig.lp=fig:,fig.cap=Number of Unique Solution Sets for 40 Assemblages When Partitioned Into $m$ Solution Groups>>=
+# graph of stirling2 for 40 assemblages to show asymmetry
+
+assem <- 40
+number_subsets <- stirling(assem)
+subset_size <- seq(from=0, to=assem, by=1)
+subsetgraph <- data.frame(matrix(ncol=0,nrow=(assem+1)))
+subsetgraph <- cbind(subsetgraph, subset_size)
+subsetgraph <- cbind(subsetgraph, number_subsets)
+
+y_caption <- paste("Number of Unique Subsets")
+u <- ggplot(subsetgraph, aes(x = subset_size, y = number_subsets)) 
+u + geom_bar(stat="identity") + scale_x_continuous(name = "Number of Subsets", limits=c(0,assem+1)) + scale_y_log10(name = y_caption)  
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+We can immediately see that there are an enormous number of possible subsets for any assemblage size.  There are fewer subsets, of course, than complete permutations of the set of assemblages since subsets are unordered (i.e., $\stirlingsubset{n}{m} < n! \,\mathrm{for\,all }\,m$).  However, in the multiple seriation group problem, the problem size is larger than the corresponding Stirling number because we do not know in advance how many groups (subsets) a set of assemblages will seriate into.  Thus, the total number of unique subsets which might contain the optimal solution is the total of the number of subsets, across all subset sizes:
+\begin{equation}
+\sum_{i=1}^n \stirlingsubset{n}{i}
+\label{eq:sum-stirling}
+\end{equation}
+This result is still smaller than the total permutations for a set of $n$ assemblages.  For example, given 40 assemblages, $n! = 8.159\e{47}$, whereas the total from Equation \ref{eq:sum-stirling} for 40 assemblages is $1.575\e{35}$.  
+
+Another factor to consider is that each of these unique subsets resulting from a partition of $n$ assemblages into seriation groups is still unordered.  For example, if we partition 10 assemblages into 3 solution groups, there are 9330 unique ways of assigning the 10 assemblages to the 3 solution groups.  Each group within a partition will have $n_i$ members, where $\sum n_i = n$.   The number of unique seriations for each of the 3 solution groups is $n_i ! / 2$, but we cannot assume that solution groups will have a balanced or equal number of assemblages (as Figure \ref{fig:mult-seriation-groups} does).  Partitions such as:
+\begin{equation*}
+\{1,2,3,4,5,6\} \{7,8\} \{9,10\}  
+\end{equation*}
+are common in seriating real assemblages \citep{Lipo2001b}.   
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<total-solutions,echo=FALSE,warning=FALSE>>=
+assem <- 40
+numsubset <- stirling(assem)
+subset_size <- seq(from=0, to=assem, by=1)
+
+perm_per_subset_size <- factorial(assem-subset_size-1)
+# remove the final NaN for subset {N,N}
+perm_per_subset_size[is.nan(perm_per_subset_size)] <- 0
+
+total_soln_per_subset_size <- numsubset * perm_per_subset_size
+total_solutions_40 <- sum(total_soln_per_subset_size)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<total-solutions-timing,echo=FALSE,warning=FALSE>>=
+total_solutions_mult_groups <- function(n) {
+  num_subsets <- stirling(n)
+  subset_size <- seq(from=0, to=n, by=1)
+  
+  # permutations
+  perm_per_subset_size <- factorial(n-subset_size-1)
+  # remove the final NaN for subset {N,N}
+  perm_per_subset_size[is.nan(perm_per_subset_size)] <- 0
+  total_soln_per_subset_size <- num_subsets * perm_per_subset_size
+  total_solutions <- sum(total_soln_per_subset_size)
+  total_solutions
+}
+
+timing_mult_groups <- function(sol) {
+  trial_batches <- sol / parallelism
+  
+  days_in_avg_month <- 30.4368
+  time_batches_sec <- trial_batches * secs_per_trial
+  time_batches_days <- time_batches_sec / 86400
+  time_batches_months <- time_batches_days / days_in_avg_month
+  time_batches_years <- time_batches_days / 365.25
+  times <- c(time_batches_sec,time_batches_years)
+}
+
+multgroupsol_timing <- data.frame(matrix(ncol=3,nrow=0))
+
+nseq <- c(seq(from=4, to=10, by=2), 12, 13, 14, 15, 16, seq(from=20, to=100, by=20))
+
+for(n in nseq) {
+  sol <- total_solutions_mult_groups(n)
+  timing <- timing_mult_groups(sol)
+  row <- c(n, sol, timing)
+  multgroupsol_timing <- rbind(multgroupsol_timing, row)
+}
+
+colnames(multgroupsol_timing) <- c("N", "Total Solutions", "Seconds","Years")
+
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+Since the factorial function grows so quickly, the computational cost of determining the correct permutation within a given seriation solution group is controlled by the size of the largest subset, especially if the other subsets are relatively small, as in the previous example.  At worst, for a solution set with $m$ solution groups, $m-1$ solution groups will contain 1 assemblage each, and the last solution group will consist of the remaining $n-m-1$ assemblages.  This means, of course, that the worst case would involve consideration of on the order of $(n-m-1)!$ permutations within each solution group, for each of the subsets given by Equation \ref{eq:sum-stirling}.  This yields:
+\begin{equation}
+\sum_{i=1}^n \stirlingsubset{n}{i} (n-i-1)!
+\end{equation}
+Table \ref{tab:total-mult} gives the total number of possible solutions for assemblages ranging from 4 to 100, where solutions may fall into multiple seriation groups of any size.  
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<total-solutions-table,echo=FALSE,results=asis>>=
+
+capt <- paste("Number of total solutions with multiple seriation groups and processing time for sets of assemblages 4 < n < 100, testing solutions across",parallelism,"cores",sep=" ")
+xt3 <- xtable(multgroupsol_timing, align="|c|c|r|r|r|", display=c("d","d","g","g","g"),caption=capt, label="tab:total-mult")
+print(xt3, include.rownames=FALSE)
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+Clearly, in the worst case, the combinatorial complexity of the multiple seriation groups problem is much worse than even the straight factorial case involved in single solution permutations.  The feasibility of parallelized enumerative methods still explodes after 13 assemblages, but much more steeply.  The goal of a new algorithm for deterministic multiple group seriations is, therefore, to employ heuristics to drastically reduce the size of the solution space by ensuring that we only consider permutations that are built from known-good smaller permutations, determining the optimal number of solution groups as we proceed, rather than testing all possible subsets of assemblages into groups of different number.  
+
+
+
+
+
+
+
+
+\section{Improving the Scaling Properties of Seriation by Agglomeration}
 \label{sec:algo-mult-large}
 
 
@@ -257,7 +363,7 @@ print(xt3, include.rownames=FALSE)
 \section{Discussion and Conclusions}
 \label{sec:conclusions}
 
-\lipsum[4-7]
+\lipsum[4]
 
 \section{Acknowledgements}
 foo bar.
@@ -282,31 +388,6 @@ foo bar.
 
 
 
-
-
-\begin{table}
-\begin{tabular}{|c|c|c|}
-\hline
-TA Duration & Min Sample Size & Max Sample Size \\ 
-  \hline
-  1 & 130494 & 247491 \\ 
-    3 & 4497 & 43494 \\ 
-    7 & 1926 & 18639 \\ 
-   15 & 897 & 8694 \\ 
-   31 & 435 & 4209 \\ 
-   62 & 216 & 2103 \\ 
-  125 & 105 & 1038 \\ 
-  250 & 516 & 981 \\ 
-  500 & 255 & 486 \\ 
-  1000 & 114 & 228 \\ 
-  2000 &  57 & 114 \\ 
-  4000 &  27 &  54 \\ 
-  8000 &  12 &  16 \\ 
-  \hline
-\end{tabular}
-\caption{Breakdown of sample sizes for analysis of trait richness ($K_n$), by size of time-averaging ``window.''  Some values of $\theta$ required larger numbers of simulation runs to achieve stable result, thus the difference between samples sizes at the same TA duration.}
-\label{tab:sample-size-kn}
-\end{table}
 
 
 

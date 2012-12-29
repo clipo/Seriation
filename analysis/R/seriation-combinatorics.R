@@ -1,7 +1,7 @@
 library(ggplot2)
 library(randtoolbox)
 library(xtable)
-setwd("~/Dropbox/Research/Dissertation Project/src/Seriation/R")
+setwd("~/Dropbox/Research/Dissertation Project/src/Seriation/analysis/R")
 
 # Input values
 assemblages <- 64
@@ -184,8 +184,83 @@ xt3 <- xtable(subsets, align="|c|c|r|r|r|", display=c("d","d","g","g","g"),capti
 print(xt3, include.rownames=FALSE)
 
 
-#stirl <- stirling(assemblages)
-#subsets <- stirl[k]
+# graph of stirling2 for 40 assemblages to show asymmetry
+
+assem <- 60
+number_subsets <- stirling(assem)
+subset_size <- seq(from=0, to=assem, by=1)
+subsetgraph <- data.frame(matrix(ncol=0,nrow=(assem+1)))
+subsetgraph <- cbind(subsetgraph, subset_size)
+subsetgraph <- cbind(subsetgraph, number_subsets)
+
+total_subsets <- sum(number_subsets)
+print(total_subsets)
+print(factorial(assem))
+
+y_caption <- paste("Number of Unique Subsets")
+u <- ggplot(subsetgraph, aes(x = subset_size, y = number_subsets)) 
+u + geom_bar(stat="identity") + scale_x_continuous(name = "Number of Subsets", limits=c(0,assem+1)) + scale_y_log10(name = y_caption)  
+
+###################################################
+# analysis of total permutations for solution subsets given Stirling sums (Equation 3)
+
+assem <- 40
+numsubset <- stirling(assem)
+subset_size <- seq(from=0, to=assem, by=1)
+
+perm_per_subset_size <- factorial(assem-subset_size-1)
+# remove the final NaN for subset {N,N}
+perm_per_subset_size[is.nan(perm_per_subset_size)] <- 0
+
+total_soln_per_subset_size <- numsubset * perm_per_subset_size
+total_solutions <- sum(total_soln_per_subset_size)
+print(total_solutions)
+
+
+
+
+
+### total solutions for multiple seriation groups, with timing for enumerative tests
+
+total_solutions_mult_groups <- function(n) {
+  num_subsets <- stirling(n)
+  subset_size <- seq(from=0, to=n, by=1)
+  
+  # permutations
+  perm_per_subset_size <- factorial(n-subset_size-1)
+  # remove the final NaN for subset {N,N}
+  perm_per_subset_size[is.nan(perm_per_subset_size)] <- 0
+  total_soln_per_subset_size <- num_subsets * perm_per_subset_size
+  total_solutions <- sum(total_soln_per_subset_size)
+  total_solutions
+}
+
+timing_mult_groups <- function(sol) {
+  trial_batches <- sol / parallelism
+  
+  days_in_avg_month <- 30.4368
+  time_batches_sec <- trial_batches * secs_per_trial
+  time_batches_days <- time_batches_sec / 86400
+  time_batches_months <- time_batches_days / days_in_avg_month
+  time_batches_years <- time_batches_days / 365.25
+  times <- c(time_batches_sec,time_batches_years)
+}
+
+multgroupsol_timing <- data.frame(matrix(ncol=3,nrow=0))
+
+nseq <- c(seq(from=4, to=10, by=2), 12, 13, 14, 15, 16, seq(from=20, to=100, by=20))
+
+for(n in nseq) {
+  sol <- total_solutions_mult_groups(n)
+  timing <- timing_mult_groups(sol)
+  row <- c(n, sol, timing)
+  multgroupsol_timing <- rbind(multgroupsol_timing, row)
+}
+
+colnames(multgroupsol_timing) <- c("N", "Total Solutions", "Seconds","Years")
+capt <- paste("Number of total solutions with multiple seriation groups and processing time for sets of assemblages 4 < n < 100, testing solutions across",parallelism,"cores",sep=" ")
+xt3 <- xtable(multgroupsol_timing, align="|c|c|r|r|r|", display=c("d","d","g","g","g"),caption=capt)
+print(xt3, include.rownames=FALSE)
 
 
 
