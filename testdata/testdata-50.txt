@@ -1,6 +1,6 @@
-Assemblage-1	0	50	0	0	0	0	5	0	0	45	0	0	0	0	0
-Assemblage-2	0	50	0	0	0	0	5	0	0	45	0	0	0	0	0
-Assemblage-3	0	45	0	0	0	0	5	0	0	50	0	0	0	0	0
+Assemblage-1	0	52	0	0	0	0	6	0	0	42	0	0	0	0	0
+Assemblage-2	0	48	0	0	0	0	7	0	0	45	0	0	0	0	0
+Assemblage-3	0	45	0	0	0	0	8	0	0	47	0	0	0	0	0
 Assemblage-4	0	40	0	0	0	0	10	0	0	50	0	0	0	0	0
 Assemblage-5	0	30	0	0	0	0	20	0	0	50	0	0	0	0	0
 Assemblage-6	0	5	0	0	0	0	25	0	0	70	0	0	0	0	0
@@ -17,7 +17,7 @@ Assemblage-16	10	0	10	0	0	0	30	10	0	0	0	0	0	40	0
 Assemblage-17	5	0	20	0	0	0	30	10	0	0	0	0	0	35	0
 Assemblage-18	0	0	25	0	0	0	25	20	0	0	0	0	0	30	0
 Assemblage-19	0	0	30	0	0	0	20	25	0	0	0	0	0	25	0
-Assemblage-20	0	0	30	0	0	0	15	30	0	0	0	0	0	25	0
+Assemblage-20	0	0	35	0	0	0	15	27	0	0	0	0	0	23	0
 Assemblage-21	0	0	40	0	0	0	10	30	0	0	0	0	0	20	0
 Assemblage-22	0	0	40	0	0	0	5	40	0	0	0	0	0	15	0
 Assemblage-23	0	0	50	0	0	0	0	40	0	0	0	0	0	10	0

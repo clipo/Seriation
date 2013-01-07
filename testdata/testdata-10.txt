@@ -1,10 +1,10 @@
-Assemblage-1	0	50	0	5	45	0
-Assemblage-2	0	50	0	5	45	0
-Assemblage-3	0	45	0	5	50	0
-Assemblage-4	0	40	0	10	50	0
-Assemblage-5	0	30	0	20	50	0
-Assemblage-6	0	5	0	25	70	0
-Assemblage-7	5	0	0	30	65	0
-Assemblage-8	10	0	0	30	60	0
-Assemblage-9	20	0	0	30	50	0
-Assemblage-10	30	0	0	40	30	0
+Assemblage-1	0	53	2	45
+Assemblage-2	0	48	4	48
+Assemblage-3	0	45	5	50
+Assemblage-4	0	40	10	50
+Assemblage-5	0	30	20	50
+Assemblage-6	0	5	25	70
+Assemblage-7	5	0	30	65
+Assemblage-8	10	0	30	60
+Assemblage-9	20	0	30	50
+Assemblage-10	30	0	40	30
