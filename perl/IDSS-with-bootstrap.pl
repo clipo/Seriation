@@ -393,7 +393,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         my $comparisonMap;
 
                            # go through the columns
-
+                        if (!$error) {
                            for ( my $i = 0 ; $i < $cols ; $i++ ) {
                                 my ( $difscore, $difscore2 );
                                 my $val1 = $newassemblage[$i];
@@ -519,6 +519,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $checkHash{ $edge[0][0] . "-"  . $edge[0][1] } = 1;
                                     $checkHash{ $edge[0][1] . "-"  . $edge[0][0] } = 1;
                                     ## check all combinations but the one with self!
+                                    my $change;
                                     foreach my $ee (@EE) {
                                        if ( !$checkHash{ @$ee[1] . "-" . @$ee[0] } && !$checkHash{ @$ee[0] . "-" . @$ee[1] } )
                                         {
@@ -531,7 +532,13 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                             if ( $compArray[$i] =~ "X" ) {
                                                 $DEBUG and print " Type $i: I found an X -- so this would make it multimodal. Error.\n";
                                                 $xerror++;
-                                            } 
+                                            } elsif ( $compArray[$i] =~ "U" ) {
+                                                $xerror++;
+                                            } elsif ( $compArray[$i] =~ "D" ) {
+                                                $xerror++;
+                                            } elsif ( $compArray[$i] =~  "M" ) {
+                                                $change="D";
+                                            }
                                             $ccount++;
                                         }
                                     }
@@ -540,7 +547,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                         $DEBUG and print "Type $i: Rejecting $label from $v) because value is down after a ";
                                         $DEBUG and print " previous U (but already has a mode). Multimodal - so error.\n";
                                     } else {
-
+                                        $comparisonMap .= $change; 
                                         $DEBUG and print "Type $i:Definitely adding $label to vertices $v because score ";
                                         $DEBUG and print " is -1 and the comparison is U but no other Xs in the previous linkages.\n";
                                         $DEBUG and print "Type $i: Adding an X to the comparisons for type $i. \n";
@@ -656,7 +663,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                 $DEBUG
                                   and print "Type $i:  Error so far $error\n";
                             }
-                        #} else {
+                        }
                         
                         if ( $error == 0 ) {
                             $DEBUG
