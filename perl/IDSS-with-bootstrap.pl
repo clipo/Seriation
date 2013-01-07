@@ -28,7 +28,7 @@ my $help                 = 0;
 my $inputfile;
 my $bootstrapdebug = 0;
 my $threshold      = 0;
-my $screen  = 1;     ## flag for screen output
+my $noscreen        = 0;     ## flag for screen output
 my $excel          = 0;       ## flag for excel file output
 
 # process command line options; if none, print a usage/help message.
@@ -46,7 +46,7 @@ GetOptions(
     'input=s'        => \$inputfile,
     'excel'          => \$excel,
     'threshold=f'      => \$threshold,
-    'screen'         => \$screen,
+    'noscreen'         => \$noscreen,
     man              => \$man
 ) or pod2usage(2);
 
@@ -60,7 +60,7 @@ if ($DEBUG) {
     $largestOnly          or print "output largest solutions is off\n";
     $individualfileoutput or print "individual network file output is off\n";
     print "threshold is currently set to: $threshold\n";
-    $screen or print "screen output is currently off\n";
+    $noscreen or print "noscreen output is currently off (which means that there is output to the screen)\n";
     $excel or print "excel output is off\n";
 }
 
@@ -68,6 +68,7 @@ if ($DEBUG) {
 
 # start the clock
 my $start = Time::HiRes::gettimeofday();
+
 
 # define some key lists and vars
 my @assemblages = ();
@@ -82,6 +83,10 @@ my %assemblageFrequencies = {};
 my @allNetworks           = ();
 my $maxnumber;
 
+my $screen = 1;    ## if the noscreen option is 1, then set the screen flag to 0. Otherwise use the screen
+if ($noscreen==1) { $screen=0;}
+
+
 #print "Input file name (e.g., input.txt) : ";
 #my $file = <STDIN>;
 #chomp($file);
@@ -90,6 +95,7 @@ open( INFILE, $inputfile ) or die "Cannot open $inputfile.\n";
 open( OUTFILE, ">$inputfile.vna" ) or die "Can't open file $inputfile.vna.\n";
 my $count = 0;
 
+$screen and $scr->at(1,1)->puts("Filename:  $inputfile");
 # the input of the classes -- note these are absolute counts, not frequencies
 # might want to change that...
 
