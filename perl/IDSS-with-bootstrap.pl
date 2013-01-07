@@ -11,6 +11,11 @@ use Pod::Usage;
 use Time::HiRes;
 use Array::Utils qw(:all);
 use Statistics::Descriptive;
+require Term::Screen;
+
+my $scr = new Term::Screen;
+unless ($scr) { die " Terminated. Something is wrong with Term::Screen \n"; }
+$scr->clrscr();
 
 my $debug      = 0;
 my $filterflag = 0
@@ -23,6 +28,7 @@ my $help                 = 0;
 my $inputfile;
 my $bootstrapdebug = 0;
 my $threshold      = 0;
+my $screen  = 1;     ## flag for screen output
 my $excel          = 0;       ## flag for excel file output
 
 # process command line options; if none, print a usage/help message.
@@ -40,6 +46,7 @@ GetOptions(
     'input=s'        => \$inputfile,
     'excel'          => \$excel,
     'threshold=f'      => \$threshold,
+    'screen'         => \$screen,
     man              => \$man
 ) or pod2usage(2);
 
@@ -53,8 +60,11 @@ if ($DEBUG) {
     $largestOnly          or print "output largest solutions is off\n";
     $individualfileoutput or print "individual network file output is off\n";
     print "threshold is currently set to: $threshold\n";
+    $screen or print "screen output is currently off\n";
     $excel or print "excel output is off\n";
 }
+
+#print "largest only: ", $largestOnly, "\n";
 
 # start the clock
 my $start = Time::HiRes::gettimeofday();
@@ -117,7 +127,8 @@ while (<INFILE>) {
 $numrows = scalar(@assemblages);
 
 my $maxSeriations = $count;
-print "Maximum possible seriation solution length: ", $count, "\n";
+$screen and $scr->at(2,1);
+$screen and $scr->puts("Maximum possible seriation solution length: $count");
 
 ## first compare each assemblage and see if the threshold is exceeded.
 ## By this I mean the maximum difference between frequencies of any type is greater than what is specified.
@@ -309,9 +320,12 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
         }
     }
     @newnets = ();
-    print "__________________________\n";
-    print "Iteriation Number:  $currentMaxSeriationSize \n";
-    print "Number of current solutions: ", scalar(@networks), "\n";
+    $DEBUG and print "__________________________\n";
+    $screen and $scr->at(4,1)->puts("Step number:                     ");
+    $screen and $scr->at(4,1)->puts("Step number:  $currentMaxSeriationSize ");
+    my $netnum=scalar(@networks);
+    $screen and $scr->at(5,1)->puts("Number of solutions from previous step:         ");
+    $screen and $scr->at(5,1)->puts("Number of solutions from previous step: $netnum");
 
     $match = 0;
 
@@ -645,7 +659,10 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             $match++;
                             ## copy this solution to the new array of networks
                             push @newnets,     $newnet;
-                            push @allNetworks, $newnet;
+                            #push @allNetworks, $newnet;
+                            my $currentTotal = scalar(@newnets);
+                            $screen and $scr->at(6,43)->puts("                   ");
+                            $screen and $scr->at(6,1)->puts("Current seriation solutions at this step: $currentTotal");
                             $DEBUG and print "----------^^^^^^^^^^^----------------------------------\n";
                         }
                     }
@@ -660,9 +677,8 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
     }    #end of network loop
     ## no match at this point so no point in going forward.
     if ( $match == 0 ) {
-        print
-"Maximum seriation size reached - no more assemblages added that iteration. Max # assemblages is: ",
-          $maxEdges, "\n";
+        $screen and $scr->at(9,1)->puts( "Maximum seriation size reached - no more assemblages added that iteration. ");
+        $screen and $scr->at(10,1)->puts("Maximum # assemblages in largest solution is: $maxEdges");
         $maxnumber = $currentMaxSeriationSize - $maxSeriations;
         ## to break now...
         $currentMaxSeriationSize = $maxSeriations;
@@ -674,7 +690,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
         }
 
     }
-    print "Number of current solutions now: ", scalar(@newnets), "\n";
+    $DEBUG and print "Number of current solutions now: ", scalar(@newnets), "\n";
 }    #end of master loop through iterations
 
 # now do some weeding. Basically start with the first network that is the largest, and work backwards. Ignore any
@@ -685,7 +701,6 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 my @filteredarray = ();
 
 if ( $filterflag == 1 ) {
-
     print "Filtering solutions so we only end up with the unique ones.\n";
     print "Start with ", scalar(@newnets), " solutions. \n";
     my $count     = 0;
@@ -968,7 +983,7 @@ if ($bootstrap) {
 
 ###########################################
 
-print "Now printing output file... \n";
+$screen and $scr->at(12,1)->puts( "Now printing output file... ");
 
 print OUTFILE "*Node data\n";
 $count = 0;
@@ -977,9 +992,9 @@ foreach my $l (@labels) {
 }
 print OUTFILE "*Tie data\n";
 print OUTFILE "From To Edge Weight Network pValue pError\n";
-my $compareNetwork;
+
 my @uniqueArray;
-foreach my $compareNetwork (@allNetworks) {
+foreach my $compareNetwork (@newnets) {
     my $exists = 0;
     foreach my $uarray (@uniqueArray) {
         if ( $compareNetwork eq $uarray ) {
@@ -993,7 +1008,6 @@ foreach my $compareNetwork (@allNetworks) {
 
 ## only print unique ones...
 foreach my $network (@uniqueArray) {
-
     #print Dumper($network);
     $count++;
 
@@ -1009,12 +1023,9 @@ foreach my $network (@uniqueArray) {
                 }
                 print OUTFILE @$e[0], " ", @$e[1], ", 1, ", scalar(@Edges), ", ", $count, ", ";
                 print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
-
-                #print @$e[0], " ", @$e[1], "\n";
             }
         }
-    }
-    else {
+    } else {
         my @Edges = $network->unique_edges;
         foreach my $e (@Edges) {
             if ( !$bootstrap ) {
@@ -1034,10 +1045,11 @@ print OUTFILE "\n";
 ###########################################
 if ($excel) {
     print "Now printing excel output file... \n";
+    ## nothing yet
 }
-
-printf( "Time for processing: %.2f seconds\n",
-    Time::HiRes::gettimeofday() - $start );
+my $timediff= Time::HiRes::gettimeofday() - $start;
+$screen and $scr->at(11,1)->puts( "Time for processing: $timediff seconds");
+print "\n\n\n\n";
 
 __END__
 
