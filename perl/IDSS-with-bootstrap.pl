@@ -13,8 +13,6 @@ use Array::Utils qw(:all);
 use Statistics::Descriptive;
 require Term::Screen;
 
-
-
 my $debug      = 0;
 my $filterflag = 0
   ; ## do you want to try to output all of the solutions (filtered for non trivial)
@@ -83,6 +81,7 @@ my $maxnumber;
 my $count = 0;
 my $screen = 1;    ## if the noscreen option is 1, then set the screen flag to 0. Otherwise use the screen
 if ($noscreen==1) { $screen=0;}
+if ($DEBUG) { $screen = 0; }
 my $scr;
 
 $screen and $scr = new Term::Screen;
@@ -399,22 +398,35 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                 my ( $difscore, $difscore2 );
                                 my $val1 = $newassemblage[$i];
                                 my $val2 = $oldassemblage[$i];
-                                
+                                $DEBUG and print "########  Assemblage: $edge[0][0]   and    Assemblage: $edge[0][1]             ########\n ";
                                 $DEBUG and print "########  Type $i - Type $i - Type $i - Type $i - Type $i - Type $i - Type $i  ########  \n";
-                                $DEBUG and print "Type $i:  $label 1: ", $newassemblage[$i], " $v 2: ", $oldassemblage[$i], "\n";
-
+                                $DEBUG and print "########  Type $i:  $label 1: ", $newassemblage[$i], " $v 2: ", $oldassemblage[$i], "\n";
+                                 ## ALL COMBINAATIONS
+                                   #   dif	comparison	result	comparisonMap
+                                   #   1	U	      okay	U
+                                   #   1	M	      okay	U
+                                   #   1	X	      bad	--
+                                   #   1	D	      bad	--
+                                   #   0	U	      okay	U
+                                   #   0	M	      okay	M
+                                   #   0	D	      okay	D
+                                   #   0	X	      okay	X
+                                   #   -1	U	      bad	--
+                                   #   -1	M	      okay	M
+                                   #   -1	D	      okay	D
+                                   #   -1	X	      okay	D
+                                
                                 my $dif1 = $newassemblage[$i] - $oldassemblage[$i];
                                 if ( $dif1 < 0 )  { $difscore = -1; }
                                 if ( $dif1 > 0 )  { $difscore = 1; }
                                 if ( $dif1 == 0 ) { $difscore = 0; }
 
-                                $DEBUG and print "Type $i: - comparison is:  ", $comparison[$i], " a score of: ", $difscore, "\n";
-
-                                 if (   ( $difscore == 1 ) && ( $comparison[$i] =~ "U" ) ) {
+                                $DEBUG and print "########  Type $i: - comparison is:  ", $comparison[$i], " a score of: ", $difscore, "\n";
+                                 if (   ( $difscore == 1 ) && ( $comparison[$i] =~ "U" ) ) {                                                 #### 1 U
                                     $comparisonMap .= "U";
                                     $DEBUG and print  " Type $i: Got a difscore of 1 and a ";
                                     $DEBUG and print  " comparison of a U. This works. Adding $label to vertices $edge[0][1]\n";
-                                } elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "M" ) ) {
+                                } elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "M" ) ) {                                                ### 1 M
                                     # this is okay - its a match and the new value is greater. New value shoudl be U
                                     # need to find what was happening on the previous comparison to know whether this needs
                                     # to be up or down.
@@ -424,12 +436,12 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     my $ccount   = 1;
                                     my @EE       = $network->unique_edges;
                                     my $numEdges = scalar(@EE);
-                                    my $change;
-                                    $DEBUG and print " Type $i:   Case A (1, M) : Potentially can add $label ";
+                                    my $change = "U";
+                                    $DEBUG and print " Type $i:   Matching case A (1, M) : Potentially can add $label ";
                                     $DEBUG and print "to vert $v because score is 1 and the comparison is M.\n";
                                     $DEBUG and print "###Network is currently: $network\n";
                                     $DEBUG and print "Type $i: But need to check the other $numEdges ";
-                                    $DEBUG and print " comparisons because this will only work if there no X somewhere (or more Ms)\n";
+                                    $DEBUG and print " comparisons because this will only work if there no X somewhere (or if there are only more Ms)\n";
 
                                     $DEBUG and print "Type $i: These combos are already evaluated: ";
                                     $DEBUG and print $edge[0][0] . "-". $edge[0][1] . " and " . $edge[0][1] . "-" . $edge[0][0], "\n";
@@ -453,15 +465,14 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                              $DEBUG and print " X found -- so this would make it multimodal. Error.\n";
                                                 $xerror++;
                                                 $ccount = $numEdges;
-                                            } else {
-                                                if ( $compArray[$i] =~ "D" ) {
+                                            } elsif ( $compArray[$i] =~ "D" ) {
                                                    $change = "X";
-                                                #This would be a mode shift so change is X
-                                                }
-                                                else {
-                                                    $xerror++;
-                                                } ## end of comparison array
-                                            }
+                                                   #This would be a mode shift so change is X
+                                            } elsif ($compArray[$i] =~ "U") {
+                                                   $change = "U";
+                                            } elsif ($compArray[$i] =~ "M") {
+                                                   $change = "U";
+                                            } ## end of comparison array
                                         }    #end of if check
                                     } ## end of foreach my $ee
                                     if ( $xerror > 0 ) {
@@ -475,7 +486,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                 }
                                 elsif
                                   ## error the new value is greater but shoudl be less. Error!
-                                  ( ( $difscore == 1 ) &  ( $comparison[$i] =~ "D" ) ) {
+                                  ( ( $difscore == 1 ) &  ( $comparison[$i] =~ "D" ) ) {                                                  ## 1 D
                                     #print "mismatch!\n";
                                     $error++;
                                     $DEBUG and print "Type $i: Value 1:  ", $newassemblage[$i], " value 2: ", $oldassemblage[$i], "\n";
@@ -488,7 +499,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                   ## its possible that the this is a mode change.
                                   ## do this by logging all modes in the original triplet -- keep track of modes
                                   ## per type
-                                  (    ( $difscore == -1 ) && ( $comparison[$i] =~ "U" ) )
+                                  (    ( $difscore == -1 ) && ( $comparison[$i] =~ "U" ) )                                               # -1 U
                                 {
                                     $DEBUG and print "Got a difscore of -1 and a comparison of a U. This could be an error.\n";
                                     ## first check to see if there is already and X in this column somewhere else.
@@ -502,8 +513,8 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $DEBUG and print "score is -1 and the comparison is M.\n";
                                     $DEBUG and print "Type $i: ###Network is currently: $network\n";
                                     $DEBUG and print "Type $i: But need to check the other $numEdges comparisons because ";
-                                    $DEBUG and print  " this will only work if there no X somewhere (or more Ms)\n";
-
+                                    $DEBUG and print  " this will only work if there no X somewhere (or only Ms)\n";
+                                    $comparisonMap .= "X";
                                     my %checkHash = {};
                                     $checkHash{ $edge[0][0] . "-"  . $edge[0][1] } = 1;
                                     $checkHash{ $edge[0][1] . "-"  . $edge[0][0] } = 1;
@@ -516,14 +527,11 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                             $DEBUG  and print "Type $i: Here is what we get for # $ccount (of $numEdges) ";
                                             $DEBUG and print " comparisons between @$ee[0] @$ee[1]: ", $ge, "->", $compArray[$i], "\n";
                                             $DEBUG and print "Type $i: $ccount comparison (of $numEdges)  is a $compArray[$i]. \n";
-
+                                             
                                             if ( $compArray[$i] =~ "X" ) {
                                                 $DEBUG and print " Type $i: I found an X -- so this would make it multimodal. Error.\n";
                                                 $xerror++;
-
-                                            } else {
-                                                $DEBUG and print "Okay since not an M, U, or D.\n";
-                                            }
+                                            } 
                                             $ccount++;
                                         }
                                     }
@@ -532,7 +540,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                         $DEBUG and print "Type $i: Rejecting $label from $v) because value is down after a ";
                                         $DEBUG and print " previous U (but already has a mode). Multimodal - so error.\n";
                                     } else {
-                                        $comparisonMap .= "X";
+
                                         $DEBUG and print "Type $i:Definitely adding $label to vertices $v because score ";
                                         $DEBUG and print " is -1 and the comparison is U but no other Xs in the previous linkages.\n";
                                         $DEBUG and print "Type $i: Adding an X to the comparisons for type $i. \n";
@@ -541,13 +549,13 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 
                                 }
                                 elsif ## new score is less and the comparison is down .. Yes!
-                                  (    ( $difscore == -1 ) && ( $comparison[$i] =~ "D" ) )
+                                  (    ( $difscore == -1 ) && ( $comparison[$i] =~ "D" ) )                                          ## -1   D
                                 {
                                     $comparisonMap .= "D";
                                     $DEBUG and print "Type $i: Adding a D to the comparisons for type $i. Comparison map is now $comparisonMap\n";
                                 }
                                 elsif # new score is less but comparison is Match. Okay
-                                  (    ( $difscore == -1 )  || ( $comparison[$i] =~ "M" ) )
+                                  (    ( $difscore == -1 )  || ( $comparison[$i] =~ "M" ) )                                         ## -1 M
                                 {
                                     my $vHere    = $v;
                                     my $xerror   = 0;
@@ -566,24 +574,28 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $checkHash{ $edge[0][1] . "-" . $edge[0][0] } = 1;
                                     #$DEBUG and print Dumper(%checkHash);
                                     ## check all combinations but the one with self!
+                                    my $change = "";
                                     foreach my $ee (@EE) {
                                         my $comparisonName =
                                           @$ee[0] . "-" . @$ee[1];
                                         if ( $checkHash{$comparisonName} == 0 ) {
-                                            my $ge =
-                                              $network->get_edge_weight( @$ee[0], @$ee[1] );
+                                            my $ge = $network->get_edge_weight( @$ee[0], @$ee[1] );
                                             my @compArray = split //, $ge;
                                             $DEBUG and print "Type $i: Here is what we get for comparison # $ccount ";
                                             $DEBUG and print " (of $numEdges) between @$ee[0], @$ee[1]: ", $ge, "->", $compArray[$i], "\n";
                                             $DEBUG and print "$ccount comparison (of $numEdges) is a $compArray[$i]. \n";
-                                            if ( $compArray[$i] =~ "X" ) {
+                                            if ( $compArray[$i] =~ "U" ) {
+                                                $change .= "X";
+                                            } elsif ($compArray[$i] =~ "X")  {
+                                                $xerror++;
+                                            } elsif ($compArray[$i] =~ "D"){
+                                               $change = "D";
+                                            } elsif ($compArray[$i] =~ "M") {
+                                               $change = "D";
+                                            }
                                                 #$DEBUG and print "Type $i: Since I found U found -- so this would be an error. Error.\n";
                                                    #$xerror++;
                                                    #$xcount++;   ## check and see if there is an X yet.  If not, this might
-                                            }
-                                            else {
-                                                $DEBUG and print "Type $i: Okay since an M, X, or D.\n";
-                                            } ## end of if checking of the valid condition (U)
                                             $ccount++;
                                             ## keep going back until we see if we get a U -- if not its okay
                                         }
@@ -598,40 +610,35 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                         $DEBUG and print " score is -1 and the comparison is D. ComparisonMap is now $comparisonMap\n";
                                     }
                                 } elsif  # new score is match but comparison is Match. Okay
-                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "X") ) {
-                                    $comparisonMap .= "X";
-                                    $DEBUG and print "Type $i: Adding $label to vertices $v because its a match. \n";
-                                    $DEBUG and print "Type $i: ComparisonMap is now $comparisonMap\n";
-                                } elsif  # new score is match but comparison is Match. Okay
-                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "U") ) {
+                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "U") ) {                                              ## 0  U
                                     $comparisonMap .= "U";
                                     $DEBUG and print "Type $i: Adding $label to vertices $v because its a match. \n";
                                     $DEBUG and print "Type $i: ComparisonMap is now $comparisonMap\n";
                                 } elsif  # new score is match but comparison is Match. Okay
-                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "D") ) {
+                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "D") ) {                                              ## 0 D
                                     $comparisonMap .= "D";
                                     $DEBUG and print "Type $i: Adding $label to vertices $v because its a match. \n";
                                     $DEBUG and print "Type $i: ComparisonMap is now $comparisonMap\n";
                                 } elsif  # new score is match but comparison is Match. Okay
-                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "M") ) {
+                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "M") ) {                                              ## 0 M
                                     $comparisonMap .= "M";
                                     $DEBUG and print "Type $i: Adding $label to vertices $v because its a match. \n";
                                     $DEBUG and print "Type $i: ComparisonMap is now $comparisonMap\n";
                                 } elsif # newscore is down but comparison is X. This means that there was already a peak
-                                  (    ( $difscore == -1 ) && ( $comparison[$i] =~ "X" ) )
+                                  (    ( $difscore == -1 ) && ( $comparison[$i] =~ "X" ) )                                          ## -1 X
                                 {
                                     ## this is okay since it is down from a mode peak
                                     $DEBUG and print "Type $i: Adding $label to vertices $v because ";
                                     $DEBUG and print " score is -1 and the comparison is D. ComparisonMap is now $comparisonMap\n";
                                     $comparisonMap .= "D";
-                                } elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "X" ) )
+                                } elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "X" ) )                                         ## 1  X
                                 {
                                     ## new score is up but comparison is X.. no cant work because past peak
                                     $error++;
                                     $DEBUG and print "Type $i: Rejecting $label from $v]. We can't go up ";
                                     $DEBUG and print" after a peak. so error. Error now $error\n";
                                 } elsif # newscore is down but comparison is X. This means that there was already a peak
-                                  (    ( $difscore == 0 ) && ( $comparison[$i] =~ "X" ) )
+                                  (    ( $difscore == 0 ) && ( $comparison[$i] =~ "X" ) )                                           ## 0  X
                                 {
                                     ## this is okay since it is down from a mode peak
                                     $comparisonMap .= "X";
