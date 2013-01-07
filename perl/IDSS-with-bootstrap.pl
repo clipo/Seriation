@@ -13,9 +13,7 @@ use Array::Utils qw(:all);
 use Statistics::Descriptive;
 require Term::Screen;
 
-my $scr = new Term::Screen;
-unless ($scr) { die " Terminated. Something is wrong with Term::Screen \n"; }
-$scr->clrscr();
+
 
 my $debug      = 0;
 my $filterflag = 0
@@ -82,25 +80,22 @@ my @arrayOfSeriations     = ();
 my %assemblageFrequencies = {};
 my @allNetworks           = ();
 my $maxnumber;
-
+my $count = 0;
 my $screen = 1;    ## if the noscreen option is 1, then set the screen flag to 0. Otherwise use the screen
 if ($noscreen==1) { $screen=0;}
+my $scr;
 
+$screen and $scr = new Term::Screen;
+$screen and $scr->clrscr();
 
-#print "Input file name (e.g., input.txt) : ";
-#my $file = <STDIN>;
-#chomp($file);
 open( INFILE, $inputfile ) or die "Cannot open $inputfile.\n";
-
 open( OUTFILE, ">$inputfile.vna" ) or die "Can't open file $inputfile.vna.\n";
-my $count = 0;
 
 $screen and $scr->at(1,1)->puts("Filename:  $inputfile");
 # the input of the classes -- note these are absolute counts, not frequencies
 # might want to change that...
 
 while (<INFILE>) {
-
     #print;
     chomp;
     my @line = split /\s+/, $_;
@@ -326,10 +321,13 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
         }
     }
     @newnets = ();
-    $DEBUG and print "__________________________\n";
+    $DEBUG and print "__________________________________________________________________________________________\n";
+    $DEBUG and print "Step number:  $currentMaxSeriationSize\n";
+    $DEBUG and print "__________________________________________________________________________________________\n";
     $screen and $scr->at(4,1)->puts("Step number:                     ");
     $screen and $scr->at(4,1)->puts("Step number:  $currentMaxSeriationSize ");
     my $netnum=scalar(@networks);
+    $DEBUG and print "Number of solutions from previous step: $netnum\n";
     $screen and $scr->at(5,1)->puts("Number of solutions from previous step:         ");
     $screen and $scr->at(5,1)->puts("Number of solutions from previous step: $netnum");
 
@@ -338,9 +336,9 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
     ## look through the set of existing valid networks.
     foreach my $network (@networks) {
         my $index = 0;
-        $DEBUG and print "----------------------------------------------------------------------\n";
+        $DEBUG and print "-----------------------------------------------------------------------------------\n";
         $DEBUG and print "Network: ", $network, "\n";
-        $DEBUG and print "----------------------------------------------------------------------\n";
+        $DEBUG and print "-----------------------------------------------------------------------------------\n";
 
         ## find the ends
 
@@ -401,7 +399,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                 my $val1 = $newassemblage[$i];
                                 my $val2 = $oldassemblage[$i];
                                 $DEBUG and print "########  Type $i - Type $i - Type $i - Type $i - Type $i - Type $i - Type $i  ########  \n";
-                                $DEBUG and print "Type $i:  $label 1:", $newassemblage[$i], " $v 2: ", $oldassemblage[$i], "\n";
+                                $DEBUG and print "Type $i:  $label 1: ", $newassemblage[$i], " $v 2: ", $oldassemblage[$i], "\n";
 
                                 my $dif1 = $newassemblage[$i] - $oldassemblage[$i];
                                 if ( $dif1 < 0 )  { $difscore = -1; }
@@ -410,19 +408,14 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 
                                 $DEBUG and print "Type $i: - comparison is:  ", $comparison[$i], " a score of: ", $difscore, "\n";
 
-                                 # if up and previous direction was up, all is good.
-                                if (   ( $difscore == 1 ) && ( $comparison[$i] =~ "U" ) )
-                                {
+                                 if (   ( $difscore == 1 ) && ( $comparison[$i] =~ "U" ) ) {
                                     $comparisonMap .= "U";
                                     $DEBUG and print  " Type $i: Got a difscore of 1 and a ";
                                     $DEBUG and print  " comparison of a U. This works. Adding $label to vertices $edge[0][1]\n";
-                                }
-                                elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "M" ) )
-                                {
-
-# this is okay - its a match and the new value is greater. New value shoudl be U
-# need to find what was happening on the previous comparison to know whether this needs
-# to be up or down.
+                                } elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "M" ) ) {
+                                    # this is okay - its a match and the new value is greater. New value shoudl be U
+                                    # need to find what was happening on the previous comparison to know whether this needs
+                                    # to be up or down.
                                     $DEBUG and print "Type $i: Got a difscore of 1 and a comparison of a M. This could be okay.\n";
                                     my $xerror   = 0;
                                     my $stop     = 0;
@@ -431,7 +424,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     my $numEdges = scalar(@EE);
                                     my $change;
                                     $DEBUG and print " Type $i:   Case A (1, M) : Potentially can add $label ";
-                                    $DEBUG and print "to vert $v because score is -1 and the comparison is M.\n";
+                                    $DEBUG and print "to vert $v because score is 1 and the comparison is M.\n";
                                     $DEBUG and print "###Network is currently: $network\n";
                                     $DEBUG and print "Type $i: But need to check the other $numEdges ";
                                     $DEBUG and print " comparisons because this will only work if there no X somewhere (or more Ms)\n";
@@ -443,16 +436,15 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $checkHash{ $edge[0][1] . "-" . $edge[0][0] } = 1;
                                     ## check all combinations but the one with self!
                                     foreach my $ee (@EE) {
-
                                         if (!$checkHash{ @$ee[0] . "-"  . @$ee[1] } && !$checkHash{ @$ee[1] . "-" . @$ee[0] } ) {
                                             my $ge = $network->get_edge_weight( @$ee[0], @$ee[1] );
                                             ## turn comparison into an array to find the right element
                                             my @compArray = ();
                                             @compArray = split //, $ge;
 
-                                            $DEBUG and print "Type $i:Here is what we get for comparisons # $ccount of ($numEdges) ";
+                                            $DEBUG and print "Type $i: Here is what we get for comparisons # $ccount of ($numEdges) ";
                                             $DEBUG and print  " between $label and  and $v: ", $ge, "->", $compArray[$i], "\n";
-                                            $DEBUG and print "Type $i:$ccount comparison (of $numEdges) is a $compArray[$i]. \n";
+                                            $DEBUG and print "Type $i: $ccount comparison (of $numEdges) is a $compArray[$i]. \n";
 
                                             if ( $compArray[$i] =~ "X" ) {
                                              $DEBUG and print "Type $i: $ccount (of $numEdges) comparison is $compArray[$i]  ";
@@ -462,7 +454,6 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                             } else {
                                                 if ( $compArray[$i] =~ "D" ) {
                                                    $change = "X";
-
                                                 #This would be a mode shift so change is X
                                                 }
                                                 else {
@@ -487,7 +478,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $error++;
                                     $DEBUG and print "Type $i: Value 1:  ", $newassemblage[$i], " value 2: ", $oldassemblage[$i], "\n";
                                     $DEBUG and print "Type $i: Comparison is:  ", $comparison[$i], " a score of: ", $difscore, "\n";
-                                    $DEBUG and print "Type $i: Rejecting $label from $edge[0][1] because value is up and comparison is D.\n";
+                                    $DEBUG and print "Type $i: Rejecting $label from $edge[0][0] because value is up and comparison is D.\n";
                                 }
                                 elsif
                                   ## new score is less and the Comparison is up .. Error!
@@ -571,7 +562,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     my %checkHash = ();
                                     $checkHash{ $edge[0][0] . "-" . $edge[0][1] } = 1;
                                     $checkHash{ $edge[0][1] . "-" . $edge[0][0] } = 1;
-                                    $DEBUG and print Dumper(%checkHash);
+                                    #$DEBUG and print Dumper(%checkHash);
                                     ## check all combinations but the one with self!
                                     foreach my $ee (@EE) {
                                         my $comparisonName =
@@ -586,7 +577,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                             if ( $compArray[$i] =~ "X" ) {
                                                 #$DEBUG and print "Type $i: Since I found U found -- so this would be an error. Error.\n";
                                                    #$xerror++;
-                                                      #$xcount++;   ## check and see if there is an X yet.  If not, this might
+                                                   #$xcount++;   ## check and see if there is an X yet.  If not, this might
                                             }
                                             else {
                                                 $DEBUG and print "Type $i: Okay since an M, X, or D.\n";
@@ -605,7 +596,22 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                         $DEBUG and print " score is -1 and the comparison is D. ComparisonMap is now $comparisonMap\n";
                                     }
                                 } elsif  # new score is match but comparison is Match. Okay
-                                  ( ( $difscore == 0 ) ) {
+                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "X") ) {
+                                    $comparisonMap .= "X";
+                                    $DEBUG and print "Type $i: Adding $label to vertices $v because its a match. \n";
+                                    $DEBUG and print "Type $i: ComparisonMap is now $comparisonMap\n";
+                                } elsif  # new score is match but comparison is Match. Okay
+                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "U") ) {
+                                    $comparisonMap .= "U";
+                                    $DEBUG and print "Type $i: Adding $label to vertices $v because its a match. \n";
+                                    $DEBUG and print "Type $i: ComparisonMap is now $comparisonMap\n";
+                                } elsif  # new score is match but comparison is Match. Okay
+                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "D") ) {
+                                    $comparisonMap .= "D";
+                                    $DEBUG and print "Type $i: Adding $label to vertices $v because its a match. \n";
+                                    $DEBUG and print "Type $i: ComparisonMap is now $comparisonMap\n";
+                                } elsif  # new score is match but comparison is Match. Okay
+                                  ( ( $difscore == 0 ) && ($comparison[$i] =~ "M") ) {
                                     $comparisonMap .= "M";
                                     $DEBUG and print "Type $i: Adding $label to vertices $v because its a match. \n";
                                     $DEBUG and print "Type $i: ComparisonMap is now $comparisonMap\n";
@@ -613,7 +619,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                   (    ( $difscore == -1 ) && ( $comparison[$i] =~ "X" ) )
                                 {
                                     ## this is okay since it is down from a mode peak
-                                    $DEBUG and print "Type $i:Adding $label to vertices $v because ";
+                                    $DEBUG and print "Type $i: Adding $label to vertices $v because ";
                                     $DEBUG and print " score is -1 and the comparison is D. ComparisonMap is now $comparisonMap\n";
                                     $comparisonMap .= "D";
                                 } elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "X" ) )
@@ -645,7 +651,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         
                         if ( $error == 0 ) {
                             $DEBUG
-                              and print "----------^^^^^^^^^^^----------------------------------\n";
+                              and print "--------------------------------------------------\n";
 
                             $DEBUG
                               and print "Original network: ", $network, "\n";
@@ -669,7 +675,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             my $currentTotal = scalar(@newnets);
                             $screen and $scr->at(6,43)->puts("                   ");
                             $screen and $scr->at(6,1)->puts("Current seriation solutions at this step: $currentTotal");
-                            $DEBUG and print "----------^^^^^^^^^^^----------------------------------\n";
+                            $DEBUG and print "-------------------------------------------------\n";
                         }
                     }
                     else {
