@@ -153,7 +153,7 @@ while ( my @permu = $pairs->next_combination ) {
         }
     }
     $assemblageComparison{$pairname} = $maxDifference;
-    $assemblageComparison{pairname2} = $maxDifference;
+    $assemblageComparison{$pairname2} = $maxDifference;
 }
 
 $DEBUG and print Dumper( \%assemblageComparison ), "\n";

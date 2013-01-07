@@ -38,9 +38,9 @@
 \setsansfont[Mapping=tex-text]{ITC Legacy Sans Std Medium}
 \setmonofont{Bitstream Vera Sans Mono}
 \setmathfont(Digits,Latin,Greek)[Script=Math,Uppercase=Italic,Lowercase=Italic]{Minion Math Semibold}
-\setmathfont[range={\mathbfup->\mathup}]{MinionMath-Bold.otf}
-\setmathfont[range={\mathbfit->\mathit}]{MinionMath-Bold.otf}
-\setmathfont[range={\mathit->\mathit}]{MinionMath-Bold.otf}
+%\setmathfont[range={\mathbfup->\mathup}]{MinionMath-Bold.otf}
+%\setmathfont[range={\mathbfit->\mathit}]{MinionMath-Bold.otf}
+%\setmathfont[range={\mathit->\mathit}]{MinionMath-Bold.otf}
 
 %%%%%%%%%% Remove the above before submission %%%%%%%%%%%%%%%%%%
 
@@ -331,7 +331,7 @@ colnames(multgroupsol_timing) <- c("N", "Total Solutions", "Seconds","Years")
 
 Since the factorial function grows so quickly, the computational cost of determining the correct permutation within a given seriation solution group is controlled by the size of the largest subset, especially if the other subsets are relatively small, as in the previous example.  At worst, for a solution set with $m$ solution groups, $m-1$ solution groups will contain 1 assemblage each, and the last solution group will consist of the remaining $n-m-1$ assemblages.  This means, of course, that the worst case would involve consideration of on the order of $(n-m-1)!$ permutations within each solution group, for each of the subsets given by Equation \ref{eq:sum-stirling}.  This yields:
 \begin{equation}
-\sum_{i=1}^n \stirlingsubset{n}{i} (n-i-1)!
+\sum_{m=1}^n \stirlingsubset{n}{m} (n-m-1)!
 \end{equation}
 Table \ref{tab:total-mult} gives the total number of possible solutions for assemblages ranging from 4 to 100, where solutions may fall into multiple seriation groups of any size.  
 
@@ -357,6 +357,7 @@ Clearly, in the worst case, the combinatorial complexity of the multiple seriati
 \section{Improving the Scaling Properties of Seriation by Agglomeration}
 \label{sec:algo-mult-large}
 
+The key to reducing the size of the solution space which must be tested is to establish that larger seriation solutions can be ``built from'' smaller solutions, which need not be retested in full.   A group of 3 assemblages which fully meets the assumptions of deterministic frequency seriation (within tolerance limits set by sample size) will, presumably, also be a constituent subset of larger solutions (e.g., a solution with 7 assemblages, containing the 3-solution and four others 
 
 
 
