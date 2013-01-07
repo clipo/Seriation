@@ -381,16 +381,17 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         my $pairname = $edge[0][0] . " * " . $edge[0][1];
                         my $diff     = $assemblageComparison{$pairname};
                         $DEBUG and print "For $pairname the difference is $diff.\n";
+                        
                         ## go through process only if threshold is 0 or difference value is below threshold
                         ## this should mean that network will not grow unless the above conditions are met.
-                        if (  $diff > $threshold )  {
+                        my $error = 0;
+                        if (  ($threshold>0 ) and ($diff > $threshold ))  {
                            $DEBUG and print "Threshold = $threshold and Diff = $diff. Since $diff < $threshold, continue.\n";
                            $error++; # this should ensure future failure....
                         }
-                           my @comparison = split //, $g;
-                           my $cols = scalar(@newassemblage);
-                           my $comparisonMap;
-                           my $error = 0;
+                        my @comparison = split //, $g;
+                        my $cols = scalar(@newassemblage);
+                        my $comparisonMap;
 
                            # go through the columns
 
@@ -398,6 +399,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                 my ( $difscore, $difscore2 );
                                 my $val1 = $newassemblage[$i];
                                 my $val2 = $oldassemblage[$i];
+                                
                                 $DEBUG and print "########  Type $i - Type $i - Type $i - Type $i - Type $i - Type $i - Type $i  ########  \n";
                                 $DEBUG and print "Type $i:  $label 1: ", $newassemblage[$i], " $v 2: ", $oldassemblage[$i], "\n";
 
