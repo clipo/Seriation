@@ -469,7 +469,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                                    $change = "X";
                                                    #This would be a mode shift so change is X
                                             } elsif ($compArray[$i] =~ "U") {
-                                                   $change = "U";
+                                                   $xerror++; ## cant go up twice...
                                             } elsif ($compArray[$i] =~ "M") {
                                                    $change = "U";
                                             } ## end of comparison array
@@ -535,7 +535,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                             } elsif ( $compArray[$i] =~ "U" ) {
                                                 $xerror++;
                                             } elsif ( $compArray[$i] =~ "D" ) {
-                                                $xerror++;
+                                                $change="D";
                                             } elsif ( $compArray[$i] =~  "M" ) {
                                                 $change="D";
                                             }
