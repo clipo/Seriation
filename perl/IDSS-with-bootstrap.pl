@@ -352,14 +352,14 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
             if ( !$network->has_vertex($testAssemblage) ) {
                 # get the exterior vertices (should be 2)
                 my @V = $network->vertices;    ## list of all the vertices
-                $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices ";
-                $DEBUG  and print " and looking for the ones with only 1 connection. There should be just 2 here.\n";
+                $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices \n";
+                $DEBUG  and print " \t\tand looking for the ones with only 1 connection. There should be just 2 here.\n";
                 ## loop through all of the edges to see if they can be stuck on the ends of the networks.
                 foreach my $endAssemblage (@V) {
                     $DEBUG and print "\t\tChecking vertice: ", $endAssemblage, "\n";
                     my @Edges = $network->edges_at($endAssemblage);
                     my $edges = scalar(@Edges);
-                    $DEBUG and print "\t\tThis vertice: $endAssemblage has this number of edges:  ", $edges, "\n";
+                    $DEBUG and print "\t\t\tThis vertice: $endAssemblage has this number of edges:  ", $edges, "\n";
                     my @newassemblage = ();
                     my @oldassemblage = ();
                     my $comparisonMap;
@@ -370,23 +370,27 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         @newassemblage = @{ $assemblageFrequencies{ $testAssemblage } };
                         @oldassemblage = @{ $assemblageFrequencies{ $endAssemblage } };
                         my @edge = $network->edges_at($endAssemblage);
-                        $DEBUG and print "\t\t\t\tNumber of edges here at $endAssemblage:  ", scalar(@edge), " (should be just one).\n";
+                        $DEBUG and print "\t\t\t Number of edges here at $endAssemblage:  ", scalar(@edge), " (should be just one).\n";
                         my $connectedAssemblage = $edge[0][1];
                         my $g = $network->get_edge_weight( $edge[0][0], $edge[0][1] );
 
                         #print Dumper $g;
-                        $DEBUG and print "There should be just 2 vertices here 0: $edge[0][0] and 1: $edge[0][1], with a relation of $g\n";
+                        $DEBUG and print "\t\t\tThere should be just 2 vertices here 0: $edge[0][0] and 1: $edge[0][1]\n";
+                        $DEBUG and print "\t\t\t\t with a relation of $g\n";
 
                         #first determine if the pairs are within the threshold value (0 = all assemblages)
                         my $pairname = $testAssemblage . " * " . $endAssemblage;
                         my $diff     = $assemblageComparison{$pairname};
-                        $DEBUG and print "\t\t\t\tFor $pairname the max frequency difference is $diff.\n";
-                        
+                        $DEBUG and print "\t\t\tFor $pairname the max frequency difference is $diff.\n";
+                        if ($diff=="") {
+                           print "pairname not found in hash lookup!\n";
+                           exit();
+                        }
                         ## go through process only if threshold is 0 or difference value is below threshold
                         ## this should mean that network will not grow unless the above conditions are met.
                         my $error = 0;
                         if (  ($threshold>0 ) and ($diff > $threshold ))  {
-                           $DEBUG and print "\t\t\t\tThreshold = $threshold and Diff = $diff. Since $diff < $threshold, continue.\n";
+                           $DEBUG and print "\t\t\tThreshold = $threshold and Diff = $diff. Since $diff < $threshold, continue.\n";
                            $error++; # this should ensure future failure....
                         }
                         my @comparison = split //, $g;
@@ -426,7 +430,8 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                  if (   ( $difscore == 1 ) && ( $comparison[$i] =~ "U" ) ) {                                                 #### 1 U
                                     $comparisonMap .= "U";
                                     $DEBUG and print  "\t\t\t\tType $i: Got a difscore of 1 and a ";
-                                    $DEBUG and print  " comparison of a U. This works. Adding $testAssemblage to vertices $endAssemblage\n";
+                                    $DEBUG and print  "\t\t\t\tcomparison of a U. This works. \n";
+                                    $DEBUG and print " \t\t\t\tAdding $testAssemblage to vertices $endAssemblage\n";
                                 } elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "M" ) ) {                                                ### 1 M
                                     # this is okay - its a match and the new value is greater. New value shoudl be U
                                     # need to find what was happening on the previous comparison to know whether this needs
@@ -514,7 +519,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $DEBUG and print "\t\t\t\tType $i:  Case B (-1, U). Potentially can add $testAssemblage and vert $endAssemblage\n ";
                                     $DEBUG and print "\t\t\t\t\t   because score is -1 and the comparison is M.\n";
                                     $DEBUG and print "\t\t\t\tType $i: But need to check the other $numEdges comparisons because \n";
-                                    $DEBUG and print  "\t\t\t\t\tthis will only work if there no X somewhere (or only Ms)\n";
+                                    $DEBUG and print  "\t\t\t\t\tthis will only work if there no X somewhere \n";
                                     $comparisonMap .= "X";
                                     my %checkHash = {};
                                     $checkHash{ $endAssemblage . "-"  . $testAssemblage } = 1;
@@ -528,7 +533,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                             my @compArray = split //, $ge;
                                             $DEBUG  and print "\t\t\t\tType $i: Here is what we get for # $ccount (of $numEdges) \n";
                                             $DEBUG and print "\t\t\t\t comparisons between @$ee[0] @$ee[1]: ", $ge, "->", $compArray[$i], "\n";
-                                            $DEBUG and print "\t\t\t\tType $i: $ccount comparison (of $numEdges)  is a $compArray[$i]. \n";
+                                            $DEBUG and print "\t\t\t\tType $i: $ccount comparison (of $numEdges) is a $compArray[$i]. \n";
                                              
                                             if ( $compArray[$i] =~ "X" ) {
                                                 $DEBUG and print "\t\t\t\t\tType $i: I found an X -- so this would make it multimodal. Error.\n";
@@ -537,7 +542,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                                 $change="X";
                                             } elsif ( $compArray[$i] =~ "D" ) {
                                                 $change="D";
-                                            } elsif ( $compArray[$i] =~  "M" ) {
+                                            } elsif ( $compArray[$i] =~ "M" ) {
                                                 $change="D";
                                             }
                                             $ccount++;
@@ -692,7 +697,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                     }
                     else {
                         $DEBUG
-                          and print "$endAssemblage has too many edges ( $edges is more than 1) so skipping\n";
+                          and print "\t\t$endAssemblage has too many edges ( $edges is more than 1) so skipping\n";
                     }    # end of if check for the end edges
                 }    # end of iterate through the existing network link
             }    # end of if assemblage not already in netowrk check
