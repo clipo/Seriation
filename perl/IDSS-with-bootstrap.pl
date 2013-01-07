@@ -91,6 +91,8 @@ open( INFILE, $inputfile ) or die "Cannot open $inputfile.\n";
 open( OUTFILE, ">$inputfile.vna" ) or die "Can't open file $inputfile.vna.\n";
 
 $screen and $scr->at(1,1)->puts("Filename:  $inputfile");
+$screen and $scr->at(2,1)->puts("Threshold: $threshold");
+
 # the input of the classes -- note these are absolute counts, not frequencies
 # might want to change that...
 
@@ -126,7 +128,7 @@ while (<INFILE>) {
 $numrows = scalar(@assemblages);
 
 my $maxSeriations = $count;
-$screen and $scr->at(2,1);
+$screen and $scr->at(3,1);
 $screen and $scr->puts("Maximum possible seriation solution length: $count");
 
 ## first compare each assemblage and see if the threshold is exceeded.
