@@ -8,3 +8,8 @@ Assemblage-7	5	0	0	30	65	0
 Assemblage-8	10	0	0	30	60	0
 Assemblage-9	20	0	0	30	50	0
 Assemblage-10	30	0	0	40	30	0
+Assemblage-11	40	0	0	40	20	0
+Assemblage-12	50	0	0	50	0	0
+Assemblage-13	40	0	10	50	0	0
+Assemblage-14	30	0	10	40	0	15
+Assemblage-15	20	0	10	40	0	25
