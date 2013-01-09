@@ -1012,15 +1012,17 @@ print OUTFILE "*Tie data\n";
 print OUTFILE "From To Edge Weight Network pValue pError\n";
 
 my @uniqueArray;
+my $netCompare;
 foreach my $compareNetwork (@newnets) {
     my $exists = 0;
     foreach my $uarray (@uniqueArray) {
-        if ( $compareNetwork eq $uarray ) {
+       $netCompare = $compareNetwork->undirected_copy_graph;
+        if ( $compareNetwork eq $netCompare ) {
             $exists++;
         }
     }
     if ( !$exists ) {
-        push @uniqueArray, $compareNetwork;
+        push @uniqueArray, $netCompare;
     }
 }
 
@@ -1028,9 +1030,8 @@ foreach my $compareNetwork (@newnets) {
 foreach my $network (@uniqueArray) {
     #print Dumper($network);
     $count++;
-
     #print "$count: $network\n";
-    my $E = $network->edges;
+    my $E = $network->unique_edges;
     if ($largestOnly) {
         if ( $E == $maxEdges ) {
             my @Edges = $network->unique_edges;
