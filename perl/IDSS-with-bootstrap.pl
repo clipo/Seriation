@@ -142,7 +142,7 @@ my %assemblageComparison = ( "pairname" => 0 );
 my $pairs = Math::Combinatorics->new( count => 2, data => [@assemblageNumber] );
 
 while ( my @permu = $pairs->next_combination ) {
-    $DEBUG and print $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ] . "\n";
+    #$DEBUG and print $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ] . "\n";
     my $pairname      = $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ];
     my $pairname2     = $labels[ $permu[1] ] . " * " . $labels[ $permu[0] ];
     my $maxDifference = 0;
@@ -181,7 +181,7 @@ my $permutations =
 #print "------------------------".("--" x scalar(@assemblages))."\n";
 
 while ( my @permu = $permutations->next_combination ) {
-    $DEBUG and print $labels[ $permu[0] ] . " * ". $labels[ $permu[1] ] . " * ". $labels[ $permu[2] ] . "\n";
+    #$DEBUG and print $labels[ $permu[0] ] . " * ". $labels[ $permu[1] ] . " * ". $labels[ $permu[2] ] . "\n";
     my $tripletname = $labels[ $permu[0] ] . " * ". $labels[ $permu[1] ] . " * ". $labels[ $permu[2] ];
     $comparison12 = "";
     $comparison23 = "";
@@ -193,7 +193,7 @@ while ( my @permu = $permutations->next_combination ) {
         my $ass1 = $assemblages[ $permu[0] ][$i];
         my $ass2 = $assemblages[ $permu[1] ][$i];
         my $ass3 = $assemblages[ $permu[2] ][$i];
-        $DEBUG and print $ass1. "-" . $ass2 . "-" . $ass3 . "\n";
+        #$DEBUG and print "TESTING:  ". $ass1. "-" . $ass2 . "-" . $ass3 . "\n";
 
         my $dif1 = $ass1 - $ass2;
 
@@ -268,12 +268,8 @@ while ( my @permu = $permutations->next_combination ) {
             $labels[ $permu[2] ],
             $comparison23
         );
-        $DEBUG
-          and print $labels[ $permu[0] ] . " * "
-          . $labels[ $permu[1] ] . "-"
-          . $comparison12 . " * "
-          . $labels[ $permu[2] ] . "-"
-          . $comparison23 . "\n";
+        $DEBUG and print "VALID SOLUTION: " . $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ] . " * " . $labels[ $permu[2] ] . "\n";
+        $DEBUG and print "VALID SOLUTION: \t  $comparison12\t  ---   $comparison23\n";
         push @nets, $net;
         $numberOfTriplets++;
     }
@@ -347,7 +343,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 
         foreach my $testAssemblage (@labels) {
 
-            $DEBUG  and print "\t\tNow checking assemblage: ", $testAssemblage, " to see if it fits on the end of the current solution.\n";
+            $DEBUG  and print "\t\tChecking assemblage: ", $testAssemblage, " to see if it fits on the end of the current solution.\n";
             $DEBUG  and print "\t\tFirst check to see if it is included already. If it has, move on.\n";
             if ( !$network->has_vertex($testAssemblage) ) {
                 # get the exterior vertices (should be 2)
@@ -370,14 +366,28 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         @newassemblage = @{ $assemblageFrequencies{ $testAssemblage } };
                         @oldassemblage = @{ $assemblageFrequencies{ $endAssemblage } };
                         my @edge = $network->edges_at($endAssemblage);
-                        $DEBUG and print "\t\t\t Number of edges here at $endAssemblage:  ", scalar(@edge), " (should be just one).\n";
+                        $DEBUG and print "\t\t\t The number of edges at $endAssemblage:  ", scalar(@edge), " (should be just one).\n";
                         my $connectedAssemblage = $edge[0][1];
                         my $g = $network->get_edge_weight( $edge[0][0], $edge[0][1] );
 
                         #print Dumper $g;
                         $DEBUG and print "\t\t\tThere should be just 2 vertices here 0: $edge[0][0] and 1: $edge[0][1]\n";
                         $DEBUG and print "\t\t\t\t with a relation of $g\n";
-
+                        my $numedges1 = $network->edges_at($edge[0][0]);
+                        my $numedges2 = $network->edges_at($edge[0][1]);
+                        my ($innerEdge, $outerEdge);
+                        $DEBUG and print "\t\t\t\tNUMBER OF EDGES - $edge[0][0] - $numedges1  - $edge[0][1] - $numedges2\n";
+                        if ( $numedges1 == 1 ) {
+                           $outerEdge= $edge[0][0];
+                           $innerEdge= $edge[0][1];
+                        } else {
+                           $outerEdge= $edge[0][1];
+                           $innerEdge= $edge[0][0];                          
+                        }
+                        $DEBUG and print "\t\t\t Outer edge is $outerEdge\n";
+                        $DEBUG and print "\t\t\t Inner edge is $innerEdge\n";
+                        $DEBUG and print "\t\t\t Comparison is $g or -- ", $network->get_edge_weight($outerEdge,$innerEdge), "\n";
+               
                         #first determine if the pairs are within the threshold value (0 = all assemblages)
                         my $pairname = $testAssemblage . " * " . $endAssemblage;
                         my $diff     = $assemblageComparison{$pairname};
@@ -429,65 +439,57 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                 $DEBUG and print "\t\t\t\tType $i: - comparison is:  ", $comparison[$i], " a score of: ", $difscore, "\n";
                                  if (   ( $difscore == 1 ) && ( $comparison[$i] =~ "U" ) ) {                                                 #### 1 U
                                     $comparisonMap .= "U";
-                                    $DEBUG and print  "\t\t\t\tType $i: Got a difscore of 1 and a ";
-                                    $DEBUG and print  "\t\t\t\tcomparison of a U. This works. \n";
+                                    $DEBUG and print  "\t\t\t\tType $i: Got a difscore of 1 and a comparison of a U. This works. \n";
                                     $DEBUG and print " \t\t\t\tAdding $testAssemblage to vertices $endAssemblage\n";
+                                    
+                                    
                                 } elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "M" ) ) {                                                ### 1 M
                                     # this is okay - its a match and the new value is greater. New value shoudl be U
                                     # need to find what was happening on the previous comparison to know whether this needs
                                     # to be up or down.
                                     $DEBUG and print "\t\t\t\tType $i: Got a difscore of 1 and a comparison of a M. This could be okay.\n";
-                                    my $xerror   = 0;
-                                    my $stop     = 0;
-                                    my $ccount   = 1;
-                                    my @EE       = $network->unique_edges;
-                                    my $numEdges = scalar(@EE);
-                                    my $change = "U";
-                                    $DEBUG and print "\t\t\t\tType $i:   Matching case A (1, M) : Potentially can add $testAssemblage ";
-                                    $DEBUG and print "to vert $endAssemblage because score is 1 and the comparison is M.\n";
-                                    $DEBUG and print "\t\t\t\tNetwork is currently: $network\n";
-                                    $DEBUG and print "\t\t\t\tType $i: But need to check the other $numEdges ";
-                                    $DEBUG and print " comparisons because this will only work if there no X somewhere (or if there are only more Ms)\n";
-
-                                    $DEBUG and print "\t\t\t\tType $i: These combos are already evaluated: ";
-                                    $DEBUG and print "\t\t\t\t". $endAssemblage . "-". $testAssemblage. " and " . $testAssemblage . "-" . $endAssemblage, "\n";
-                                    my %checkHash = {};
-                                    $checkHash{ $testAssemblage . "-" . $endAssemblage } = 1;
-                                    $checkHash{ $endAssemblage . "-" . $testAssemblage } = 1;
-                                    ## check all combinations but the one with self!
-                                    foreach my $ee (@EE) {
-                                        if (!$checkHash{ @$ee[0] . "-"  . @$ee[1] } && !$checkHash{ @$ee[1] . "-" . @$ee[0] } ) {
-                                            my $ge = $network->get_edge_weight( @$ee[0], @$ee[1] );
-                                            ## turn comparison into an array to find the right element
-                                            my @compArray = ();
-                                            @compArray = split //, $ge;
-
-                                            $DEBUG and print "\t\t\t\tType $i: Here is what we get for comparisons # $ccount of ($numEdges) ";
-                                            $DEBUG and print  " between $testAssemblage and  and $endAssemblage: ", $ge, "->", $compArray[$i], "\n";
-                                            $DEBUG and print "\t\t\t\tType $i: $ccount comparison (of $numEdges) is a $compArray[$i]. \n";
-
-                                            if ( $compArray[$i] =~ "X" ) {
-                                             $DEBUG and print "\t\t\t\tType $i: $ccount (of $numEdges) comparison is $compArray[$i]  ";
-                                             $DEBUG and print " X found -- so this would make it multimodal. Error.\n";
-                                                $xerror++;
-                                                $ccount = $numEdges;
-                                            } elsif ( $compArray[$i] =~ "D" ) {
-                                                   $change = "X";
-                                                   #This would be a mode shift so change is X
-                                            } elsif ($compArray[$i] =~ "U") {
-                                                   $xerror++; ## cant go up twice...
-                                            } elsif ($compArray[$i] =~ "M") {
-                                                   $change = "U";
-                                            } ## end of comparison array
-                                        }    #end of if check
-                                    } ## end of foreach my $ee
+                                    my $xerror        =     0;
+                                    $DEBUG and print "\t\t\t\tType $i:   Matching case A (1, M)  \n";
+                                    $DEBUG and print "\t\t\t\t\ This will only work if there no Xs anywhere previously.\n";
+                                    my $stopFlag      =     0;   ## use this flag to determine if one needs to keep checking through the pairs.
+                                    my ($outwardEdge, $inwardEdge);
+                                    my $old_inner= $outerEdge;
+                                    $DEBUG and print "\t\t\t\t\t ", $network;
+                                    my @currentEdges  = $network->edges05($innerEdge);
+                                    my $ccount;
+                                    foreach my $checkEdge (@currentEdges) {     ### no need to go in order -- jsut look at all the other edges to see if there is an X
+                                       
+                                       $DEBUG and print "\t\t\t\t\ Now on @$checkEdge[0] @$checkEdge[1] \n";
+                                       $inwardEdge= @$checkEdge[0];
+                                       $outwardEdge = @$checkEdge[1];
+                                       my $comparison = $network->get_edge_weight( $outwardEdge, $inwardEdge) || $network->get_edge_weight( $inwardEdge, $outwardEdge );
+                                       my @compArray = split //, $comparison;
+                                       if (!$compArray[$i]) {
+                                          print "Comparison is empty. Error! Stopping.\n";
+                                          exit();
+                                       }
+                                       $DEBUG and print "\t\t\t\tType $i: Here is what we get for comparison # $ccount \n";  ## note that i is the current type
+                                       $DEBUG and print " \t\t\t\t\t $inwardEdge - $outwardEdge: ", $comparison, "->", $compArray[$i], "\n";
+                                       if ($compArray[$i] =~ "X")  {
+                                             $xerror = 1;  ### BLARGH a previous X! This will not be tolerated!
+                                             $stopFlag = 1; ## We can stop
+                                       }
+                                       $DEBUG and print "\t\t\t\t\t Since I got $compArray[$i] my potential new value is still X.\n";
+                                       $DEBUG and print "\t\t\t\t\t Now going to get the next pair of assembalges to examine in the chain\n";
+                                       $ccount++;
+                                       if ($ccount>$numrows) {
+                                          print "PROBLEM. Too many checks. Quitting\n";
+                                          exit();
+                                       }
+                                    }
                                     if ( $xerror > 0 ) {
                                         $error++;
-                                    }
-                                    else {
-                                        $comparisonMap .= $change;
-                                        $DEBUG and print " \t\t\t\tType $i: Adding $testAssemblage to vertices $endAssemblage because score is 1 \n";
-                                        $DEBUG and print " \t\t\t\t and the comparison is M but no other Ds or Xs in the previous linkages.\n";
+                                    } else {
+                                        $comparisonMap .= "U";
+                                        $DEBUG and print "\t\t\t\t Type $i: For this type, OK to add $testAssemblage to vertices $endAssemblage \n";
+                                        $DEBUG and print "\t\t\t\t\t No previous X values anywhere. \n";
+                                        $DEBUG and print "\t\t\t\t Type $i: Adding an U to the comparisons for type $i. \n";
+                                        $DEBUG and print "\t\t\t\t\t Comparison map is now $comparisonMap\n";
                                     }
                                 }
                                 elsif
@@ -498,7 +500,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $DEBUG and print "\t\t\t\tType $i: Value 1:  ", $newassemblage[$i], " value 2: ", $oldassemblage[$i], "\n";
                                     $DEBUG and print "\t\t\t\tType $i: Comparison is:  ", $comparison[$i], " a score of: ", $difscore, "\n";
                                     $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage \n";
-                                    $DEBUG and print "\t\t\t\t\t because value is up and comparison is D.\n";
+                                    $DEBUG and print "\t\t\t\t\t because value is 1 and comparison is D.\n";
                                 }
                                 elsif
                                   ## new score is less and the Comparison is up .. Error!
@@ -508,53 +510,38 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                   ## per type
                                   (    ( $difscore == -1 ) && ( $comparison[$i] =~ "U" ) )                                               # -1 U
                                 {
-                                    $DEBUG and print "\t\t\t\tGot a difscore of -1 and a comparison of a U. This could be an error.\n";
                                     ## first check to see if there is already and X in this column somewhere else.
-                                    #print "mismatch!\n";
-                                    my @edgelist = ();
-                                    my @EE       = $network->unique_edges;
-                                    my $numEdges = scalar(@EE);
                                     my $xerror   = 0;
-                                    my $ccount   = 1;
                                     $DEBUG and print "\t\t\t\tType $i:  Case B (-1, U). Potentially can add $testAssemblage and vert $endAssemblage\n ";
-                                    $DEBUG and print "\t\t\t\t\t   because score is -1 and the comparison is M.\n";
-                                    $DEBUG and print "\t\t\t\tType $i: But need to check the other $numEdges comparisons because \n";
-                                    $DEBUG and print  "\t\t\t\t\tthis will only work if there no X somewhere \n";
-                                    $comparisonMap .= "X";
-                                    my %checkHash = {};
-                                    $checkHash{ $endAssemblage . "-"  . $testAssemblage } = 1;
-                                    $checkHash{ $testAssemblage . "-" . $endAssemblage } = 1;
-                                    ## check all combinations but the one with self!
-                                    my $change;
-                                    foreach my $ee (@EE) {
-                                       if ( !$checkHash{ @$ee[1] . "-" . @$ee[0] } && !$checkHash{ @$ee[0] . "-" . @$ee[1] } )
-                                        {
-                                            my $ge =  $network->get_edge_weight( @$ee[0], @$ee[1] );
-                                            my @compArray = split //, $ge;
-                                            $DEBUG  and print "\t\t\t\tType $i: Here is what we get for # $ccount (of $numEdges) \n";
-                                            $DEBUG and print "\t\t\t\t comparisons between @$ee[0] @$ee[1]: ", $ge, "->", $compArray[$i], "\n";
-                                            $DEBUG and print "\t\t\t\tType $i: $ccount comparison (of $numEdges) is a $compArray[$i]. \n";
-                                             
-                                            if ( $compArray[$i] =~ "X" ) {
-                                                $DEBUG and print "\t\t\t\t\tType $i: I found an X -- so this would make it multimodal. Error.\n";
-                                                $xerror++;
-                                            } elsif ( $compArray[$i] =~ "U" ) {
-                                                $change="X";
-                                            } elsif ( $compArray[$i] =~ "D" ) {
-                                                $change="D";
-                                            } elsif ( $compArray[$i] =~ "M" ) {
-                                                $change="D";
-                                            }
-                                            $ccount++;
-                                        }
+                                    $DEBUG and print "\t\t\t\tType $i:  But need to check the rest of the chain for X's (can't already be an X). \n";
+                                    my $stopFlag      =   0;   ## use this flag to determine if one needs to keep checking through the pairs.
+                                    my ($outwardEdge, $inwardEdge);
+                                    my @currentEdges  = $network->edges05($innerEdge);
+                                    my $ccount;
+                                    foreach my $checkEdge (@currentEdges) {     ### no need to go in order -- just look at all the other edges to see if there is an X
+                                       $DEBUG and print "\t\t\t\t\ Now on @$checkEdge[0] @$checkEdge[1] \n";
+                                       $inwardEdge= @$checkEdge[0];
+                                       $outwardEdge = @$checkEdge[1];
+                                       my $comparison = $network->get_edge_weight( $outwardEdge, $inwardEdge) || $network->get_edge_weight( $inwardEdge, $outwardEdge );
+                                       my @compArray = split //, $comparison;
+                                       if (!$compArray[$i]) {
+                                          print "Comparison is empty. Error! Stopping.\n";
+                                          exit();
+                                       }
+                                       $DEBUG and print "\t\t\t\tType $i: Here is what we get for comparison # $ccount \n";  ## note that i is the current type
+                                       $DEBUG and print " \t\t\t\t\t $inwardEdge - $outwardEdge: ", $comparison, "->", $compArray[$i], "\n";
+                                       if ($compArray[$i] =~ "X")  {
+                                             $xerror += 1;  ### BLARGH a previous X! This will not be tolerated!
+                                             $stopFlag = 1; ## We can stop
+                                       }
                                     }
                                     if ($xerror) {
-                                        $error++;
-                                        $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage) because value is down after a \n";
-                                        $DEBUG and print "\t\t\t\t\t previous U (but already has a mode). Multimodal - so error.\n";
+                                        $error += 1;
+                                        $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage) because there was an X \n";
+                                        $DEBUG and print "\t\t\t\t\t  This would make it multimodal - so error.\n";
                                     } else {
-                                        $comparisonMap .= $change; 
-                                        $DEBUG and print "\t\t\t\tType $i:Definitely adding $testAssemblage to vertices $endAssemblage because score \n";
+                                        $comparisonMap .= "X";   ## this is an X unless there is an error....
+                                        $DEBUG and print "\t\t\t\tType $i:Definitely OK to add $testAssemblage to vertices $endAssemblage because score \n";
                                         $DEBUG and print "\t\t\t\t\tis -1 and the comparison is U but no other Xs in the previous linkages.\n";
                                         $DEBUG and print "\t\t\t\tType $i: Adding an X to the comparisons for type $i. \n";
                                         $DEBUG and print "\t\t\t\t\tComparison map is now $comparisonMap\n";
@@ -566,78 +553,82 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                 {
                                     $comparisonMap .= "D";
                                     $DEBUG and print "\t\t\t\tType $i: Adding a D to the comparisons for type $i. Comparison map is now $comparisonMap\n";
-                                }
-                                elsif # new score is less but comparison is Match. Okay
-                                  (    ( $difscore == -1 )  || ( $comparison[$i] =~ "M" ) )                                         ## -1 M
-                                {
+                                
+                                } elsif  (    ( $difscore == -1 )  || ( $comparison[$i] =~ "M" ) ) {                               ## -1 M
+                                
+                                    # new score is less but comparison is Match. Okay
                                     #my $vHere    = $endAssemblage;
-                                    my $xerror   = 0;
-                                    my $stop     = 0;
-                                    my $ccount   = 1;
-                                    my @EE       = $network->unique_edges;
-                                    my $numEdges = scalar(@EE);
-                                    $DEBUG and print "\t\t\t\tType $i: Case C (-1, M) Potentially can add $testAssemblage and vert $endAssemblage \n";
-                                    $DEBUG and print "\t\t\t\t\tbecause score is -1 and the comparison is M.\n";
-                                    $DEBUG and print "\t\t\t\tType $i: But need to check the other $numEdges \n";
-                                    $DEBUG and print" \t\t\t\t\tcomparisons because this will only work if there is a D or an X somewhere (or more Ms)\n";
+                                    my $xerror   = 0;  ## count for errors
+                                    $DEBUG and print "\t\t\t\t #### For type $i we have a matching Case C (-1, M) \n";
+                                    $DEBUG and print "\t\t\t\t\t We can potentially add $testAssemblage and vert $endAssemblage but need to check further\n";
+                                    $DEBUG and print "\t\t\t\t\t because score is -1 and the comparison is M.\n";
+                                    $DEBUG and print" \t\t\t\t\t Could be X or U or M or D\n";
+                                    my $change        =   "M";  ## the new comparison variable to use
+                                    my $stopFlag      =   0;   ## use this flag to determine if one needs to keep checking through the pairs.
+                                    ## now get the next set of comparisons
+                                    $DEBUG and print "\t\t\t\t ", $network;
+                                    my @currentEdges  = $network->edges05($innerEdge);
+                                    my $ccount;
+                                    my ($outwardEdge, $inwardEdge);
+                                    foreach my $checkEdge (@currentEdges) {     ### no need to go in order -- jsut look at all the other edges to see if there is an X
+                                       $DEBUG and print "\t\t\t\t\ Now on @$checkEdge[0] @$checkEdge[1] \n";
+                                       $inwardEdge= @$checkEdge[0];
+                                       $outwardEdge = @$checkEdge[1];
+                                       my $comparison = $network->get_edge_weight( $outwardEdge, $inwardEdge) || $network->get_edge_weight( $inwardEdge, $outwardEdge );
+                                       my @compArray = split //, $comparison;
+                                       if (!$compArray[$i]) {
+                                          print "Comparison is empty. Error! Stopping.\n";
+                                          exit();
+                                       }
+                                       $DEBUG and print "\t\t\t\tType $i: Here is what we get for comparison # $ccount \n";  ## note that i is the current type
+                                       $DEBUG and print " \t\t\t\t\t $inwardEdge - $outwardEdge: ", $comparison, "->", $compArray[$i], "\n";
+                                       if ( $compArray[$i] =~ "U" ) {
+                                             $change = "X";
+                                             $stopFlag=1; ## we can stop
+                                       } elsif (($compArray[$i] =~ "X") or ($compArray[$i] =~ "D"))  {
+                                             $change = "D";
+                                             $stopFlag = 1; ## We can stop
+                                       } elsif ($compArray[$i] =~ "M") {
+                                             $change = "M";
+                                             ## in this case we have to keep going
+                                       } else {
+                                          print "ERROR: missing value -- comparison is $compArray[$i]. Must have a value.\n";
+                                          exit();
+                                       }
+                                       $DEBUG and print "\t\t\t\t\t Since I got $compArray[$i] my potential new value is $change.\n";
+                                       $DEBUG and print "\t\t\t\t\t Now going to get the next pair of assembalges to examine in the chain\n";
+                                       
+                                       $ccount++;
 
-                                    my %checkHash = ();
-                                    $checkHash{ $endAssemblage . "-" . $testAssemblage } = 1;
-                                    $checkHash{ $testAssemblage . "-" . $endAssemblage } = 1;
-                                    #$DEBUG and print Dumper(%checkHash);
-                                    ## check all combinations but the one with self!
-                                    my $change = "";
-                                    foreach my $ee (@EE) {
-                                        my $comparisonName =
-                                          @$ee[0] . "-" . @$ee[1];
-                                        if ( $checkHash{$comparisonName} == 0 ) {
-                                            my $ge = $network->get_edge_weight( @$ee[0], @$ee[1] );
-                                            my @compArray = split //, $ge;
-                                            $DEBUG and print "\t\t\t\tType $i: Here is what we get for comparison # $ccount \n";
-                                            $DEBUG and print " \t\t\t\t\t (of $numEdges) between @$ee[0], @$ee[1]: ", $ge, "->", $compArray[$i], "\n";
-                                            $DEBUG and print "\t\t\t\t\t$ccount comparison (of $numEdges) is a $compArray[$i]. \n";
-                                            if ( $compArray[$i] =~ "U" ) {
-                                                $change = "X";
-                                            } elsif ($compArray[$i] =~ "X")  {
-                                                $change = "D"
-                                            } elsif ($compArray[$i] =~ "D"){
-                                               $change = "D";
-                                            } elsif ($compArray[$i] =~ "M") {
-                                               $change = "D";
-                                            }
-                                            $ccount++;
-                                            ## keep going back until we see if we get a U -- if not its okay
-                                        }
                                     }
-                                    if ( $xerror > 0 ) {
-                                        $error++;
-                                        $DEBUG  and print "\t\t\t\tType $i: Check error detected (xerror=$xerror) so cant add assemblage.\n";
-                                    }
-                                    else {
-                                        $comparisonMap .= "D";
-                                        $DEBUG and print "\t\t\t\tType $i:Adding $testAssemblage to vertices $endAssemblage because \n";
-                                        $DEBUG and print "\t\t\t\t score is -1 and the comparison is D. ComparisonMap is now $comparisonMap\n";
+                                    ## in this case I dont think there are any errors possible. types can always go down from any other value
+                                    $comparisonMap = $comparisonMap . $change;      ## use the value from above.         
+                                    $DEBUG and print "\t\t\t\tType $i: OK to add $testAssemblage to vertices $endAssemblage because \n";
+                                    $DEBUG and print "\t\t\t\t score is -1 and the comparison is D. ComparisonMap is now $comparisonMap\n";
+                                    if (!$comparisonMap ) {
+                                       print "ERROR: comparisonMap can't be empty. Bug here. \n";
+                                       exit();
                                     }
                                 } elsif  # new score is match but comparison is Match. Okay
                                   ( ( $difscore == 0 ) && ($comparison[$i] =~ "U") ) {                                              ## 0  U
                                     $comparisonMap .= "U";
-                                    $DEBUG and print "\t\t\t\tType $i: Adding $testAssemblage to vertices $endAssemblage because its a match. \n";
+                                    $DEBUG and print "\t\t\t\tType $i:  Ok to add  $testAssemblage to vertices $endAssemblage because its a match. \n";
                                     $DEBUG and print "\t\t\t\tType $i: ComparisonMap is now $comparisonMap\n";
                                 } elsif  # new score is match but comparison is Match. Okay
                                   ( ( $difscore == 0 ) && ($comparison[$i] =~ "D") ) {                                              ## 0 D
                                     $comparisonMap .= "D";
-                                    $DEBUG and print "\t\t\t\tType $i: Adding $testAssemblage to vertices $endAssemblage because its a match. \n";
+                                    $DEBUG and print "\t\t\t\tType $i: Ok to add $testAssemblage to vertices $endAssemblage because its a match. \n";
                                     $DEBUG and print "\t\t\t\tType $i: ComparisonMap is now $comparisonMap\n";
                                 } elsif  # new score is match but comparison is Match. Okay
                                   ( ( $difscore == 0 ) && ($comparison[$i] =~ "M") ) {                                              ## 0 M
                                     $comparisonMap .= "M";
-                                    $DEBUG and print "\t\t\t\tType $i: Adding $testAssemblage to vertices $endAssemblage because its a match. \n";
+                                    $DEBUG and print "\t\t\t\tType $i:  Ok to add  $testAssemblage to vertices $endAssemblage because its a match. \n";
                                     $DEBUG and print "\t\t\t\tType $i: ComparisonMap is now $comparisonMap\n";
                                 } elsif # newscore is down but comparison is X. This means that there was already a peak
                                   (    ( $difscore == -1 ) && ( $comparison[$i] =~ "X" ) )                                          ## -1 X
                                 {
                                     ## this is okay since it is down from a mode peak
-                                    $DEBUG and print "\t\t\t\tType $i: Adding $testAssemblage to vertices $endAssemblage because \n";
+                                    $DEBUG and print "\t\t\t\tType $i:  Ok to add  $testAssemblage to vertices $endAssemblage because \n";
                                     $DEBUG and print " \t\t\t\tscore is -1 and the comparison is D. ComparisonMap is now $comparisonMap\n";
                                     $comparisonMap .= "D";
                                 } elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "X" ) )                                         ## 1  X
@@ -651,7 +642,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                 {
                                     ## this is okay since it is down from a mode peak
                                     $comparisonMap .= "X";
-                                    $DEBUG and print "\t\t\t\tType $i: Adding $testAssemblage to vertices $endAssemblage because score \n";
+                                    $DEBUG and print "\t\t\t\tType $i:  Ok to add  $testAssemblage to vertices $endAssemblage because score \n";
                                     $DEBUG and print "\t\t\t\t is 0 and the comparison is X. ComparisonMap is now $comparisonMap\n";
                                 } else {
                                     print "\t\t\t\tERROR!!!! Not found match combination! MUST FIX! Some combination\n ";
@@ -668,22 +659,20 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         }
                         
                         if ( $error == 0 ) {
-                            $DEBUG
-                              and print "--------------------------------------------------\n";
-
-                            $DEBUG
-                              and print "Original network: ", $network, "\n";
+                            $DEBUG and print "--------------------------------------------------\n";
+                            $DEBUG and print "Original network: ", $network, "\n";
+                            $DEBUG and print "New comparison map is: $comparisonMap\n";
 
                             ## no errors so add vertice added to the new network
                             my $newnet     = $network->deep_copy_graph;
                             my $oldedgenum = $network->edges;
                             $newnet->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
-                            $DEBUG and print "New network: ", $newnet, "\n";
+                            $DEBUG and print "New network (with addition): ", $newnet, "\n";
                             my $e = $newnet->edges;
                             if ( $e > $maxEdges ) {
                                 $maxEdges = $e;
-                                $DEBUG and print "Old max edges: $oldedgenum\n";
-                                $DEBUG and print "New maximum edges: $e\n";
+                                $DEBUG and print "Old number of edges before addition: $oldedgenum\n";
+                                $DEBUG and print "New number of edges after addition: $e\n";
                             }
                             $match++;
                             ## copy this solution to the new array of networks
@@ -691,7 +680,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             #push @allNetworks, $newnet;
                             my $currentTotal = scalar(@newnets);
                             $screen and $scr->at(6,43)->puts("                   ");
-                            $screen and $scr->at(6,1)->puts("Current seriation solutions at this step: $currentTotal");
+                            $screen and $scr->at(6,1)->puts("Current nunmber of seriation linkages at this step: $currentTotal");
                             $DEBUG and print "-------------------------------------------------\n";
                         }
                     }
