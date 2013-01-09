@@ -293,30 +293,20 @@ my $currentMaxSeriations = 3;
 #print "Number of Triplets:  ",$numberOfTriplets, "\n";
 my $maxEdges  = 0;
 my $stepcount = 0;
-my @newnets   = ();
+
 my $match     = 0;
+my @solutions;
+my @networks;
+my @newnets;
+foreach my $n (@nets) {
+      my $ne = $n->deep_copy_graph;
+      push @networks, $ne;
+}
+
 while ( $currentMaxSeriationSize < $maxSeriations ) {
-
     $currentMaxSeriationSize++;
-
-    #print "now checking: ", $label,"\n";
     my $index    = 0;
-    my @networks = ();
     $stepcount++;
-
-    if ( $stepcount == 1 ) {
-        foreach my $n (@nets) {
-            my $ne = $n->deep_copy_graph;
-            push @networks, $ne;
-        }
-    }
-    else {
-        foreach my $n (@newnets) {
-            my $ne = $n->deep_copy_graph;
-            push @networks, $ne;
-        }
-    }
-    @newnets = ();
     $DEBUG and print "__________________________________________________________________________________________\n";
     $DEBUG and print "Step number:  $currentMaxSeriationSize\n";
     $DEBUG and print "__________________________________________________________________________________________\n";
@@ -676,39 +666,38 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             }
                             $match++;
                             ## copy this solution to the new array of networks
-                            push @newnets,     $newnet;
-                            #push @allNetworks, $newnet;
+                            push @newnets, $newnet;
+                            push @solutions, $newnet;
                             my $currentTotal = scalar(@newnets);
-                            $screen and $scr->at(6,43)->puts("                   ");
-                            $screen and $scr->at(6,1)->puts("Current nunmber of seriation linkages at this step: $currentTotal");
+                            my $solutionSum=scalar(@solutions);
+                            $screen and $scr->at(7,1)->puts("Sum of all solutions: $solutionSum");
+                            $screen and $scr->at(8,43)->puts("                   ");
+                            $screen and $scr->at(8,1)->puts("Current nunmber of seriation linkages at this step: $currentTotal");
                             $DEBUG and print "-------------------------------------------------\n";
                         }
                     }
                     else {
-                        $DEBUG
-                          and print "\t\t$endAssemblage has too many edges ( $edges is more than 1) so skipping\n";
+                        $DEBUG and print "\t\t$endAssemblage has too many edges ( $edges is more than 1) so skipping\n";
                     }    # end of if check for the end edges
                 }    # end of iterate through the existing network link
             }    # end of if assemblage not already in netowrk check
         }    #end of assemblage loop
-
     }    #end of network loop
-    ## no match at this point so no point in going forward.
+   $DEBUG and print "Number of current solutions now: ", scalar(@newnets), "\n";
+   foreach my $n (@newnets) {
+      my $ne = $n->deep_copy_graph;
+      push @networks, $ne;
+   }
+   @newnets=();
+   ## no match at this point so no point in going forward.
     if ( $match == 0 ) {
         $screen and $scr->at(9,1)->puts( "Maximum seriation size reached - no more assemblages added that iteration. ");
         $screen and $scr->at(10,1)->puts("Maximum # assemblages in largest solution is: $maxEdges");
         $maxnumber = $currentMaxSeriationSize - $maxSeriations;
         ## to break now...
         $currentMaxSeriationSize = $maxSeriations;
-
         ## copy the old network set to the new array (just in this case -- otherwise its empty
-        foreach my $n (@networks) {
-            my $ne = $n->deep_copy_graph;
-            push @newnets, $ne;
-        }
-
     }
-    $DEBUG and print "Number of current solutions now: ", scalar(@newnets), "\n";
 }    #end of master loop through iterations
 
 # now do some weeding. Basically start with the first network that is the largest, and work backwards. Ignore any
@@ -718,14 +707,14 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 ## first need to sort the networks by size
 my @filteredarray = ();
 
-if ( $filterflag == 1 ) {
-    print "Filtering solutions so we only end up with the unique ones.\n";
-    print "Start with ", scalar(@newnets), " solutions. \n";
+if ( $filterflag == 0 ) {
+    $DEBUG and print "---Filtering solutions so we only end up with the unique ones.\n";
+    $DEBUG and print "----Start with ", scalar(@solutions), " solutions. \n";
     my $count     = 0;
     my $edgecount = $maxEdges;
     while ( $edgecount > 1 ) {
         $DEBUG and print "### not on sets of $edgecount \n";
-        foreach my $network (@newnets) {
+        foreach my $network (@solutions) {
             my $E = $network->edges;
             if ( $E == $edgecount ) {
                 if ( $edgecount == $maxEdges )
@@ -759,13 +748,11 @@ if ( $filterflag == 1 ) {
                         #print "extraAssemblages: $extraAssemblages\n";
                         if ( $extraAssemblages > 2 ) {
                             $extracount++;
-                            $DEBUG
-                              and print
-                              "Not found in the network: $extracount\n";
+                            $DEBUG and print "Not found in the network: $extracount\n";
                         }
                     }
                     if ( $extracount == $filteredNumber ) {
-                        $DEBUG and print "solution doesnt exist in any of the existing networks - so add to list. \n";
+                        $DEBUG and print "Solution does not exist in any of the existing networks - so add to list. \n";
                         push @filteredarray, $network;
                     }
                 }
@@ -774,10 +761,12 @@ if ( $filterflag == 1 ) {
         }
         $edgecount--;
     }
-    print "End with ", scalar(@filteredarray), " solutions.\n";
+    $DEBUG and print "End with ", scalar(@filteredarray), " solutions.\n";
+    my $filterCount= scalar(@filteredarray);
+    $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
 }
 else {
-    @filteredarray = @newnets;
+    @filteredarray = @solutions;
 }
 
 if ($individualfileoutput) {
@@ -1001,7 +990,7 @@ if ($bootstrap) {
 
 ###########################################
 
-$screen and $scr->at(12,1)->puts( "Now printing output file... ");
+$screen and $scr->at(13,1)->puts( "Now printing output file... ");
 
 print OUTFILE "*Node data\n";
 $count = 0;
@@ -1012,7 +1001,7 @@ print OUTFILE "*Tie data\n";
 print OUTFILE "From To Edge Weight Network pValue pError\n";
 
 my @uniqueArray;
-foreach my $compareNetwork (@newnets) {
+foreach my $compareNetwork (@filteredarray) {
    my $undirectedGraph = $compareNetwork->undirected_copy_graph;
     my $exists = 0;
     foreach my $uarray (@uniqueArray) {
@@ -1067,7 +1056,7 @@ if ($excel) {
     ## nothing yet
 }
 my $timediff= Time::HiRes::gettimeofday() - $start;
-$screen and $scr->at(11,1)->puts( "Time for processing: $timediff seconds");
+$screen and $scr->at(14,1)->puts( "Time for processing: $timediff seconds");
 print "\n\n\n\n";
 
 __END__
