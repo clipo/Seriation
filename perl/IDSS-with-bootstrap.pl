@@ -172,7 +172,7 @@ my $comparison23;
 my $error;
 
 my $numberOfTriplets;
-my $currentMaxSeriationSize = 3;
+
 
 my $permutations =
   Math::Combinatorics->new( count => 3, data => [@assemblageNumber] );
@@ -288,20 +288,32 @@ my @array = ();
 #	print Dumper($network);
 #}
 
-my $currentMaxSeriations = 3;
+#my $currentMaxSeriations = 3;
+my $currentMaxSeriationSize = 3;
 
 #print "Number of Triplets:  ",$numberOfTriplets, "\n";
 my $maxEdges  = 0;
 my $stepcount = 0;
 
 my $match     = 0;
-my @solutions;
-my @networks;
-my @newnets;
+
+my @networks;  ## array of solutions from previous step (starts out with the 3s) (directed and deep graphs)
+my @newnets;   ## array of new solutions (directed and deep graphs)
+my @stepSeriationList;  ## array of solutions at this step (undirected and shallow copies of graphs)
+my @solutions;  ## Array of all solutions (undirected and shallow copies of graphs)
+
 foreach my $n (@nets) {
       my $ne = $n->deep_copy_graph;
+      my $se = $n->undirected_copy;
       push @networks, $ne;
+      push @stepSeriationList, $se;
+      push @solutions, $se;
 }
+my $solutionSum = scalar(@networks);  ## number of solutions to this point (which is equal to all 3s);
+my %seriationStep={};        ## hash of the array of solutions for this step
+
+$seriationStep{$currentMaxSeriationSize}=\@stepSeriationList;  ## add to the list of solutions at this step
+@stepSeriationList=();  ## clear out the step list. 
 
 while ( $currentMaxSeriationSize < $maxSeriations ) {
     $currentMaxSeriationSize++;
@@ -666,11 +678,10 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             }
                             $match++;
                             ## copy this solution to the new array of networks
-                            push @newnets, $newnet;
-                            push @solutions, $newnet;
-                            my $currentTotal = scalar(@newnets);
-                            my $solutionSum=scalar(@solutions);
-                            $screen and $scr->at(7,1)->puts("Sum of all solutions: $solutionSum");
+                            push @newnets, $newnet;   ## contains solutions for just this step
+                            my $currentTotal =  scalar(@newnets);
+                            
+                            $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionSum");
                             $screen and $scr->at(8,43)->puts("                   ");
                             $screen and $scr->at(8,1)->puts("Current nunmber of seriation linkages at this step: $currentTotal");
                             $DEBUG and print "-------------------------------------------------\n";
@@ -684,11 +695,20 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
         }    #end of assemblage loop
     }    #end of network loop
    $DEBUG and print "Number of current solutions now: ", scalar(@newnets), "\n";
+   
+   ## now push the current step solutions to the list that serves as the basis of the next step. 
    foreach my $n (@newnets) {
       my $ne = $n->deep_copy_graph;
+      my $se = $n->undirected_copy;
       push @networks, $ne;
+      push @solutions, $se;
+      push @stepSeriationList, $se;
    }
-   @newnets=();
+   $solutionSum  =  scalar(@solutions);
+   $seriationStep{$currentMaxSeriationSize}=\@stepSeriationList;
+   @stepSeriationList=();  ## clear the step seriation list so that we can get the next set for the next set of solutions. 
+   
+   @newnets=();  ## clear the array for the next new set of assemblages. 
    ## no match at this point so no point in going forward.
     if ( $match == 0 ) {
         $screen and $scr->at(9,1)->puts( "Maximum seriation size reached - no more assemblages added that iteration. ");
@@ -706,6 +726,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 
 ## first need to sort the networks by size
 my @filteredarray = ();
+
 
 if ( $filterflag == 0 ) {
     $DEBUG and print "---Filtering solutions so we only end up with the unique ones.\n";
@@ -1018,7 +1039,6 @@ foreach my $compareNetwork (@filteredarray) {
 foreach my $network (@uniqueArray) {
     #print Dumper($network);
     $count++;
-
     #print "$count: $network\n";
     my $E = $network->edges;
     if ($largestOnly) {
@@ -1042,7 +1062,6 @@ foreach my $network (@uniqueArray) {
             }
             print OUTFILE @$e[0], " ", @$e[1], ", 1, ", scalar(@Edges), ", ", $count, ", ";
             print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
-            #print @$e[0], " ", @$e[1], "\n";
         }
     }
     print OUTFILE "---------------------------\n";
