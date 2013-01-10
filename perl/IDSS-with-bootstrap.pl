@@ -675,7 +675,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             if ($nnetwork->edges > $maxEdges) {
                               $maxEdges = $nnetwork->edges;
                            }
-                            print "MAX EDGES!!! ", $maxEdges ,"\n";
+                            #print "MAX EDGES!!! ", $maxEdges ,"\n";
                             $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionSum");
                             $screen and $scr->at(8,43)->puts("                   ");
                             $screen and $scr->at(8,1)->puts("Current nunmber of seriation linkages at this step: $currentTotal");
