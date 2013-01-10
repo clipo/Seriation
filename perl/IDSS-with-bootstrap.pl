@@ -299,15 +299,17 @@ my $match     = 0;
 
 my @networks;  ## array of solutions from previous step (starts out with the 3s) (directed and deep graphs)
 my @newnets;   ## array of new solutions (directed and deep graphs)
-my @stepSeriationList;  ## array of solutions at this step (undirected and shallow copies of graphs)
+my @stepSeriationList = [];  ## array of solutions at this step (undirected and shallow copies of graphs)
 my @solutions;  ## Array of all solutions (undirected and shallow copies of graphs)
+my $solutionCount=0;
 
 foreach my $n (@nets) {
-      my $ne = $n->deep_copy_graph;
-      my $se = $n->undirected_copy;
-      push @networks, $ne;
-      push @stepSeriationList, $se;
-      push @solutions, $se;
+      #my $ne = $n->deep_copy_graph;
+      #my $se = $n->undirected_copy;
+      push @networks, \$n;
+      push @solutions, \$n;
+      $stepSeriationList[ $solutionCount ] = \$n;
+      $solutionCount++;
 }
 my $solutionSum = scalar(@networks);  ## number of solutions to this point (which is equal to all 3s);
 my %seriationStep={};        ## hash of the array of solutions for this step
@@ -334,28 +336,25 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
     ## look through the set of existing valid networks.
     foreach my $network (@networks) {
         my $index = 0;
+        my $nnetwork = $$network;
         $DEBUG and print "-----------------------------------------------------------------------------------\n";
-        $DEBUG and print "Network: ", $network, "\n";
+        $DEBUG and print "Network: ", $nnetwork, "\n";
         $DEBUG and print "-----------------------------------------------------------------------------------\n";
-
         ## find the ends
-
         ## given the ends, find the valid set of assemblages that can be potentially added
         ## this list is all assemblages meet the threshold requirements
-
         foreach my $testAssemblage (@labels) {
-
             $DEBUG  and print "\t\tChecking assemblage: ", $testAssemblage, " to see if it fits on the end of the current solution.\n";
             $DEBUG  and print "\t\tFirst check to see if it is included already. If it has, move on.\n";
-            if ( !$network->has_vertex($testAssemblage) ) {
+            if ( ! $nnetwork->has_vertex($testAssemblage) ) {
                 # get the exterior vertices (should be 2)
-                my @V = $network->vertices;    ## list of all the vertices
+                my @V = $nnetwork->vertices;    ## list of all the vertices
                 $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices \n";
                 $DEBUG  and print " \t\tand looking for the ones with only 1 connection. There should be just 2 here.\n";
                 ## loop through all of the edges to see if they can be stuck on the ends of the networks.
                 foreach my $endAssemblage (@V) {
                     $DEBUG and print "\t\tChecking vertice: ", $endAssemblage, "\n";
-                    my @Edges = $network->edges_at($endAssemblage);
+                    my @Edges = $nnetwork->edges_at($endAssemblage);
                     my $edges = scalar(@Edges);
                     $DEBUG and print "\t\t\tThis vertice: $endAssemblage has this number of edges:  ", $edges, "\n";
                     my @newassemblage = ();
@@ -367,16 +366,16 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         $DEBUG and print "\t\t", $endAssemblage, " is on the edge since it only has one vertice.\n";
                         @newassemblage = @{ $assemblageFrequencies{ $testAssemblage } };
                         @oldassemblage = @{ $assemblageFrequencies{ $endAssemblage } };
-                        my @edge = $network->edges_at($endAssemblage);
+                        my @edge = $nnetwork->edges_at($endAssemblage);
                         $DEBUG and print "\t\t\t The number of edges at $endAssemblage:  ", scalar(@edge), " (should be just one).\n";
                         my $connectedAssemblage = $edge[0][1];
-                        my $g = $network->get_edge_weight( $edge[0][0], $edge[0][1] );
+                        my $g = $$network->get_edge_weight( $edge[0][0], $edge[0][1] );
 
                         #print Dumper $g;
                         $DEBUG and print "\t\t\tThere should be just 2 vertices here 0: $edge[0][0] and 1: $edge[0][1]\n";
                         $DEBUG and print "\t\t\t\t with a relation of $g\n";
-                        my $numedges1 = $network->edges_at($edge[0][0]);
-                        my $numedges2 = $network->edges_at($edge[0][1]);
+                        my $numedges1 = $nnetwork->edges_at($edge[0][0]);
+                        my $numedges2 = $nnetwork->edges_at($edge[0][1]);
                         my ($innerEdge, $outerEdge);
                         $DEBUG and print "\t\t\t\tNUMBER OF EDGES - $edge[0][0] - $numedges1  - $edge[0][1] - $numedges2\n";
                         if ( $numedges1 == 1 ) {
@@ -388,7 +387,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         }
                         $DEBUG and print "\t\t\t Outer edge is $outerEdge\n";
                         $DEBUG and print "\t\t\t Inner edge is $innerEdge\n";
-                        $DEBUG and print "\t\t\t Comparison is $g or -- ", $network->get_edge_weight($outerEdge,$innerEdge), "\n";
+                        $DEBUG and print "\t\t\t Comparison is $g or -- ", $nnetwork->get_edge_weight($outerEdge,$innerEdge), "\n";
                
                         #first determine if the pairs are within the threshold value (0 = all assemblages)
                         my $pairname = $testAssemblage . " * " . $endAssemblage;
@@ -456,15 +455,15 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     my $stopFlag      =     0;   ## use this flag to determine if one needs to keep checking through the pairs.
                                     my ($outwardEdge, $inwardEdge);
                                     my $old_inner= $outerEdge;
-                                    $DEBUG and print "\t\t\t\t\t ", $network;
-                                    my @currentEdges  = $network->edges05($innerEdge);
+                                    $DEBUG and print "\t\t\t\t\t ", $nnetwork;
+                                    my @currentEdges  = $nnetwork->edges05($innerEdge);
                                     my $ccount;
                                     foreach my $checkEdge (@currentEdges) {     ### no need to go in order -- jsut look at all the other edges to see if there is an X
                                        
                                        $DEBUG and print "\t\t\t\t\ Now on @$checkEdge[0] @$checkEdge[1] \n";
                                        $inwardEdge= @$checkEdge[0];
                                        $outwardEdge = @$checkEdge[1];
-                                       my $comparison = $network->get_edge_weight( $outwardEdge, $inwardEdge) || $network->get_edge_weight( $inwardEdge, $outwardEdge );
+                                       my $comparison = $nnetwork->get_edge_weight( $outwardEdge, $inwardEdge) || $nnetwork->get_edge_weight( $inwardEdge, $outwardEdge );
                                        my @compArray = split //, $comparison;
                                        if (!$compArray[$i]) {
                                           print "Comparison is empty. Error! Stopping.\n";
@@ -518,13 +517,13 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $DEBUG and print "\t\t\t\tType $i:  But need to check the rest of the chain for X's (can't already be an X). \n";
                                     my $stopFlag      =   0;   ## use this flag to determine if one needs to keep checking through the pairs.
                                     my ($outwardEdge, $inwardEdge);
-                                    my @currentEdges  = $network->edges05($innerEdge);
+                                    my @currentEdges  = $nnetwork->edges05($innerEdge);
                                     my $ccount;
                                     foreach my $checkEdge (@currentEdges) {     ### no need to go in order -- just look at all the other edges to see if there is an X
                                        $DEBUG and print "\t\t\t\t\ Now on @$checkEdge[0] @$checkEdge[1] \n";
                                        $inwardEdge= @$checkEdge[0];
                                        $outwardEdge = @$checkEdge[1];
-                                       my $comparison = $network->get_edge_weight( $outwardEdge, $inwardEdge) || $network->get_edge_weight( $inwardEdge, $outwardEdge );
+                                       my $comparison = $nnetwork->get_edge_weight( $outwardEdge, $inwardEdge) || $nnetwork->get_edge_weight( $inwardEdge, $outwardEdge );
                                        my @compArray = split //, $comparison;
                                        if (!$compArray[$i]) {
                                           print "Comparison is empty. Error! Stopping.\n";
@@ -568,15 +567,15 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     my $change        =   "M";  ## the new comparison variable to use
                                     my $stopFlag      =   0;   ## use this flag to determine if one needs to keep checking through the pairs.
                                     ## now get the next set of comparisons
-                                    $DEBUG and print "\t\t\t\t ", $network;
-                                    my @currentEdges  = $network->edges05($innerEdge);
+                                    $DEBUG and print "\t\t\t\t ", $nnetwork;
+                                    my @currentEdges  = $nnetwork->edges05($innerEdge);
                                     my $ccount;
                                     my ($outwardEdge, $inwardEdge);
                                     foreach my $checkEdge (@currentEdges) {     ### no need to go in order -- jsut look at all the other edges to see if there is an X
                                        $DEBUG and print "\t\t\t\t\ Now on @$checkEdge[0] @$checkEdge[1] \n";
                                        $inwardEdge= @$checkEdge[0];
                                        $outwardEdge = @$checkEdge[1];
-                                       my $comparison = $network->get_edge_weight( $outwardEdge, $inwardEdge) || $network->get_edge_weight( $inwardEdge, $outwardEdge );
+                                       my $comparison = $nnetwork->get_edge_weight( $outwardEdge, $inwardEdge) || $nnetwork->get_edge_weight( $inwardEdge, $outwardEdge );
                                        my @compArray = split //, $comparison;
                                        if (!$compArray[$i]) {
                                           print "Comparison is empty. Error! Stopping.\n";
@@ -662,25 +661,21 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         
                         if ( $error == 0 ) {
                             $DEBUG and print "--------------------------------------------------\n";
-                            $DEBUG and print "Original network: ", $network, "\n";
+                            $DEBUG and print "Original network: ", $$network, "\n";
                             $DEBUG and print "New comparison map is: $comparisonMap\n";
 
                             ## no errors so add vertice added to the new network
-                            my $newnet     = $network->deep_copy_graph;
-                            my $oldedgenum = $network->edges;
-                            $newnet->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
-                            $DEBUG and print "New network (with addition): ", $newnet, "\n";
-                            my $e = $newnet->edges;
-                            if ( $e > $maxEdges ) {
-                                $maxEdges = $e;
-                                $DEBUG and print "Old number of edges before addition: $oldedgenum\n";
-                                $DEBUG and print "New number of edges after addition: $e\n";
-                            }
-                            $match++;
+                            #my $oldedgenum = $nnetwork->edges;
+                            $nnetwork->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
+                            $DEBUG and print "New network (with addition): ", $nnetwork, "\n";
+
                             ## copy this solution to the new array of networks
-                            push @newnets, $newnet;   ## contains solutions for just this step
+                            push @newnets, $nnetwork;   ## contains solutions for just this step
                             my $currentTotal =  scalar(@newnets);
-                            
+                            if ($nnetwork->edges > $maxEdges) {
+                              $maxEdges = $nnetwork->edges;
+                           }
+                            print "MAX EDGES!!! ", $maxEdges ,"\n";
                             $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionSum");
                             $screen and $scr->at(8,43)->puts("                   ");
                             $screen and $scr->at(8,1)->puts("Current nunmber of seriation linkages at this step: $currentTotal");
@@ -698,14 +693,12 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
    
    ## now push the current step solutions to the list that serves as the basis of the next step. 
    foreach my $n (@newnets) {
-      my $ne = $n->deep_copy_graph;
-      my $se = $n->undirected_copy;
-      push @networks, $ne;
-      push @solutions, $se;
-      push @stepSeriationList, $se;
+      push @networks,$n;  ## use this for the next iteration -- its all the new solutions. 
+      push @solutions, $n->undirected_copy_graph; ## this is a list of all the solutions (shallow)
+      $stepSeriationList[$solutionCount]= $n;  #This is supposed to be an array that keeps track of the solutions by the order they were created (low = small)
+      $solutionCount++;
    }
    $solutionSum  =  scalar(@solutions);
-   $seriationStep{$currentMaxSeriationSize}=\@stepSeriationList;
    @stepSeriationList=();  ## clear the step seriation list so that we can get the next set for the next set of solutions. 
    
    @newnets=();  ## clear the array for the next new set of assemblages. 
@@ -713,6 +706,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
     if ( $match == 0 ) {
         $screen and $scr->at(9,1)->puts( "Maximum seriation size reached - no more assemblages added that iteration. ");
         $screen and $scr->at(10,1)->puts("Maximum # assemblages in largest solution is: $maxEdges");
+        $DEBUG and print "Maximum # assemblages in largest solution is: $maxEdges\n";
         $maxnumber = $currentMaxSeriationSize - $maxSeriations;
         ## to break now...
         $currentMaxSeriationSize = $maxSeriations;
@@ -726,69 +720,34 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 
 ## first need to sort the networks by size
 my @filteredarray = ();
-
-
-if ( $filterflag == 0 ) {
+if ( $filterflag == 1 ) {
     $DEBUG and print "---Filtering solutions so we only end up with the unique ones.\n";
     $DEBUG and print "----Start with ", scalar(@solutions), " solutions. \n";
-    my $count     = 0;
-    my $edgecount = $maxEdges;
-    while ( $edgecount > 1 ) {
-        $DEBUG and print "### not on sets of $edgecount \n";
-        foreach my $network (@solutions) {
-            my $E = $network->edges;
-            if ( $E == $edgecount ) {
-                if ( $edgecount == $maxEdges )
-                {    ## include all the largest ones...
-                    push @filteredarray, $network;
-                    $count++;
-
-                    #print "Up to $count solutions (still in initial set)\n";
-                }
-                else {    ## only filter the ones less than the max
-                    ## check that the elements of this network are not all represented in the larger sets
-                    ## first get the larger set
-
-                    my @V = $network->vertices;    ##array of elements
-                    my $filteredNumber = scalar(@filteredarray);
-                    my $extracount     = 0;
-                    foreach my $fnetwork (@filteredarray) {
-                        ## now check for subsets
-                        my @fV = $fnetwork->vertices;
-                        ## is @V included in @fV if no, then push @
-                        my %diff = {};
-
-                        #print "network: ", Dumper(@V), "\n";
-                        #print "filtered: ", Dumper(@fV), "\n";
-                        @diff{@V} = @V;
-                        delete @diff{@fV};
-                        my @k                = ( keys %diff );
-                        my $extraAssemblages = scalar(@k);
-
-                        #print Dumper(@k), "\n";
-                        #print "extraAssemblages: $extraAssemblages\n";
-                        if ( $extraAssemblages > 2 ) {
-                            $extracount++;
-                            $DEBUG and print "Not found in the network: $extracount\n";
-                        }
-                    }
-                    if ( $extracount == $filteredNumber ) {
-                        $DEBUG and print "Solution does not exist in any of the existing networks - so add to list. \n";
-                        push @filteredarray, $network;
-                    }
-                }
-
+    my $count     = scalar(@solutions)-1;
+    while ($count>-1) {
+         my $exists;
+         my $netcheck = $solutions[$count];
+         #print ref($netcheck),"\n";
+         foreach my $fnetwork (@filteredarray) {
+            #print "loop: ", ref($fnetwork),"\n";
+            if ($netcheck ne $fnetwork) {
+               $exists++; 
             }
-        }
-        $edgecount--;
+         }
+         unless ($exists) {
+             push @filteredarray, $netcheck;
+         }
+         $count--;
     }
     $DEBUG and print "End with ", scalar(@filteredarray), " solutions.\n";
     my $filterCount= scalar(@filteredarray);
     $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
+} elsif ($largestOnly) {
+    @filteredarray = @networks; ## just the largest one
+} else {
+    @filteredarray = @solutions; ### all of the solutions as a default
 }
-else {
-    @filteredarray = @solutions;
-}
+
 
 if ($individualfileoutput) {
     my $writer = Graph::Writer::VCG->new();
@@ -1023,23 +982,34 @@ print OUTFILE "From To Edge Weight Network pValue pError\n";
 
 my @uniqueArray;
 foreach my $compareNetwork (@filteredarray) {
-   my $undirectedGraph = $compareNetwork->undirected_copy_graph;
     my $exists = 0;
+    #print "type: ", ref($compareNetwork), "\n";
+    if (ref($compareNetwork) eq "REF") {
+      $compareNetwork = $$compareNetwork;
+    }
     foreach my $uarray (@uniqueArray) {
-        if ( $undirectedGraph eq $uarray ) {
+      if (ref($uarray) eq "REF"){
+         $uarray = $$uarray;
+      }
+      #print "type uarray: ", ref($uarray), "\n";
+        if ( $compareNetwork eq $uarray ) {
             $exists++;
         }
     }
     if ( !$exists ) {
-        push @uniqueArray, $undirectedGraph;
+        push @uniqueArray, $compareNetwork;
     }
 }
 
 ## only print unique ones...
 foreach my $network (@uniqueArray) {
+   if (ref($network) eq "REF") {
+      $network = $$network;
+   }
     #print Dumper($network);
     $count++;
     #print "$count: $network\n";
+    #print "type: network = ", ref($network), "\n";
     my $E = $network->edges;
     if ($largestOnly) {
         if ( $E == $maxEdges ) {
@@ -1052,6 +1022,8 @@ foreach my $network (@uniqueArray) {
                 print OUTFILE @$e[0], " ", @$e[1], ", 1, ", scalar(@Edges), ", ", $count, ", ";
                 print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
             }
+            print OUTFILE "---------------------------\n";
+
         }
     } else {
         my @Edges = $network->unique_edges;
@@ -1063,8 +1035,9 @@ foreach my $network (@uniqueArray) {
             print OUTFILE @$e[0], " ", @$e[1], ", 1, ", scalar(@Edges), ", ", $count, ", ";
             print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
         }
+          print OUTFILE "---------------------------\n";
     }
-    print OUTFILE "---------------------------\n";
+   
 }
 
 print OUTFILE "\n";
