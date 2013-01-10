@@ -14,8 +14,7 @@ use Statistics::Descriptive;
 require Term::Screen;
 
 my $debug      = 0;
-my $filterflag = 0
-  ; ## do you want to try to output all of the solutions (filtered for non trivial)
+my $filterflag = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
 my $largestOnly          = 0; #       # only output the largest set of solutions
 my $individualfileoutput = 0; ## create files for all the indivdual networks
 my $bootstrap            = 0; ## flag for bootstrap
@@ -25,7 +24,7 @@ my $inputfile;
 my $bootstrapdebug = 0;
 my $threshold      = 0;
 my $noscreen        = 0;     ## flag for screen output
-my $excel          = 0;       ## flag for excel file output
+my $excel          = 0;       ## flag for excel file output (not implemented yet)
 
 # process command line options; if none, print a usage/help message.
 # note - manual page for explaining the options, what they do, and how to use them
@@ -60,11 +59,15 @@ if ($DEBUG) {
     $excel or print "excel output is off\n";
 }
 
-#print "largest only: ", $largestOnly, "\n";
 
-# start the clock
+
+# start the clock to track how long this run takes
 my $start = Time::HiRes::gettimeofday();
 
+########################################### READ IN THE DATA  ####################################
+## The expected data format is <assemblage name><tab><type 1 number><tab><type 2 number>...<return>
+## Tab delimited, no headers, raw counts for types (not percentages)
+## Example data can be found in the testdata directory
 
 # define some key lists and vars
 my @assemblages = ();
@@ -84,18 +87,22 @@ if ($noscreen==1) { $screen=0;}
 if ($DEBUG) { $screen = 0; }
 my $scr;
 
+## Set up the screen display (default).
+## the debug option does not use this since it gets messay
 $screen and $scr = new Term::Screen;
-$screen and $scr->clrscr();
+$screen and $scr->clrscr();  # clear the screen
 
+## open the data file
 open( INFILE, $inputfile ) or die "Cannot open $inputfile.\n";
 open( OUTFILE, ">$inputfile.vna" ) or die "Can't open file $inputfile.vna.\n";
 
+## some output so we know what we are doing 
 $screen and $scr->at(1,1)->puts("Filename:  $inputfile");
 $screen and $scr->at(2,1)->puts("Threshold: $threshold");
 
+## Read in the data
 # the input of the classes -- note these are absolute counts, not frequencies
 # might want to change that...
-
 while (<INFILE>) {
     #print;
     chomp;
@@ -131,16 +138,22 @@ my $maxSeriations = $count;
 $screen and $scr->at(3,1);
 $screen and $scr->puts("Maximum possible seriation solution length: $count");
 
+
+#############################################  THRESHOLD DETERMINATION ####################################
 ## first compare each assemblage and see if the threshold is exceeded.
 ## By this I mean the maximum difference between frequencies of any type is greater than what is specified.
-## When threshold = 0, all combinations are used. Later the "ends" of solutions are not evaluated if the difference between the last
-## assemblage and any other free assemblage is > the threshold. This arbitrary setting is to keep from arbitrary solutions being stuck on that come from the "ends"
-## of solutions
+## When threshold = 0, all combinations are used. Later the "ends" of solutions are not evaluated if the
+## difference between the last assemblage and any other free assemblage is > the threshold.
+## This arbitrary setting is to keep from arbitrary solutions being stuck on that come from the "ends"
+## of solutions.
+##
+## Precalculate all of the max differences between types in assembalge pairs. 
 
 my %assemblageComparison = ( "pairname" => 0 );
 
+## We use the Math::Combinatorics to get all the combinations of 2
 my $pairs = Math::Combinatorics->new( count => 2, data => [@assemblageNumber] );
-
+## Go through all of the combinations
 while ( my @permu = $pairs->next_combination ) {
     #$DEBUG and print $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ] . "\n";
     my $pairname      = $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ];
@@ -160,6 +173,8 @@ while ( my @permu = $pairs->next_combination ) {
 
 $DEBUG and print Dumper( \%assemblageComparison ), "\n";
 
+
+########################################### FIND ALL THE VALID TRIPLES  ####################################
 my $directionstate;
 $numrows = scalar(@assemblages);
 my @nets;
@@ -170,15 +185,13 @@ my $net          = Graph::Directed->new;
 my $comparison12;
 my $comparison23;
 my $error;
-
 my $numberOfTriplets;
 
+## This uses the Math::Combinatorics to create all the permutations of 3. This is the simplest solution programmatically
+## Why recreate the wheel? Use Perl!
 
 my $permutations =
   Math::Combinatorics->new( count => 3, data => [@assemblageNumber] );
-
-#print "combinations of 3 from: ".join(" ",@assemblages)."\n";
-#print "------------------------".("--" x scalar(@assemblages))."\n";
 
 while ( my @permu = $permutations->next_combination ) {
     #$DEBUG and print $labels[ $permu[0] ] . " * ". $labels[ $permu[1] ] . " * ". $labels[ $permu[2] ] . "\n";
@@ -277,39 +290,33 @@ while ( my @permu = $permutations->next_combination ) {
 
 }
 
+########################################### THIS IS THE MAIN SERIATION SORTING SECTION ####################################
 ## now go through the combination of triplets that are valid (i.e., allthose that have no Z in them)
-
 my @array = ();
-
 ## now go through all of the assemblages and each one to the top and bottom of the triplets to see if they fit.
 ## if they do, add them to the network
-
-#foreach  my $network ( @nets ) {
-#	print Dumper($network);
-#}
 
 #my $currentMaxSeriations = 3;
 my $currentMaxSeriationSize = 3;
 
 #print "Number of Triplets:  ",$numberOfTriplets, "\n";
-my $maxEdges  = 0;
-my $stepcount = 0;
-
-my $match     = 0;
+my $maxEdges  = 0;      ## keeps track of the current largest size of solution
+my $stepcount = 0;     ## keeps track of the current step (from 0, adds one each step)
+my $match     = 0;      ## keeps track of whether a solution is found for each step. Once no new solution is found, the search is over!
 
 my @networks;  ## array of solutions from previous step (starts out with the 3s) (directed and deep graphs)
 my @newnets;   ## array of new solutions (directed and deep graphs)
 my @stepSeriationList = [];  ## array of solutions at this step (undirected and shallow copies of graphs)
 my @solutions;  ## Array of all solutions (undirected and shallow copies of graphs)
-my $solutionCount=0;
+my $solutionCount=0;   ## an index of the current number of solutions
 
+### This is just preparing the intial set of threes into the array that will be used as the seed for all future
+### seriation sets.
 foreach my $n (@nets) {
-      #my $ne = $n->deep_copy_graph;
-      #my $se = $n->undirected_copy;
-      push @networks, \$n;
-      push @solutions, \$n;
-      $stepSeriationList[ $solutionCount ] = \$n;
-      $solutionCount++;
+      push @networks, \$n;        ## this is the array of the current successful set
+      push @solutions, \$n;      ## This is an array of ALL solutions to date
+      $stepSeriationList[ $solutionCount ] = \$n;     ## this is an ordered list of all solutions (order in which found for each step)
+      $solutionCount++;          ## counts the current set of solutions
 }
 my $solutionSum = scalar(@networks);  ## number of solutions to this point (which is equal to all 3s);
 my %seriationStep={};        ## hash of the array of solutions for this step
@@ -319,7 +326,7 @@ $seriationStep{$currentMaxSeriationSize}=\@stepSeriationList;  ## add to the lis
 
 while ( $currentMaxSeriationSize < $maxSeriations ) {
     $currentMaxSeriationSize++;
-    my $index    = 0;
+    #my $index    = 0;
     $stepcount++;
     $DEBUG and print "__________________________________________________________________________________________\n";
     $DEBUG and print "Step number:  $currentMaxSeriationSize\n";
@@ -330,12 +337,10 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
     $DEBUG and print "Number of solutions from previous step: $netnum\n";
     $screen and $scr->at(5,1)->puts("Number of solutions from previous step:         ");
     $screen and $scr->at(5,1)->puts("Number of solutions from previous step: $netnum");
-
-    $match = 0;
-
+    $match = 0;      ## set the current match to zero for this step (sees if there are any new solutions for step)
     ## look through the set of existing valid networks.
     foreach my $network (@networks) {
-        my $index = 0;
+        #my $index = 0;
         my $nnetwork = $$network;
         $DEBUG and print "-----------------------------------------------------------------------------------\n";
         $DEBUG and print "Network: ", $nnetwork, "\n";
@@ -443,7 +448,6 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $DEBUG and print  "\t\t\t\tType $i: Got a difscore of 1 and a comparison of a U. This works. \n";
                                     $DEBUG and print " \t\t\t\tAdding $testAssemblage to vertices $endAssemblage\n";
                                     
-                                    
                                 } elsif (( $difscore == 1 ) && ( $comparison[$i] =~ "M" ) ) {                                                ### 1 M
                                     # this is okay - its a match and the new value is greater. New value shoudl be U
                                     # need to find what was happening on the previous comparison to know whether this needs
@@ -466,7 +470,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                        my $comparison = $nnetwork->get_edge_weight( $outwardEdge, $inwardEdge) || $nnetwork->get_edge_weight( $inwardEdge, $outwardEdge );
                                        my @compArray = split //, $comparison;
                                        if (!$compArray[$i]) {
-                                          print "Comparison is empty. Error! Stopping.\n";
+                                          print "Comparison is empty. Error! Stopping.\n\r\n\r";
                                           exit();
                                        }
                                        $DEBUG and print "\t\t\t\tType $i: Here is what we get for comparison # $ccount \n";  ## note that i is the current type
@@ -479,11 +483,11 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                        $DEBUG and print "\t\t\t\t\t Now going to get the next pair of assembalges to examine in the chain\n";
                                        $ccount++;
                                        if ($ccount>$numrows) {
-                                          print "PROBLEM. Too many checks. Quitting\n";
+                                          print "PROBLEM. Too many checks. Quitting\n\r\n\r";
                                           exit();
                                        }
                                     }
-                                    if ( $xerror > 0 ) {
+                                    if ( $xerror ) {
                                         $error++;
                                     } else {
                                         $comparisonMap .= "U";
@@ -526,7 +530,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                        my $comparison = $nnetwork->get_edge_weight( $outwardEdge, $inwardEdge) || $nnetwork->get_edge_weight( $inwardEdge, $outwardEdge );
                                        my @compArray = split //, $comparison;
                                        if (!$compArray[$i]) {
-                                          print "Comparison is empty. Error! Stopping.\n";
+                                          print "Comparison is empty. Error! Stopping.\n\r\n\r";
                                           exit();
                                        }
                                        $DEBUG and print "\t\t\t\tType $i: Here is what we get for comparison # $ccount \n";  ## note that i is the current type
@@ -536,7 +540,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                              $stopFlag = 1; ## We can stop
                                        }
                                     }
-                                    if ($xerror) {
+                                    if ($xerror > 0) {
                                         $error += 1;
                                         $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage) because there was an X \n";
                                         $DEBUG and print "\t\t\t\t\t  This would make it multimodal - so error.\n";
@@ -547,7 +551,6 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                         $DEBUG and print "\t\t\t\tType $i: Adding an X to the comparisons for type $i. \n";
                                         $DEBUG and print "\t\t\t\t\tComparison map is now $comparisonMap\n";
                                     }    #end if if check error (xerror)
-
                                 }
                                 elsif ## new score is less and the comparison is down .. Yes!
                                   (    ( $difscore == -1 ) && ( $comparison[$i] =~ "D" ) )                                          ## -1   D
@@ -578,7 +581,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                        my $comparison = $nnetwork->get_edge_weight( $outwardEdge, $inwardEdge) || $nnetwork->get_edge_weight( $inwardEdge, $outwardEdge );
                                        my @compArray = split //, $comparison;
                                        if (!$compArray[$i]) {
-                                          print "Comparison is empty. Error! Stopping.\n";
+                                          print "Comparison is empty. Error! Stopping.\n\r\n\r";
                                           exit();
                                        }
                                        $DEBUG and print "\t\t\t\tType $i: Here is what we get for comparison # $ccount \n";  ## note that i is the current type
@@ -593,7 +596,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                              $change = "M";
                                              ## in this case we have to keep going
                                        } else {
-                                          print "ERROR: missing value -- comparison is $compArray[$i]. Must have a value.\n";
+                                          print "ERROR: missing value -- comparison is $compArray[$i]. Must have a value.\n\r\n\r";
                                           exit();
                                        }
                                        $DEBUG and print "\t\t\t\t\t Since I got $compArray[$i] my potential new value is $change.\n";
@@ -607,7 +610,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $DEBUG and print "\t\t\t\tType $i: OK to add $testAssemblage to vertices $endAssemblage because \n";
                                     $DEBUG and print "\t\t\t\t score is -1 and the comparison is D. ComparisonMap is now $comparisonMap\n";
                                     if (!$comparisonMap ) {
-                                       print "ERROR: comparisonMap can't be empty. Bug here. \n";
+                                       print "\n\rERROR: comparisonMap can't be empty. Bug here. \n\r\n\r";
                                        exit();
                                     }
                                 } elsif  # new score is match but comparison is Match. Okay
@@ -646,28 +649,27 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $DEBUG and print "\t\t\t\tType $i:  Ok to add  $testAssemblage to vertices $endAssemblage because score \n";
                                     $DEBUG and print "\t\t\t\t is 0 and the comparison is X. ComparisonMap is now $comparisonMap\n";
                                 } else {
-                                    print "\t\t\t\tERROR!!!! Not found match combination! MUST FIX! Some combination\n ";
-                                    print "\t\t\t\t is not being caught correctly... Exiting.\n";
-                                    print "\t\t\t\tHere is the score of the differences in  for Type $i: $difscore\n";
-                                    print "\t\t\t\tHere is the comparison value: ",
-                                      $comparison[$i], "\n";
+                                    print "\n\r\t\t\t\tERROR!!!! Not found match combination! MUST FIX! Some combination\n\r ";
+                                    print "\t\t\t\t is not being caught correctly... Exiting.\n\r";
+                                    print "\t\t\t\tHere is the score of the differences in  for Type $i: $difscore\n\r";
+                                    print "\t\t\t\tHere is the comparison value: ", $comparison[$i], "\n\r";
                                     $error++;
                                     exit();
                                 }
                                 $DEBUG
-                                  and print "\t\t\t\tType $i:  Error so far $error\n";
+                                  and print "\t\t\t\tType $i:  Error so far $error\n\r\n\r";
                             }
                         }
                         
-                        if ( $error == 0 ) {
-                            $DEBUG and print "--------------------------------------------------\n";
-                            $DEBUG and print "Original network: ", $$network, "\n";
-                            $DEBUG and print "New comparison map is: $comparisonMap\n";
+                        if ( !$error)  {
+                            $DEBUG and print "--------------------------------------------------\n\r\n\r";
+                            $DEBUG and print "Original network: ", $$network, "\n\r";
+                            $DEBUG and print "New comparison map is: $comparisonMap\n\r";
 
                             ## no errors so add vertice added to the new network
                             #my $oldedgenum = $nnetwork->edges;
                             $nnetwork->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
-                            $DEBUG and print "New network (with addition): ", $nnetwork, "\n";
+                            $DEBUG and print "New network (with addition): ", $nnetwork, "\n\r";
 
                             ## copy this solution to the new array of networks
                             push @newnets, $nnetwork;   ## contains solutions for just this step
@@ -679,18 +681,19 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionSum");
                             $screen and $scr->at(8,43)->puts("                   ");
                             $screen and $scr->at(8,1)->puts("Current nunmber of seriation linkages at this step: $currentTotal");
-                            $DEBUG and print "-------------------------------------------------\n";
+                            $DEBUG and print "-------------------------------------------------\n\r";
                         }
                     }
                     else {
-                        $DEBUG and print "\t\t$endAssemblage has too many edges ( $edges is more than 1) so skipping\n";
+                        $DEBUG and print "\t\t$endAssemblage has too many edges ( $edges is more than 1) so skipping\n\r";
                     }    # end of if check for the end edges
                 }    # end of iterate through the existing network link
             }    # end of if assemblage not already in netowrk check
         }    #end of assemblage loop
     }    #end of network loop
-   $DEBUG and print "Number of current solutions now: ", scalar(@newnets), "\n";
-   
+   ########################################### AFTER ALL THE SORTING AND WINNOWING ######################
+   $DEBUG and print "Number of current solutions now: ", scalar(@newnets), "\n\r";
+
    ## now push the current step solutions to the list that serves as the basis of the next step. 
    foreach my $n (@newnets) {
       push @networks,$n;  ## use this for the next iteration -- its all the new solutions. 
@@ -706,7 +709,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
     if ( $match == 0 ) {
         $screen and $scr->at(9,1)->puts( "Maximum seriation size reached - no more assemblages added that iteration. ");
         $screen and $scr->at(10,1)->puts("Maximum # assemblages in largest solution is: $maxEdges");
-        $DEBUG and print "Maximum # assemblages in largest solution is: $maxEdges\n";
+        $DEBUG and print "Maximum # assemblages in largest solution is: $maxEdges\n\r\n";
         $maxnumber = $currentMaxSeriationSize - $maxSeriations;
         ## to break now...
         $currentMaxSeriationSize = $maxSeriations;
@@ -714,6 +717,8 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
     }
 }    #end of master loop through iterations
 
+
+########################################### DO SOME FILTERING (OR NOT) ####################################
 # now do some weeding. Basically start with the first network that is the largest, and work backwards. Ignore any
 # network that is already represented in the smaller ones since these are trivial (e.g., A->B->C->D alreacy covers
 # A->C->D.) That should then leave all the unique maximum solutions (or so it seems)
@@ -748,7 +753,7 @@ if ( $filterflag == 1 ) {
     @filteredarray = @solutions; ### all of the solutions as a default
 }
 
-
+###########################################  OUTPUT INDIVIDUAL .vcg and .dot FILES ###################
 if ($individualfileoutput) {
     my $writer = Graph::Writer::VCG->new();
     $count = 0;
@@ -778,7 +783,7 @@ if ($individualfileoutput) {
     }
 }
 
-############################################
+########################################### BOOTSTRAP SECTION ####################################
 #bootrap stuff
 
 $numrows = scalar(@assemblages);
@@ -968,8 +973,7 @@ if ($bootstrap) {
     }
 }
 
-###########################################
-
+########################################### OUTPUT SECTION ####################################
 $screen and $scr->at(13,1)->puts( "Now printing output file... ");
 
 print OUTFILE "*Node data\n";
@@ -1044,12 +1048,12 @@ print OUTFILE "\n";
 
 ###########################################
 if ($excel) {
-    print "Now printing excel output file... \n";
+    print "\n\rNow printing excel output file... \n\r";
     ## nothing yet
 }
 my $timediff= Time::HiRes::gettimeofday() - $start;
 $screen and $scr->at(14,1)->puts( "Time for processing: $timediff seconds");
-print "\n\n\n\n";
+print "\n\r\n\r\n\r\n\r";
 
 __END__
 
