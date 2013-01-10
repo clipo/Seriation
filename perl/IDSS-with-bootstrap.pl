@@ -94,7 +94,8 @@ $screen and $scr->clrscr();  # clear the screen
 
 ## open the data file
 open( INFILE, $inputfile ) or die "Cannot open $inputfile.\n";
-open( OUTFILE, ">$inputfile.vna" ) or die "Can't open file $inputfile.vna.\n";
+open( OUTFILE, ">$inputfile.vna" ) or die "Can't open file $inputfile.vna to write.\n";
+open( OUTDOTFILE, ">$inputfile.dot") or die "Can't open file $inputfile.dot to write.\n";
 
 ## some output so we know what we are doing 
 $screen and $scr->at(1,1)->puts("Filename:  $inputfile");
@@ -697,7 +698,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
    ## now push the current step solutions to the list that serves as the basis of the next step. 
    foreach my $n (@newnets) {
       push @networks,$n;  ## use this for the next iteration -- its all the new solutions. 
-      push @solutions, $n->undirected_copy_graph; ## this is a list of all the solutions (shallow)
+      push @solutions, $n; ## this is a list of all the solutions (shallow a)
       $stepSeriationList[$solutionCount]= $n;  #This is supposed to be an array that keeps track of the solutions by the order they were created (low = small)
       $solutionCount++;
    }
@@ -977,17 +978,21 @@ if ($bootstrap) {
 $screen and $scr->at(13,1)->puts( "Now printing output file... ");
 
 print OUTFILE "*Node data\n";
+print OUTDOTFILE "graph seriation \n{\n";
+print OUTDOTFILE "\n/* list of nodes */\n";
 $count = 0;
 foreach my $l (@labels) {
     print OUTFILE $l, "\n";
+    print OUTDOTFILE "\"".$l."\";\n";
 }
 print OUTFILE "*Tie data\n";
 print OUTFILE "From To Edge Weight Network pValue pError\n";
 
+
 my @uniqueArray;
 foreach my $compareNetwork (@filteredarray) {
     my $exists = 0;
-    #print "type: ", ref($compareNetwork), "\n";
+
     if (ref($compareNetwork) eq "REF") {
       $compareNetwork = $$compareNetwork;
     }
@@ -995,7 +1000,6 @@ foreach my $compareNetwork (@filteredarray) {
       if (ref($uarray) eq "REF"){
          $uarray = $$uarray;
       }
-      #print "type uarray: ", ref($uarray), "\n";
         if ( $compareNetwork eq $uarray ) {
             $exists++;
         }
@@ -1005,26 +1009,28 @@ foreach my $compareNetwork (@filteredarray) {
     }
 }
 
+print OUTDOTFILE "\n/* list of edges */\n";
+
 ## only print unique ones...
 foreach my $network (@uniqueArray) {
    if (ref($network) eq "REF") {
       $network = $$network;
    }
-    #print Dumper($network);
     $count++;
-    #print "$count: $network\n";
-    #print "type: network = ", ref($network), "\n";
     my $E = $network->edges;
     if ($largestOnly) {
         if ( $E == $maxEdges ) {
             my @Edges = $network->unique_edges;
             foreach my $e (@Edges) {
+               my $edge0 = @$e[0];
+               my $edge1 = @$e[1];
                 if ( !$bootstrap ) {
                     $perror{ @$e[0] . "-" . @$e[1] } = 0.0;
                     $pvalue{ @$e[0] . "-" . @$e[1] } = 0.0;
                 }
                 print OUTFILE @$e[0], " ", @$e[1], ", 1, ", scalar(@Edges), ", ", $count, ", ";
                 print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
+                print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
             }
             print OUTFILE "---------------------------\n";
 
@@ -1032,12 +1038,15 @@ foreach my $network (@uniqueArray) {
     } else {
         my @Edges = $network->unique_edges;
         foreach my $e (@Edges) {
+               my $edge0 = @$e[0];
+               my $edge1 = @$e[1];
             if ( !$bootstrap ) {
                 $perror{ @$e[0] . "-" . @$e[1] } = 0.0;
                 $pvalue { @$e[0] . "-" . @$e[1] } = 0.0;
             }
             print OUTFILE @$e[0], " ", @$e[1], ", 1, ", scalar(@Edges), ", ", $count, ", ";
             print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
+            print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
         }
           print OUTFILE "---------------------------\n";
     }
@@ -1045,6 +1054,7 @@ foreach my $network (@uniqueArray) {
 }
 
 print OUTFILE "\n";
+print OUTDOTFILE "}\n";
 
 ###########################################
 if ($excel) {
