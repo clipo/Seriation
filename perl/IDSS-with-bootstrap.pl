@@ -163,13 +163,13 @@ while ( my @permu = $pairs->next_combination ) {
     for ( my $i = 0 ; $i < $cols ; $i++ ) {
         my $ass1 = $assemblages[ $permu[0] ][$i];
         my $ass2 = $assemblages[ $permu[1] ][$i];
-        my $diff = abs( $ass1 - $ass2 );
+        my $diff = abs( $ass1 - $ass2 ) ;
         if ( $diff > $maxDifference ) {
             $maxDifference = $diff;
         }
     }
-    $assemblageComparison{$pairname} = $maxDifference;
-    $assemblageComparison{$pairname2} = $maxDifference;
+    $assemblageComparison{ $pairname } = $maxDifference || "0.000";
+    $assemblageComparison{ $pairname2 } = $maxDifference || "0.000";
 }
 
 $DEBUG and print Dumper( \%assemblageComparison ), "\n";
@@ -400,7 +400,8 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         my $diff     = $assemblageComparison{$pairname};
                         $DEBUG and print "\t\t\tFor $pairname the max frequency difference is $diff.\n";
                         if ($diff=="") {
-                           print "pairname not found in hash lookup!\n";
+                           print "\n\rError: pairname: $pairname not found in hash lookup!\n\r";
+                           print "Probably a problem with the names of the assemblages. Check for weird characters. Exiting.\n\r";
                            exit();
                         }
                         ## go through process only if threshold is 0 or difference value is below threshold
