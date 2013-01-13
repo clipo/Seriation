@@ -168,8 +168,8 @@ while ( my @permu = $pairs->next_combination ) {
             $maxDifference = $diff;
         }
     }
-    $assemblageComparison{ $pairname } = $maxDifference || "0.000";
-    $assemblageComparison{ $pairname2 } = $maxDifference || "0.000";
+    $assemblageComparison{ $pairname } = $maxDifference;
+    $assemblageComparison{ $pairname2 } = $maxDifference;
 }
 
 $DEBUG and print Dumper( \%assemblageComparison ), "\n";
@@ -307,7 +307,7 @@ my $match     = 0;      ## keeps track of whether a solution is found for each s
 
 my @networks;  ## array of solutions from previous step (starts out with the 3s) (directed and deep graphs)
 my @newnets;   ## array of new solutions (directed and deep graphs)
-my @stepSeriationList = [];  ## array of solutions at this step (undirected and shallow copies of graphs)
+my %stepSeriationList;  ## array of solutions at this step (undirected and shallow copies of graphs)
 my @solutions;  ## Array of all solutions (undirected and shallow copies of graphs)
 my $solutionCount=0;   ## an index of the current number of solutions
 
@@ -316,14 +316,11 @@ my $solutionCount=0;   ## an index of the current number of solutions
 foreach my $n (@nets) {
       push @networks, \$n;        ## this is the array of the current successful set
       push @solutions, \$n;      ## This is an array of ALL solutions to date
-      $stepSeriationList[ $solutionCount ] = \$n;     ## this is an ordered list of all solutions (order in which found for each step)
+      $stepSeriationList{ $solutionCount } = \$n;     ## this is an ordered list of all solutions (order in which found for each step)
       $solutionCount++;          ## counts the current set of solutions
 }
 my $solutionSum = scalar(@networks);  ## number of solutions to this point (which is equal to all 3s);
 my %seriationStep={};        ## hash of the array of solutions for this step
-
-$seriationStep{$currentMaxSeriationSize}=\@stepSeriationList;  ## add to the list of solutions at this step
-@stepSeriationList=();  ## clear out the step list. 
 
 while ( $currentMaxSeriationSize < $maxSeriations ) {
     $currentMaxSeriationSize++;
@@ -700,11 +697,10 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
    foreach my $n (@newnets) {
       push @networks,$n;  ## use this for the next iteration -- its all the new solutions. 
       push @solutions, $n; ## this is a list of all the solutions (shallow a)
-      $stepSeriationList[$solutionCount]= $n;  #This is supposed to be an array that keeps track of the solutions by the order they were created (low = small)
+      $stepSeriationList{ $solutionCount}= \$n;  #This is supposed to be an array that keeps track of the solutions by the order they were created (low = small)
       $solutionCount++;
    }
    $solutionSum  =  scalar(@solutions);
-   @stepSeriationList=();  ## clear the step seriation list so that we can get the next set for the next set of solutions. 
    
    @newnets=();  ## clear the array for the next new set of assemblages. 
    ## no match at this point so no point in going forward.
@@ -728,24 +724,31 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 ## first need to sort the networks by size
 my @filteredarray = ();
 if ( $filterflag == 1 ) {
-    $DEBUG and print "---Filtering solutions so we only end up with the unique ones.\n";
-    $DEBUG and print "----Start with ", scalar(@solutions), " solutions. \n";
-    my $count     = scalar(@solutions)-1;
-    while ($count>-1) {
-         my $exists;
-         my $netcheck = $solutions[$count];
-         #print ref($netcheck),"\n";
-         foreach my $fnetwork (@filteredarray) {
-            #print "loop: ", ref($fnetwork),"\n";
-            if ($netcheck ne $fnetwork) {
-               $exists++; 
-            }
+    ##$DEBUG and
+    print "\n\r---Filtering solutions so we only end up with the unique ones.\n\r";
+    ### $DEBUG and
+    print "\n\r---Start with ", scalar(@solutions ), " solutions. \n\r";
+
+   foreach my $fnetwork (reverse sort( keys %stepSeriationList )) {
+      #print "fnetwork: ", $stepSeriationList{ $fnetwork }, "\n\r";
+      my $exists=0;
+      my $f = $stepSeriationList{ $fnetwork};
+      ##print "F: ", $$f, "\n\r";
+      foreach my $tnetwork (@filteredarray) {
+         #print "tnetwork: ", $stepSeriationList{ $tnetwork} , "\n\r";
+               my @fnetworkArray = $$f->vertices;
+               my @tnetworkArray = $$tnetwork->vertices;
+               ##print "T: ", $$tnetwork, "\n\r";
+               my @minus = array_minus( @fnetworkArray, @tnetworkArray );
+               if (scalar(@minus)== 0) {
+                  $exists++;
+               }
          }
-         unless ($exists) {
-             push @filteredarray, $netcheck;
-         }
-         $count--;
-    }
+      if (!$exists) {
+         ##print "pushing $fnetwork to list\n\r";
+         push @filteredarray, $f;
+      } 
+   }
     $DEBUG and print "End with ", scalar(@filteredarray), " solutions.\n";
     my $filterCount= scalar(@filteredarray);
     $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
@@ -1033,7 +1036,7 @@ foreach my $network (@uniqueArray) {
                 print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
             }
-            print OUTFILE "---------------------------\n";
+            #print OUTFILE "---------------------------\n";
 
         }
     } else {
@@ -1049,7 +1052,7 @@ foreach my $network (@uniqueArray) {
             print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
         }
-          print OUTFILE "---------------------------\n";
+          #print OUTFILE "---------------------------\n";
     }
    
 }
