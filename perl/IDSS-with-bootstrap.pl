@@ -58,7 +58,7 @@ if ($DEBUG) {
     print "Processing input file: $inputfile\n";
     print "filterflag: ", $filterflag, "\n";
     print "bootstrapCI: ", $bootstrapCI, "\n";
-    print "bootstrapPValue: ", $bootstrapPValue, "\n";
+    print "bootstrapSignificance: ", $bootstrapSignificance, "\n";
     print "bootstrap: ", $bootstrap, "\n";
     print "largestOnly: ", $largestOnly, "\n";
     print "individualfileouput: ", $individualfileoutput, "\n";
