@@ -20,7 +20,7 @@ my $largestOnly          = 0; #       # only output the largest set of solutions
 my $individualfileoutput = 0; ## create files for all the indivdual networks
 my $bootstrap           = 0; ## flag for bootstrap
 my $bootstrapCI         = 0; ## flag for the CI bootstrap
-my $bootstrapPValue     = 95;
+my $bootstrapSignificance     = 95;
 my $man                  = 0;
 my $help                 = 0;
 my $inputfile;
@@ -36,7 +36,7 @@ my $excel          = 0;       ## flag for excel file output (not implemented yet
 GetOptions(
     'debug'          => \$debug,
     'bootstrapCI'      => \$bootstrapCI,
-    'bootstrapPValue=f' => \$bootstrapPValue, 
+    'bootstrapSignificance=f' => \$bootstrapSignificance, 
     'bootstrap'         => \$bootstrap,
     'bootstrapdebug' => \$bootstrapdebug,
     'filtered'       => \$filterflag,
@@ -225,7 +225,7 @@ if ($bootstrapCI) {
   
         for ( $count = 0 ; $count < $typecount ; $count++ ) {
             push @arrayOfStats, Statistics::PointEstimation->new();
-            $arrayOfStats[$count]->set_significance($bootstrapPValue);
+            $arrayOfStats[$count]->set_significance($bootstrapSignificance);
         }
 
         ## size of bootstrapping (how many assemblages to create)
