@@ -11,13 +11,16 @@ use Pod::Usage;
 use Time::HiRes;
 use Array::Utils qw(:all);
 use Statistics::Descriptive;
+use Statistics::PointEstimation;
 require Term::Screen;
 
 my $debug      = 0;
 my $filterflag = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
 my $largestOnly          = 0; #       # only output the largest set of solutions
 my $individualfileoutput = 0; ## create files for all the indivdual networks
-my $bootstrap            = 0; ## flag for bootstrap
+my $bootstrap           = 0; ## flag for bootstrap
+my $bootstrapCI         = 0; ## flag for the CI bootstrap
+my $bootstrapPValue     = 95;
 my $man                  = 0;
 my $help                 = 0;
 my $inputfile;
@@ -32,7 +35,9 @@ my $excel          = 0;       ## flag for excel file output (not implemented yet
 
 GetOptions(
     'debug'          => \$debug,
-    'bootstrap'      => \$bootstrap,
+    'bootstrapCI'      => \$bootstrapCI,
+    'bootstrapPValue=f' => \$bootstrapPValue, 
+    'bootstrap'         => \$bootstrap,
     'bootstrapdebug' => \$bootstrapdebug,
     'filtered'       => \$filterflag,
     'largestonly'    => \$largestOnly,
@@ -49,17 +54,18 @@ my $DEBUG = $debug;    # our "$debug level"
 
 if ($DEBUG) {
     print "Verbose debugging output is on!!!\n";
+    print "bootstrapdebug: ", $bootstrapdebug, "\n";
     print "Processing input file: $inputfile\n";
-    $filterflag           or print "filterflag is off\n";
-    $bootstrap            or print "bootstrap is off\n";
-    $largestOnly          or print "output largest solutions is off\n";
-    $individualfileoutput or print "individual network file output is off\n";
+    print "filterflag: ", $filterflag, "\n";
+    print "bootstrapCI: ", $bootstrapCI, "\n";
+    print "bootstrapPValue: ", $bootstrapPValue, "\n";
+    print "bootstrap: ", $bootstrap, "\n";
+    print "largestOnly: ", $largestOnly, "\n";
+    print "individualfileouput: ", $individualfileoutput, "\n";
     print "threshold is currently set to: $threshold\n";
-    $noscreen or print "noscreen output is currently off (which means that there is output to the screen)\n";
-    $excel or print "excel output is off\n";
+    print "noscreen: ", $noscreen, "\n";
+    print "excel:  ", $excel, "\n";
 }
-
-
 
 # start the clock to track how long this run takes
 my $start = Time::HiRes::gettimeofday();
@@ -78,7 +84,8 @@ my $cols        = 0;
 my %collections;
 my @assemblageNumber      = ();
 my @arrayOfSeriations     = ();
-my %assemblageFrequencies = {};
+my %assemblageFrequencies = ();
+my %assemblageSize = ();
 my @allNetworks           = ();
 my $maxnumber;
 my $count = 0;
@@ -103,7 +110,8 @@ $screen and $scr->at(2,1)->puts("Threshold: $threshold");
 
 ## Read in the data
 # the input of the classes -- note these are absolute counts, not frequencies
-# might want to change that...
+# might want to change that...\
+my $typecount;
 while (<INFILE>) {
     #print;
     chomp;
@@ -121,14 +129,18 @@ while (<INFILE>) {
 
         #print "rowtotal: $rowtotal\n";
         my $freq = [];
+        $typecount=0;
         for (@line) {
             # push @freq, $_;
             my $f = $_ / $rowtotal;
             my $ff = sprintf( "%.4f", $f );
             push @$freq, $ff;
+            $typecount++;
         }
         push @assemblages, [@$freq];
-        $assemblageFrequencies{$label} = $freq;
+        $assemblageFrequencies{$label} = [@$freq];
+        $assemblageSize{ $label }= $rowtotal;
+
         $count++;
     }
     #print "---- row end ----\n";
@@ -174,6 +186,134 @@ while ( my @permu = $pairs->next_combination ) {
 
 $DEBUG and print Dumper( \%assemblageComparison ), "\n";
 
+########################################### BOOTSTRAP SECTION ####################################
+#bootrap stuff
+
+srand($start);
+my %perror  = ();
+my %pvalue  = ();
+my $results = 0;
+my $ptr1;
+my $classes = 0;
+my %typeFrequencyLowerCI = ();
+my %typeFrequencyUpperCI = ();
+
+# now do ALL the pairwise assemblage comparisons
+# go to sleep and come back later.
+
+if ($bootstrapCI) {
+    my $countup=0;
+    ## for each assemblage
+    $DEBUG and print "Calculating bootstrap confidence intervals\n\r";
+    # for each assemblage
+    
+    foreach my $currentLabel ( sort keys %assemblageFrequencies) {
+        my $label = $labels[$countup];
+        ##$DEBUG and print "Working on assemblage: $currentLabel \n";
+        my @a =  $assemblageFrequencies{ $currentLabel };
+        ##print Dumper(@a);
+        ##$DEBUG and print "Classes: ", $typecount, "\n\r";
+        
+        my $currentAssemblageSize = $assemblageSize{ $currentLabel };
+        ##$DEBUG and print "Assemblage Size:", $currentAssemblageSize, "\n\r";
+       
+       #print $a[0][0], "\t", $a[0][1], "\t", $a[2], "\t", $a[3], "\n";
+        
+        ## create an array of stats objects - one for each type
+        my @arrayOfStats = ();
+        my $stat;   ## this will be the stat objects
+  
+        for ( $count = 0 ; $count < $typecount ; $count++ ) {
+            push @arrayOfStats, Statistics::PointEstimation->new();
+            $arrayOfStats[$count]->set_significance($bootstrapPValue);
+        }
+
+        ## size of bootstrapping (how many assemblages to create)
+        my $loop = 1000;
+        ## bootstrap the assemblages -- $loop times for the statistics
+       
+        while ($loop) {
+            my $assemsize = $currentAssemblageSize;
+            my @new_assemblage   = ();
+            my $class;
+            
+            my ( @cumulate, $count );
+            $classes = $typecount;
+            my $index = 0;
+            my $total = 0.0;
+            $count   = 0;
+            
+            ## now count through the classes and set up the frequencies  
+            for ( $count = 0 ; $count < $classes ; $count++ ) {
+                $cumulate[$index] = $a[0][$count];  ## this is the index of the frequency for this class
+                $total += $a[0][$count];            ## should ultimate equal 100
+                $index++;                        ## index should be total # of types at end
+            }
+            #$DEBUG  and print "Cumulate: ";
+            #$DEBUG and print Dumper(@cumulate);
+            #$DEBUG and print "\n\r";
+            ## now build the assemblages of the same size.
+            my $rand;
+            while ($assemsize) {
+                $rand  = rand;              ## random number from 0-1
+                $class = 0;
+                #print "Got a $rand\n\r";
+                ### continue while we 
+                while (( $class < $index ) && ( $rand > $cumulate[$class] ) ) {
+                    $rand -= $cumulate[$class];
+                    $class++;
+                }
+                #print "This goes in class $class\n\r";
+                push @new_assemblage, $class;
+                $assemsize--;
+            }
+            ## this should result in a new assemblage of the same size
+            #$DEBUG and print Dumper (\@new_assemblage);
+            #$DEBUG and print "\n\r------------------\n\r";
+            my ( @ahat, %aholder, %bholder );
+            %aholder = ();
+            
+            ## initialize arrauy
+            my $indexN = 0;
+            for ( $indexN = 0 ; $indexN < $classes ; $indexN++ ) {
+                $ahat[$indexN] = 0;
+            }
+
+            for (@new_assemblage) {
+                $aholder{$_}++;
+            }
+            
+            #$DEBUG and print "%aholder\n";
+            #$DEBUG and print Dumper(\%aholder);
+            ##$DEBUG and print "\n\r";
+            
+            my $classCount=0;
+            foreach my $stat (sort @arrayOfStats) {
+                ##$DEBUG and print "Current class: $classCount\n";
+                my $results = $aholder{ $classCount };
+                $stat->add_data($results / $currentAssemblageSize);
+                $classCount++;
+                ##$DEBUG and print "Current Mean: ", $stat->mean(), " Count:", $stat->count(), "\n";
+            }
+
+            $loop--;
+        }
+        my @lowerCI;
+        my @upperCI;
+        foreach my $stat (sort @arrayOfStats) {
+            push @lowerCI, $stat->lower_clm();
+            push @upperCI, $stat->upper_clm();
+        }
+        $typeFrequencyLowerCI{ $label } = \@lowerCI;
+        $typeFrequencyUpperCI{ $label } = \@upperCI;
+        $results = 0;
+        $countup++;
+    }
+    ##print Dumper(\%typeFrequencyLowerCI);
+    ##print Dumper(\%typeFrequencyUpperCI);
+    
+}
+
 
 ########################################### FIND ALL THE VALID TRIPLES  ####################################
 my $directionstate;
@@ -191,8 +331,7 @@ my $numberOfTriplets;
 ## This uses the Math::Combinatorics to create all the permutations of 3. This is the simplest solution programmatically
 ## Why recreate the wheel? Use Perl!
 
-my $permutations =
-  Math::Combinatorics->new( count => 3, data => [@assemblageNumber] );
+my $permutations =Math::Combinatorics->new( count => 3, data => [@assemblageNumber] );
 
 while ( my @permu = $permutations->next_combination ) {
     #$DEBUG and print $labels[ $permu[0] ] . " * ". $labels[ $permu[1] ] . " * ". $labels[ $permu[2] ] . "\n";
@@ -209,20 +348,48 @@ while ( my @permu = $permutations->next_combination ) {
         my $ass3 = $assemblages[ $permu[2] ][$i];
         #$DEBUG and print "TESTING:  ". $ass1. "-" . $ass2 . "-" . $ass3 . "\n";
 
-        my $dif1 = $ass1 - $ass2;
+        
+        ## first compare assemblages 1 and 2
+        if ($bootstrapCI ) {
+            my $upperCI_1 = $typeFrequencyUpperCI{ $labels[ $permu[0] ] }->[$i];
+            my $lowerCI_1 = $typeFrequencyUpperCI{ $labels[ $permu[0] ] }->[$i];
+            my $upperCI_2 = $typeFrequencyUpperCI{ $labels[ $permu[1] ] }->[$i];
+            my $lowerCI_2 = $typeFrequencyUpperCI{ $labels[ $permu[1] ] }->[$i];
+            my $dif1 = $ass1 - $ass2;
+            if ( $upperCI_1 < $lowerCI_2 )  {
+                $difscore = -1;
+            } elsif ($lowerCI_1 > $upperCI_2 ) {
+                $difscore = 1;
+            } else {
+                $difscore = 0;
+            }
+        } else {   ### if the bootstrapCI is not being used
+            my $dif1 = $ass1 - $ass2;
+            if ( $dif1 < 0 )  { $difscore = -1; }
+            if ( $dif1 > 0 )  { $difscore = 1; }
+            if ( $dif1 == 0 ) { $difscore = 0; }
+        }
 
-        #my $dif1 = $permu[0][$i] - $permu[1][$i];
-        if ( $dif1 < 0 )  { $difscore = -1; }
-        if ( $dif1 > 0 )  { $difscore = 1; }
-        if ( $dif1 == 0 ) { $difscore = 0; }
-
-        my $dif2 = $ass3 - $ass2;
-
-        #my $dif2 = $permu[1][$i] - $permu[2][$i];
-        if ( $dif2 < 0 )  { $difscore2 = -1; }
-        if ( $dif2 > 0 )  { $difscore2 = 1; }
-        if ( $dif2 == 0 ) { $difscore2 = 0; }
-
+        ## now compare assemblages 2 and 3
+        if ($bootstrapCI ) {
+            my $upperCI_2 = $typeFrequencyUpperCI{ $labels[ $permu[1] ] }->[$i];
+            my $lowerCI_2 = $typeFrequencyUpperCI{ $labels[ $permu[1] ] }->[$i];
+            my $upperCI_3 = $typeFrequencyUpperCI{ $labels[ $permu[2] ] }->[$i];
+            my $lowerCI_3 = $typeFrequencyUpperCI{ $labels[ $permu[2] ] }->[$i];
+            if ( $upperCI_2 < $lowerCI_3 )  {
+                $difscore = -1;
+            } elsif ($lowerCI_2 > $upperCI_3 ) {
+                $difscore = 1;
+            } else {
+                $difscore = 0;
+            }
+        } else { ### if the bootstrapCI is not being used
+            my $dif2 = $ass3 - $ass2;
+            if ( $dif2 < 0 )  { $difscore2 = -1; }
+            if ( $dif2 > 0 )  { $difscore2 = 1; }
+            if ( $dif2 == 0 ) { $difscore2 = 0; }
+        }
+        
         ## F1 > F2 < F3 ## criteria not met
         if ( ( $difscore == 1 ) && ( $difscore2 == 1 ) ) {
             $error++;
@@ -438,12 +605,24 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                    #   -1	M	      okay	M
                                    #   -1	D	      okay	D
                                    #   -1	X	      okay	D
-                                
-                                my $dif1 = $newassemblage[$i] - $oldassemblage[$i];
-                                if ( $dif1 < 0 )  { $difscore = -1; }
-                                if ( $dif1 > 0 )  { $difscore = 1; }
-                                if ( $dif1 == 0 ) { $difscore = 0; }
-
+                                if ($bootstrapCI ) {
+                                    my $upperCI_test = $typeFrequencyUpperCI{ $testAssemblage  }->[$i];
+                                    my $lowerCI_test = $typeFrequencyUpperCI{ $testAssemblage  }->[$i];
+                                    my $upperCI_end = $typeFrequencyUpperCI{ $endAssemblage }->[$i];
+                                    my $lowerCI_end = $typeFrequencyUpperCI{ $endAssemblage }->[$i];
+                                    if ( $upperCI_test < $lowerCI_end )  {
+                                        $difscore = -1;
+                                    } elsif ($lowerCI_test > $upperCI_end ) {
+                                        $difscore = 1;
+                                    } else {
+                                        $difscore = 0;
+                                    }
+                                } else {
+                                    my $dif1 = $newassemblage[$i] - $oldassemblage[$i];
+                                    if ( $dif1 < 0 )  { $difscore = -1; }
+                                    if ( $dif1 > 0 )  { $difscore = 1; }
+                                    if ( $dif1 == 0 ) { $difscore = 0; }
+                                }
                                 $DEBUG and print "\t\t\t\tType $i: - comparison is:  ", $comparison[$i], " a score of: ", $difscore, "\n";
                                  if (   ( $difscore == 1 ) && ( $comparison[$i] =~ "U" ) ) {                                                 #### 1 U
                                     $comparisonMap .= "U";
@@ -720,90 +899,28 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 }    #end of master loop through iterations
 
 
-########################################### DO SOME FILTERING (OR NOT) ####################################
-# now do some weeding. Basically start with the first network that is the largest, and work backwards. Ignore any
-# network that is already represented in the smaller ones since these are trivial (e.g., A->B->C->D alreacy covers
-# A->C->D.) That should then leave all the unique maximum solutions (or so it seems)
-
-## first need to sort the networks by size
-my @filteredarray = ();
-if ( $filterflag == 1 ) {
-    $DEBUG and print "---Filtering solutions so we only end up with the unique ones.\n";
-    $DEBUG and print "----Start with ", scalar(@solutions), " solutions. \n";
-    my $count     = scalar(@solutions)-1;
-    while ($count>-1) {
-         my $exists;
-         my $netcheck = $solutions[$count];
-         #print ref($netcheck),"\n";
-         foreach my $fnetwork (@filteredarray) {
-            #print "loop: ", ref($fnetwork),"\n";
-            if ($netcheck ne $fnetwork) {
-               $exists++; 
-            }
-         }
-         unless ($exists) {
-             push @filteredarray, $netcheck;
-         }
-         $count--;
-    }
-    $DEBUG and print "End with ", scalar(@filteredarray), " solutions.\n";
-    my $filterCount= scalar(@filteredarray);
-    $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
-} elsif ($largestOnly) {
-    @filteredarray = @networks; ## just the largest one
-} else {
-    @filteredarray = @solutions; ### all of the solutions as a default
-}
-
-###########################################  OUTPUT INDIVIDUAL .vcg and .dot FILES ###################
-if ($individualfileoutput) {
-    my $writer = Graph::Writer::VCG->new();
-    $count = 0;
-    my $name;
-    foreach my $network (@filteredarray) {
-        my $E = $network->edges;
-        if ( $E > $maxnumber - 1 ) {
-            $count++;
-            $name = $count . '.vcg';
-            $writer->write_graph( $network, $name );
-        }
-
-        #print Dumper($network);
-    }
-
-    my $writer2 = Graph::Writer::Dot->new();
-    $count = 0;
-    foreach my $network (@filteredarray) {
-        my $V = $network->vertices;
-        if ( $V == $maxEdges ) {
-            $count++;
-            $name = $count . '.dot';
-            $writer2->write_graph( $net, $name );
-        }
-
-        #print Dumper($network);
-    }
-}
 
 ########################################### BOOTSTRAP SECTION ####################################
 #bootrap stuff
 
-$numrows = scalar(@assemblages);
-srand($start);
-my %perror  = ();
-my %pvalue  = ();
-my $results = 0;
-my $loop    = 100;
-my $bigloop = 5;
-my $loop2   = $loop;
-my $ptr1    = 0;
-my $ptr2    = 1;
-my $classes = 0;
 
 # now do ALL the pairwise assemblage comparisons
 # go to sleep and come back later.
 
 if ($bootstrap) {
+        
+    $numrows = scalar(@assemblages);
+    srand($start);
+    %perror  = ();
+    %pvalue  = ();  
+    $results = 0;
+    my $loop    = 100;
+    my $bigloop = 5;
+    my $loop2   = $loop;
+    my $ptr1    = 0;
+    my $ptr2    = 1;
+    $classes = 0;
+
     while ( $ptr1 < $numrows ) {
         while ( $ptr2 < $numrows ) {
 
@@ -866,8 +983,7 @@ if ($bootstrap) {
                         #$rand = ( truly_random_value() % 10000 ) / 10000 ;
                         $rand  = rand;
                         $class = 0;
-                        while (( $class < $index_a )
-                            && ( $rand > $cum_a[$class] ) )
+                        while (( $class < $index_a ) && ( $rand > $cum_a[$class] ) )
                         {
                             $rand -= $cum_a[$class];
                             $class++;
@@ -974,6 +1090,76 @@ if ($bootstrap) {
 
     }
 }
+
+
+########################################### DO SOME FILTERING (OR NOT) ####################################
+# now do some weeding. Basically start with the first network that is the largest, and work backwards. Ignore any
+# network that is already represented in the smaller ones since these are trivial (e.g., A->B->C->D alreacy covers
+# A->C->D.) That should then leave all the unique maximum solutions (or so it seems)
+
+## first need to sort the networks by size
+my @filteredarray = ();
+if ( $filterflag == 1 ) {
+    $DEBUG and print "---Filtering solutions so we only end up with the unique ones.\n";
+    $DEBUG and print "----Start with ", scalar(@solutions), " solutions. \n";
+    my $count     = scalar(@solutions)-1;
+    while ($count>-1) {
+         my $exists;
+         my $netcheck = $solutions[$count];
+         #print ref($netcheck),"\n";
+         foreach my $fnetwork (@filteredarray) {
+            #print "loop: ", ref($fnetwork),"\n";
+            if ($netcheck ne $fnetwork) {
+               $exists++; 
+            }
+         }
+         unless ($exists) {
+             push @filteredarray, $netcheck;
+         }
+         $count--;
+    }
+    $DEBUG and print "End with ", scalar(@filteredarray), " solutions.\n";
+    my $filterCount= scalar(@filteredarray);
+    $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
+} elsif ($largestOnly) {
+    @filteredarray = @networks; ## just the largest one
+} else {
+    @filteredarray = @solutions; ### all of the solutions as a default
+}
+
+###########################################  OUTPUT INDIVIDUAL .vcg and .dot FILES ###################
+if ($individualfileoutput) {
+    my $writer = Graph::Writer::VCG->new();
+    $count = 0;
+    my $name;
+    foreach my $network (@filteredarray) {
+        my $E = $network->edges;
+        if ( $E > $maxnumber - 1 ) {
+            $count++;
+            $name = $count . '.vcg';
+            $writer->write_graph( $network, $name );
+        }
+
+        #print Dumper($network);
+    }
+
+    my $writer2 = Graph::Writer::Dot->new();
+    $count = 0;
+    foreach my $network (@filteredarray) {
+        my $V = $network->vertices;
+        if ( $V == $maxEdges ) {
+            $count++;
+            $name = $count . '.dot';
+            $writer2->write_graph( $net, $name );
+        }
+
+        #print Dumper($network);
+    }
+}
+
+
+
+
 
 ########################################### OUTPUT SECTION ####################################
 $screen and $scr->at(13,1)->puts( "Now printing output file... ");
