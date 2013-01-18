@@ -278,14 +278,10 @@ if ($bootstrapCI) {
             for ( $indexN = 0 ; $indexN < $classes ; $indexN++ ) {
                 $ahat[$indexN] = 0;
             }
-
+            ## count up the classes
             for (@new_assemblage) {
                 $aholder{$_}++;
             }
-            
-            #$DEBUG and print "%aholder\n";
-            #$DEBUG and print Dumper(\%aholder);
-            ##$DEBUG and print "\n\r";
             
             my $classCount=0;
             foreach my $stat (sort @arrayOfStats) {
@@ -295,7 +291,6 @@ if ($bootstrapCI) {
                 $classCount++;
                 ##$DEBUG and print "Current Mean: ", $stat->mean(), " Count:", $stat->count(), "\n";
             }
-
             $loop--;
         }
         my @lowerCI;
@@ -318,7 +313,7 @@ if ($bootstrapCI) {
 ########################################### FIND ALL THE VALID TRIPLES  ####################################
 my $directionstate;
 $numrows = scalar(@assemblages);
-my @nets;
+my @triples;
 my @triplettype;
 my @tripletNames = ();
 my @tripletArray = ();
@@ -451,7 +446,7 @@ while ( my @permu = $permutations->next_combination ) {
         );
         $DEBUG and print "VALID SOLUTION: " . $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ] . " * " . $labels[ $permu[2] ] . "\n";
         $DEBUG and print "VALID SOLUTION: \t  $comparison12\t  ---   $comparison23\n";
-        push @nets, $net;
+        push @triples, $net;
         $numberOfTriplets++;
     }
     $error = 0;
@@ -480,7 +475,7 @@ my $solutionCount=0;   ## an index of the current number of solutions
 
 ### This is just preparing the intial set of threes into the array that will be used as the seed for all future
 ### seriation sets.
-foreach my $n (@nets) {
+foreach my $n (@triples) {
       push @networks, \$n;        ## this is the array of the current successful set
       push @solutions, \$n;      ## This is an array of ALL solutions to date
       $stepSeriationList[ $solutionCount ] = \$n;     ## this is an ordered list of all solutions (order in which found for each step)
@@ -491,11 +486,20 @@ my %seriationStep={};        ## hash of the array of solutions for this step
 
 $seriationStep{$currentMaxSeriationSize}=\@stepSeriationList;  ## add to the list of solutions at this step
 @stepSeriationList=();  ## clear out the step list. 
+my @singleAssemblageNetworks;
+foreach my $label (@labels) {
+   my $net = Graph::Directed->new;
+    $net->add_vertex($label);
+    push @singleAssemblageNetworks, $net;
+}
+
+my @singleAndTripleAssemblages = (@singleAssemblageNetworks, @triples);
 
 while ( $currentMaxSeriationSize < $maxSeriations ) {
     $currentMaxSeriationSize++;
     #my $index    = 0;
     $stepcount++;
+    
     $DEBUG and print "__________________________________________________________________________________________\n";
     $DEBUG and print "Step number:  $currentMaxSeriationSize\n";
     $DEBUG and print "__________________________________________________________________________________________\n";
@@ -882,6 +886,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
       $stepSeriationList[$solutionCount]= $n;  #This is supposed to be an array that keeps track of the solutions by the order they were created (low = small)
       $solutionCount++;
    }
+
    $solutionSum  =  scalar(@solutions);
    @stepSeriationList=();  ## clear the step seriation list so that we can get the next set for the next set of solutions. 
    
@@ -914,183 +919,176 @@ if ($bootstrap) {
     %perror  = ();
     %pvalue  = ();  
     $results = 0;
-    my $loop    = 100;
+    my $loop    = 1000;
     my $bigloop = 5;
     my $loop2   = $loop;
-    my $ptr1    = 0;
-    my $ptr2    = 1;
+
     $classes = 0;
 
-    while ( $ptr1 < $numrows ) {
-        while ( $ptr2 < $numrows ) {
+    my $pairSet = Math::Combinatorics->new( count => 2, data => [@assemblageNumber] );
+    while ( my @pairs = $pairSet->next_combination ) {
 
-            my $stat = Statistics::Descriptive::Full->new();
+        my $stat = new Statistics::PointEstimation;
+            
+        my @a    = @{ $pairs[0]  };
+        my @b    = @{  $pairs[1] };
+        my $numa = $assemblageSize{ $pairs[0] };
+        my $numb = $assemblageSize{ $pairs[1] };
 
-            my @a    = @{ $assemblages[$ptr1] };
-            my @b    = @{ $assemblages[$ptr2] };
-            my $numa = $rowtotals[$ptr1];
-            my $numb = $rowtotals[$ptr2];
+        # calculate the directionality for later
+        my @direction = ();
+        my $num       = scalar(@a);
+        my $c         = 0;
+        for ( $c = 0 ; $c < $num ; $c++ ) {
+            if    ( $a[$c] < $b[$c] ) { push @direction, -1; }
+            elsif ( $a[$c] > $b[$c] ) { push @direction, +1; }
+            else                      { push @direction, 0; }
+        }
 
-            # calculate the directionality for later
-            my @direction = ();
-            my $num       = scalar(@a);
-            my $c         = 0;
-            for ( $c = 0 ; $c < $num ; $c++ ) {
-                if    ( $a[$c] < $b[$c] ) { push @direction, -1; }
-                elsif ( $a[$c] > $b[$c] ) { push @direction, +1; }
-                else                      { push @direction, 0; }
-            }
+        my ( @cum_a, @cum_b, $count );
+        $classes = scalar(@a);
+        my $index_a = 0;
+        my $total_a = 0.0;
+        $count   = 0;
+        for ( $count = 0 ; $count < $classes ; $count++ ) {
+            $cum_a[$index_a] = $a[$count];
+            $total_a += $a[$count];
+            $index_a++;
+        }
+        $classes = scalar(@b);
+        my $index_b = 0;
+        my $total_b = 0.0;
+        $count = 0;
+        for ( $count = 0 ; $count < $classes ; $count++ ) {
+            $cum_b[$index_b] = $b[$count];
+            $total_b += $b[$count];
+            $index_b++;
+        }
 
-            my ( @cum_a, @cum_b, $count );
-            $classes = scalar(@a);
-            my $index_a = 0;
-            my $total_a = 0.0;
-            $count   = 0;
-            for ( $count = 0 ; $count < $classes ; $count++ ) {
-                $cum_a[$index_a] = $a[$count];
-                $total_a += $a[$count];
-                $index_a++;
-            }
-            $classes = scalar(@b);
-            my $index_b = 0;
-            my $total_b = 0.0;
-            $count = 0;
-            for ( $count = 0 ; $count < $classes ; $count++ ) {
-                $cum_b[$index_b] = $b[$count];
-                $total_b += $b[$count];
-                $index_b++;
-            }
+        $index_a--;
+        $index_b--;
 
-            $index_a--;
-            $index_b--;
+        # now we loop 100 times and keep track
+        my $cycle = $bigloop;
+        while ($cycle) {
 
-            # now we loop 100 times and keep track
-            my $cycle = $bigloop;
-            while ($cycle) {
+            #print "($debug) cycle value: $cycle\n";
 
-                #print "($debug) cycle value: $cycle\n";
+            # now we loop 1000 times and resample
+            $loop = $loop2;
+            while ($loop) {
+                my $assemsize = $numa;
+                my @assem_a   = ();
+                my $class;
+                my $total = scalar(@a);
+                my $rand;
+                while ($assemsize) {
 
-                # now we loop 1000 times and resample
-                $loop = $loop2;
-                while ($loop) {
-                    my $assemsize = $numa;
-                    my @assem_a   = ();
-                    my $class;
-                    my $total = scalar(@a);
-                    my $rand;
-                    while ($assemsize) {
-
-                        #$rand = ( truly_random_value() % 10000 ) / 10000 ;
-                        $rand  = rand;
-                        $class = 0;
-                        while (( $class < $index_a ) && ( $rand > $cum_a[$class] ) )
-                        {
-                            $rand -= $cum_a[$class];
-                            $class++;
-                        }
-                        push @assem_a, $class;
-                        $assemsize--;
+                    #$rand = ( truly_random_value() % 10000 ) / 10000 ;
+                    $rand  = rand;
+                    $class = 0;
+                    while (( $class < $index_a ) && ( $rand > $cum_a[$class] ) )
+                    {
+                        $rand -= $cum_a[$class];
+                        $class++;
                     }
-
-                    $assemsize = $numb;
-                    my @assem_b   = ();
-                    $total = scalar(@b);
-                    while ($assemsize) {
-
-                        #$rand = ( truly_random_value() % 10000 ) / 10000 ;
-                        $rand  = rand;
-                        $class = 0;
-                        while (( $class < $index_b )
-                            && ( $rand > $cum_b[$class] ) )
-                        {
-                            $rand -= $cum_b[$class];
-                            $class++;
-                        }
-                        push @assem_b, $class;
-                        $assemsize--;
-                    }
-
-                    my ( @ahat, @bhat, %aholder, %bholder );
-                    %aholder = ();
-                    %bholder = ();
-                    my $index = 0;
-
-                    for ( $index = 0 ; $index < $cols ; $index++ ) {
-                        $ahat[$index] = 0;
-                        $bhat[$index] = 0;
-                    }
-
-                    for (@assem_a) {
-                        $aholder{$_}++;
-                    }
-
-                    for (@assem_b) {
-                        $bholder{$_}++;
-                    }
-
-                    for ( keys %aholder ) {
-                        $ahat[$_] = ( $aholder{$_} / $numa );
-                    }
-
-                    for ( keys %bholder ) {
-                        $bhat[$_] = ( $bholder{$_} / $numb );
-                    }
-
-                    # calculate the directionality for later
-                    my @dir = ();
-                    my $num = scalar(@ahat);
-                    my $c   = 0;
-                    for ( $c = 0 ; $c < $num ; $c++ ) {
-                        $bootstrapdebug and print "loop $loop ", $ahat[$c] - $bhat[$c], "\t";
-                        if    ( $ahat[$c] < $bhat[$c] ) { push @dir, -1; }
-                        elsif ( $ahat[$c] > $bhat[$c] ) { push @dir, +1; }
-                        else                            { push @dir, 0; }
-                    }
-                    $bootstrapdebug and print "\n";
-
-                    # compare the two sets of results
-                    $num = scalar(@dir);
-                    $c   = 0;
-                    my $diff = 0;
-                    for ( $c = 0 ; $c < $num ; $c++ ) {
-                        $bootstrapdebug and print "loop $loop ", $direction[$c], "/",
-                          $dir[$c], "\t";
-                        if ( $direction[$c] == $dir[$c] ) { next; }
-                        $diff++;
-                    }
-                    $bootstrapdebug and print "\n";
-                    if ( $diff == 0 ) { $results++; }
-
-                    $loop--;
+                    push @assem_a, $class;
+                    $assemsize--;
                 }
 
-                #print "Results:  $results matches of $loop2 trials\n";
-                #print "Probability: ", $results / $loop2, "\n";
+                $assemsize = $numb;
+                my @assem_b   = ();
+                $total = scalar(@b);
+                while ($assemsize) {
 
-                $stat->add_data( $results / $loop2 );
-                $cycle--;
+                    #$rand = ( truly_random_value() % 10000 ) / 10000 ;
+                    $rand  = rand;
+                    $class = 0;
+                    while (( $class < $index_b )
+                        && ( $rand > $cum_b[$class] ) )
+                    {
+                        $rand -= $cum_b[$class];
+                        $class++;
+                    }
+                    push @assem_b, $class;
+                    $assemsize--;
+                }
 
-                $results = 0;
+                my ( @ahat, @bhat, %aholder, %bholder );
+                %aholder = ();
+                %bholder = ();
+                my $index = 0;
+
+                for ( $index = 0 ; $index < $cols ; $index++ ) {
+                    $ahat[$index] = 0;
+                    $bhat[$index] = 0;
+                }
+
+                for (@assem_a) {
+                    $aholder{$_}++;
+                }
+
+                for (@assem_b) {
+                    $bholder{$_}++;
+                }
+
+                for ( keys %aholder ) {
+                    $ahat[$_] = ( $aholder{$_} / $numa );
+                }
+
+                for ( keys %bholder ) {
+                    $bhat[$_] = ( $bholder{$_} / $numb );
+                }
+
+                # calculate the directionality for later
+                my @dir = ();
+                my $num = scalar(@ahat);
+                my $c   = 0;
+                for ( $c = 0 ; $c < $num ; $c++ ) {
+                    $bootstrapdebug and print "loop $loop ", $ahat[$c] - $bhat[$c], "\t";
+                    if    ( $ahat[$c] < $bhat[$c] ) { push @dir, -1; }
+                    elsif ( $ahat[$c] > $bhat[$c] ) { push @dir, +1; }
+                    else                            { push @dir, 0; }
+                }
+                $bootstrapdebug and print "\n";
+
+                # compare the two sets of results
+                $num = scalar(@dir);
+                $c   = 0;
+                my $diff = 0;
+                for ( $c = 0 ; $c < $num ; $c++ ) {
+                    $bootstrapdebug and print "loop $loop ", $direction[$c], "/",
+                      $dir[$c], "\t";
+                    if ( $direction[$c] == $dir[$c] ) { next; }
+                    $diff++;
+                }
+                $bootstrapdebug and print "\n";
+                if ( $diff == 0 ) { $results++; }
+
+                $loop--;
             }
-            my $label1 = $labels[$ptr1] . "-" . $labels[$ptr2];
-            my $label2 = $labels[$ptr2] . "-" . $labels[$ptr1];
-            $pvalue{$label1} = $stat->mean();
-            $perror{$label1} = $stat->standard_deviation();
-            $pvalue{$label2} = $stat->mean();
-            $perror{$label2} = $stat->standard_deviation();
-            $DEBUG and print $labels[$ptr1], "\t", $labels[$ptr2], "\t";
-            $DEBUG and print $stat->mean(), "\t";
-            $DEBUG and print $stat->standard_deviation(), "\n";
 
-            undef $stat;
-            $ptr2++;
+            #print "Results:  $results matches of $loop2 trials\n";
+            #print "Probability: ", $results / $loop2, "\n";
+
+            $stat->add_data( $results / $loop2 );
+            $cycle--;
+
+            $results = 0;
         }
-        $ptr1++;
-        $ptr2 = $ptr1 + 1;
 
+        $pvalue{$pairs[0]} = $stat->mean();
+        $perror{$pairs[0]} = $stat->standard_deviation();
+        $pvalue{$pairs[1]} = $stat->mean();
+        $perror{$pairs[1]} = $stat->standard_deviation();
+        $DEBUG and print $pairs[0], "\t", $pairs[0], "\t";
+        $DEBUG and print $stat->mean(), "\t";
+        $DEBUG and print $stat->standard_deviation(), "\n";
+
+        undef $stat;
     }
-}
 
+}
 
 ########################################### DO SOME FILTERING (OR NOT) ####################################
 # now do some weeding. Basically start with the first network that is the largest, and work backwards. Ignore any
