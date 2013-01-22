@@ -13,6 +13,7 @@ use Array::Utils qw(:all);
 use Statistics::Descriptive;
 use Statistics::PointEstimation;
 require Term::Screen;
+use List::MoreUtils qw/ uniq /;
 
 my $debug      = 0;
 my $filterflag = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
@@ -111,6 +112,7 @@ $screen and $scr->at(2,1)->puts("Threshold: $threshold");
 ## Read in the data
 # the input of the classes -- note these are absolute counts, not frequencies
 # might want to change that...\
+$screen and $scr->at(1,40)->puts("STEP: Read in data...");
 my $typecount;
 while (<INFILE>) {
     #print;
@@ -161,7 +163,7 @@ $screen and $scr->puts("Maximum possible seriation solution length: $count");
 ## of solutions.
 ##
 ## Precalculate all of the max differences between types in assembalge pairs. 
-
+$screen and $scr->at(1,40)->puts("STEP: Calculate thresholds....");
 my %assemblageComparison = ( "pairname" => 0 );
 
 ## We use the Math::Combinatorics to get all the combinations of 2
@@ -202,6 +204,7 @@ my %typeFrequencyUpperCI = ();
 # go to sleep and come back later.
 
 if ($bootstrapCI) {
+    $screen and $scr->at(1,40)->puts("STEP: Bootstrap CIs...        ");
     my $countup=0;
     ## for each assemblage
     $DEBUG and print "Calculating bootstrap confidence intervals\n\r";
@@ -209,16 +212,9 @@ if ($bootstrapCI) {
     
     foreach my $currentLabel ( sort keys %assemblageFrequencies) {
         my $label = $labels[$countup];
-        ##$DEBUG and print "Working on assemblage: $currentLabel \n";
-        my @a =  $assemblageFrequencies{ $currentLabel };
-        ##print Dumper(@a);
-        ##$DEBUG and print "Classes: ", $typecount, "\n\r";
-        
+        my @a =  $assemblageFrequencies{ $currentLabel };    
         my $currentAssemblageSize = $assemblageSize{ $currentLabel };
-        ##$DEBUG and print "Assemblage Size:", $currentAssemblageSize, "\n\r";
-       
-       #print $a[0][0], "\t", $a[0][1], "\t", $a[2], "\t", $a[3], "\n";
-        
+            
         ## create an array of stats objects - one for each type
         my @arrayOfStats = ();
         my $stat;   ## this will be the stat objects
@@ -249,9 +245,6 @@ if ($bootstrapCI) {
                 $total += $a[0][$count];            ## should ultimate equal 100
                 $index++;                        ## index should be total # of types at end
             }
-            #$DEBUG  and print "Cumulate: ";
-            #$DEBUG and print Dumper(@cumulate);
-            #$DEBUG and print "\n\r";
             ## now build the assemblages of the same size.
             my $rand;
             while ($assemsize) {
@@ -268,8 +261,6 @@ if ($bootstrapCI) {
                 $assemsize--;
             }
             ## this should result in a new assemblage of the same size
-            #$DEBUG and print Dumper (\@new_assemblage);
-            #$DEBUG and print "\n\r------------------\n\r";
             my ( @ahat, %aholder, %bholder );
             %aholder = ();
             
@@ -285,12 +276,10 @@ if ($bootstrapCI) {
             
             my $classCount=0;
             foreach my $stat (sort @arrayOfStats) {
-                ##$DEBUG and print "Current class: $classCount\n";
                 my $results = $aholder{ $classCount };
                 $stat->add_data($results / $currentAssemblageSize);
                 $classCount++;
-                ##$DEBUG and print "Current Mean: ", $stat->mean(), " Count:", $stat->count(), "\n";
-            }
+             }
             $loop--;
         }
         my @lowerCI;
@@ -303,10 +292,7 @@ if ($bootstrapCI) {
         $typeFrequencyUpperCI{ $label } = \@upperCI;
         $results = 0;
         $countup++;
-    }
-    ##print Dumper(\%typeFrequencyLowerCI);
-    ##print Dumper(\%typeFrequencyUpperCI);
-    
+    }    
 }
 
 
@@ -325,11 +311,10 @@ my $numberOfTriplets;
 
 ## This uses the Math::Combinatorics to create all the permutations of 3. This is the simplest solution programmatically
 ## Why recreate the wheel? Use Perl!
-
+$screen and $scr->at(1,40)->puts("STEP: Find valid triples....      ");
 my $permutations =Math::Combinatorics->new( count => 3, data => [@assemblageNumber] );
 
 while ( my @permu = $permutations->next_combination ) {
-    #$DEBUG and print $labels[ $permu[0] ] . " * ". $labels[ $permu[1] ] . " * ". $labels[ $permu[2] ] . "\n";
     my $tripletname = $labels[ $permu[0] ] . " * ". $labels[ $permu[1] ] . " * ". $labels[ $permu[2] ];
     $comparison12 = "";
     $comparison23 = "";
@@ -341,9 +326,7 @@ while ( my @permu = $permutations->next_combination ) {
         my $ass1 = $assemblages[ $permu[0] ][$i];
         my $ass2 = $assemblages[ $permu[1] ][$i];
         my $ass3 = $assemblages[ $permu[2] ][$i];
-        #$DEBUG and print "TESTING:  ". $ass1. "-" . $ass2 . "-" . $ass3 . "\n";
-
-        
+         
         ## first compare assemblages 1 and 2
         if ($bootstrapCI ) {
             my $upperCI_1 = $typeFrequencyUpperCI{ $labels[ $permu[0] ] }->[$i];
@@ -458,6 +441,8 @@ while ( my @permu = $permutations->next_combination ) {
 my @array = ();
 ## now go through all of the assemblages and each one to the top and bottom of the triplets to see if they fit.
 ## if they do, add them to the network
+
+$screen and $scr->at(1,40)->puts("STEP: Main seriation sorting... ");
 
 #my $currentMaxSeriations = 3;
 my $currentMaxSeriationSize = 3;
@@ -913,7 +898,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 # go to sleep and come back later.
 
 if ($bootstrap) {
-        
+    $screen and $scr->at(1,40)->puts("STEP: Bootstrap pairs...        ");  
     $numrows = scalar(@assemblages);
     srand($start);
     %perror  = ();
@@ -1098,6 +1083,7 @@ if ($bootstrap) {
 ## first need to sort the networks by size
 my @filteredarray = ();
 if ( $filterflag == 1 ) {
+    $screen and $scr->at(1,40)->puts("STEP: Filter to get uniques... ");
     $DEBUG and print "---Filtering solutions so we only end up with the unique ones.\n";
     $DEBUG and print "----Start with ", scalar(@solutions), " solutions. \n";
     my $count     = scalar(@solutions)-1;
@@ -1120,6 +1106,7 @@ if ( $filterflag == 1 ) {
     my $filterCount= scalar(@filteredarray);
     $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
 } elsif ($largestOnly) {
+    print "\n\rNow going to print just the largest network out of a pool of ", scalar(@networks), "\n\r";
     @filteredarray = @networks; ## just the largest one
 } else {
     @filteredarray = @solutions; ### all of the solutions as a default
@@ -1127,6 +1114,7 @@ if ( $filterflag == 1 ) {
 
 ###########################################  OUTPUT INDIVIDUAL .vcg and .dot FILES ###################
 if ($individualfileoutput) {
+    $screen and $scr->at(1,40)->puts("STEP: Individual file output  ");
     my $writer = Graph::Writer::VCG->new();
     $count = 0;
     my $name;
@@ -1161,11 +1149,12 @@ if ($individualfileoutput) {
 
 ########################################### OUTPUT SECTION ####################################
 $screen and $scr->at(13,1)->puts( "Now printing output file... ");
-
+    $screen and $scr->at(1,40)->puts("STEP: Output files...         ");
 print OUTFILE "*Node data\n";
 print OUTDOTFILE "graph seriation \n{\n";
 print OUTDOTFILE "\n/* list of nodes */\n";
 $count = 0;
+$screen and $scr->at(1,40)->puts("STEP: Printing list of nodes....     ");
 foreach my $l (@labels) {
     print OUTFILE $l, "\n";
     print OUTDOTFILE "\"".$l."\";\n";
@@ -1173,35 +1162,23 @@ foreach my $l (@labels) {
 print OUTFILE "*Tie data\n";
 print OUTFILE "From To Edge Weight Network pValue pError\n";
 
+$screen and $scr->at(1,40)->puts("STEP: Eliminating duplicates...     ");
+my @uniqueArray = uniq @filteredarray;
 
-my @uniqueArray;
-foreach my $compareNetwork (@filteredarray) {
-    my $exists = 0;
-
-    if (ref($compareNetwork) eq "REF") {
-      $compareNetwork = $$compareNetwork;
-    }
-    foreach my $uarray (@uniqueArray) {
-      if (ref($uarray) eq "REF"){
-         $uarray = $$uarray;
-      }
-        if ( $compareNetwork eq $uarray ) {
-            $exists++;
-        }
-    }
-    if ( !$exists ) {
-        push @uniqueArray, $compareNetwork;
-    }
-}
-
+$screen and $scr->at(1,40)->puts("STEP: Printing edges...     ");
 print OUTDOTFILE "\n/* list of edges */\n";
-
+$count =0;
 ## only print unique ones...
 foreach my $network (@uniqueArray) {
+
    if (ref($network) eq "REF") {
       $network = $$network;
    }
     $count++;
+     
+    $screen and $scr->at(14,1)->puts( "Now on solution: ");
+    $screen and $scr->at(14,18)->puts($count);
+       
     my $E = $network->edges;
     if ($largestOnly) {
         if ( $E == $maxEdges ) {
@@ -1217,7 +1194,7 @@ foreach my $network (@uniqueArray) {
                 print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
             }
-            print OUTFILE "---------------------------\n";
+            #print OUTFILE "---------------------------\n";
 
         }
     } else {
@@ -1233,7 +1210,7 @@ foreach my $network (@uniqueArray) {
             print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
         }
-          print OUTFILE "---------------------------\n";
+          #print OUTFILE "---------------------------\n";
     }
    
 }
