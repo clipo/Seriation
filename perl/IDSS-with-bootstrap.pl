@@ -13,6 +13,7 @@ use Array::Utils qw(:all);
 use Statistics::Descriptive;
 use Statistics::PointEstimation;
 require Term::Screen;
+use List::MoreUtils qw/ uniq /;
 
 my $debug      = 0;
 my $filterflag = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
@@ -28,6 +29,7 @@ my $bootstrapdebug = 0;
 my $threshold      = 0;
 my $noscreen        = 0;     ## flag for screen output
 my $excel          = 0;       ## flag for excel file output (not implemented yet)
+my $xyfile = "";
 
 # process command line options; if none, print a usage/help message.
 # note - manual page for explaining the options, what they do, and how to use them
@@ -47,6 +49,7 @@ GetOptions(
     'excel'          => \$excel,
     'threshold=f'      => \$threshold,
     'noscreen'         => \$noscreen,
+    'xyfile=s'           => \$xyfile,
     man              => \$man
 ) or pod2usage(2);
 
@@ -65,6 +68,7 @@ if ($DEBUG) {
     print "threshold is currently set to: $threshold\n";
     print "noscreen: ", $noscreen, "\n";
     print "excel:  ", $excel, "\n";
+    print "xyfile: ", $xyfile,"\n";
 }
 
 # start the clock to track how long this run takes
@@ -111,6 +115,7 @@ $screen and $scr->at(2,1)->puts("Threshold: $threshold");
 ## Read in the data
 # the input of the classes -- note these are absolute counts, not frequencies
 # might want to change that...\
+$screen and $scr->at(1,40)->puts("STEP: Read in data...");
 my $typecount;
 while (<INFILE>) {
     #print;
@@ -151,6 +156,43 @@ my $maxSeriations = $count;
 $screen and $scr->at(3,1);
 $screen and $scr->puts("Maximum possible seriation solution length: $count");
 
+#######################################XY File####################################################################
+## if you want to characterize or sort by cluster distance, provide a file with X Y coordiantes for each assemblage
+##
+##
+my %xAssemblage;
+my %yAssemblage;
+my @xyAssemblages;
+my %distanceBetweenAssemblages;
+
+if ($xyfile) {
+   ## open the xy file
+   open( INFILE, $xyfile ) or die "Cannot open XY File: $xyfile.\n";
+   $screen and $scr->at(1,40)->puts("STEP: Read in XY data...");
+   my $typecount;
+   while (<INFILE>) {
+      chomp;
+    my @line = split /\s+/, $_;
+    my $label = shift @line;
+    if ($label) {
+        push @xyAssemblages, $label;
+        $xAssemblage{ $label } = $line[0];
+        $yAssemblage{ $label } = $line[1];
+      }
+   }
+   ## We use the Math::Combinatorics to get all the combinations of 2
+   my $assemblagePairs = Math::Combinatorics->new( count => 2, data => [@xyAssemblages] );
+   ## Go through all of the combinations
+   while ( my @combo = $assemblagePairs->next_combination ) {
+      my $pairname      = $combo[0]. "*" .$combo[1];
+      my $pairname2      = $combo[1]. "*" .$combo[0];
+      my $distance = sqrt( ($xAssemblage{ $combo[0] } -$xAssemblage{$combo[1]})**2 + ($yAssemblage{$combo[0]} -$yAssemblage{$combo[1]})**2) ;
+      $distanceBetweenAssemblages{ $pairname }= $distance;
+      $distanceBetweenAssemblages{ $pairname2 }= $distance;
+      #print "pairname: $pairname: ", $distance, "\n\r";
+   }
+}
+
 
 #############################################  THRESHOLD DETERMINATION ####################################
 ## first compare each assemblage and see if the threshold is exceeded.
@@ -161,7 +203,7 @@ $screen and $scr->puts("Maximum possible seriation solution length: $count");
 ## of solutions.
 ##
 ## Precalculate all of the max differences between types in assembalge pairs. 
-
+$screen and $scr->at(1,40)->puts("STEP: Calculate thresholds....");
 my %assemblageComparison = ( "pairname" => 0 );
 
 ## We use the Math::Combinatorics to get all the combinations of 2
@@ -202,6 +244,7 @@ my %typeFrequencyUpperCI = ();
 # go to sleep and come back later.
 
 if ($bootstrapCI) {
+    $screen and $scr->at(1,40)->puts("STEP: Bootstrap CIs...        ");
     my $countup=0;
     ## for each assemblage
     $DEBUG and print "Calculating bootstrap confidence intervals\n\r";
@@ -209,16 +252,9 @@ if ($bootstrapCI) {
     
     foreach my $currentLabel ( sort keys %assemblageFrequencies) {
         my $label = $labels[$countup];
-        ##$DEBUG and print "Working on assemblage: $currentLabel \n";
-        my @a =  $assemblageFrequencies{ $currentLabel };
-        ##print Dumper(@a);
-        ##$DEBUG and print "Classes: ", $typecount, "\n\r";
-        
+        my @a =  $assemblageFrequencies{ $currentLabel };    
         my $currentAssemblageSize = $assemblageSize{ $currentLabel };
-        ##$DEBUG and print "Assemblage Size:", $currentAssemblageSize, "\n\r";
-       
-       #print $a[0][0], "\t", $a[0][1], "\t", $a[2], "\t", $a[3], "\n";
-        
+            
         ## create an array of stats objects - one for each type
         my @arrayOfStats = ();
         my $stat;   ## this will be the stat objects
@@ -249,9 +285,6 @@ if ($bootstrapCI) {
                 $total += $a[0][$count];            ## should ultimate equal 100
                 $index++;                        ## index should be total # of types at end
             }
-            #$DEBUG  and print "Cumulate: ";
-            #$DEBUG and print Dumper(@cumulate);
-            #$DEBUG and print "\n\r";
             ## now build the assemblages of the same size.
             my $rand;
             while ($assemsize) {
@@ -268,8 +301,6 @@ if ($bootstrapCI) {
                 $assemsize--;
             }
             ## this should result in a new assemblage of the same size
-            #$DEBUG and print Dumper (\@new_assemblage);
-            #$DEBUG and print "\n\r------------------\n\r";
             my ( @ahat, %aholder, %bholder );
             %aholder = ();
             
@@ -285,12 +316,10 @@ if ($bootstrapCI) {
             
             my $classCount=0;
             foreach my $stat (sort @arrayOfStats) {
-                ##$DEBUG and print "Current class: $classCount\n";
                 my $results = $aholder{ $classCount };
                 $stat->add_data($results / $currentAssemblageSize);
                 $classCount++;
-                ##$DEBUG and print "Current Mean: ", $stat->mean(), " Count:", $stat->count(), "\n";
-            }
+             }
             $loop--;
         }
         my @lowerCI;
@@ -303,10 +332,7 @@ if ($bootstrapCI) {
         $typeFrequencyUpperCI{ $label } = \@upperCI;
         $results = 0;
         $countup++;
-    }
-    ##print Dumper(\%typeFrequencyLowerCI);
-    ##print Dumper(\%typeFrequencyUpperCI);
-    
+    }    
 }
 
 
@@ -325,11 +351,10 @@ my $numberOfTriplets;
 
 ## This uses the Math::Combinatorics to create all the permutations of 3. This is the simplest solution programmatically
 ## Why recreate the wheel? Use Perl!
-
+$screen and $scr->at(1,40)->puts("STEP: Find valid triples....      ");
 my $permutations =Math::Combinatorics->new( count => 3, data => [@assemblageNumber] );
 
 while ( my @permu = $permutations->next_combination ) {
-    #$DEBUG and print $labels[ $permu[0] ] . " * ". $labels[ $permu[1] ] . " * ". $labels[ $permu[2] ] . "\n";
     my $tripletname = $labels[ $permu[0] ] . " * ". $labels[ $permu[1] ] . " * ". $labels[ $permu[2] ];
     $comparison12 = "";
     $comparison23 = "";
@@ -341,9 +366,7 @@ while ( my @permu = $permutations->next_combination ) {
         my $ass1 = $assemblages[ $permu[0] ][$i];
         my $ass2 = $assemblages[ $permu[1] ][$i];
         my $ass3 = $assemblages[ $permu[2] ][$i];
-        #$DEBUG and print "TESTING:  ". $ass1. "-" . $ass2 . "-" . $ass3 . "\n";
-
-        
+         
         ## first compare assemblages 1 and 2
         if ($bootstrapCI ) {
             my $upperCI_1 = $typeFrequencyUpperCI{ $labels[ $permu[0] ] }->[$i];
@@ -459,6 +482,8 @@ my @array = ();
 ## now go through all of the assemblages and each one to the top and bottom of the triplets to see if they fit.
 ## if they do, add them to the network
 
+$screen and $scr->at(1,40)->puts("STEP: Main seriation sorting... ");
+
 #my $currentMaxSeriations = 3;
 my $currentMaxSeriationSize = 3;
 
@@ -483,9 +508,6 @@ foreach my $n (@triples) {
 }
 my $solutionSum = scalar(@networks);  ## number of solutions to this point (which is equal to all 3s);
 my %seriationStep={};        ## hash of the array of solutions for this step
-
-$seriationStep{$currentMaxSeriationSize}=\@stepSeriationList;  ## add to the list of solutions at this step
-@stepSeriationList=();  ## clear out the step list. 
 
 while ( $currentMaxSeriationSize < $maxSeriations ) {
     $currentMaxSeriationSize++;
@@ -515,7 +537,8 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
         foreach my $testAssemblage (@labels) {
             $DEBUG  and print "\t\tChecking assemblage: ", $testAssemblage, " to see if it fits on the end of the current solution.\n";
             $DEBUG  and print "\t\tFirst check to see if it is included already. If it has, move on.\n";
-            if ( ! $nnetwork->has_vertex($testAssemblage) ) {
+            my $vTest= $nnetwork->has_vertex($testAssemblage);
+            if ( !$vTest) {
                 # get the exterior vertices (should be 2)
                 my @V = $nnetwork->vertices;    ## list of all the vertices
                 $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices \n";
@@ -837,7 +860,6 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                   and print "\t\t\t\tType $i:  Error so far $error\n\r\n\r";
                             }
                         }
-                        
                         if ( !$error)  {
                             $DEBUG and print "--------------------------------------------------\n\r\n\r";
                             $DEBUG and print "Original network: ", $$network, "\n\r";
@@ -904,7 +926,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 # go to sleep and come back later.
 
 if ($bootstrap) {
-        
+    $screen and $scr->at(1,40)->puts("STEP: Bootstrap pairs...        ");  
     $numrows = scalar(@assemblages);
     srand($start);
     %perror  = ();
@@ -1089,15 +1111,15 @@ if ($bootstrap) {
 ## first need to sort the networks by size
 my @filteredarray = ();
 if ( $filterflag == 1 ) {
-    ##$DEBUG and
-    print "\n\r---Filtering solutions so we only end up with the unique ones.\n\r";
-    ### $DEBUG and
-    print "\n\r---Start with ", scalar(@solutions ), " solutions. \n\r";
+
+    $screen and $scr->at(1,40)->puts("STEP: Filter to get uniques... ");
+    $DEBUG and print "---Filtering solutions so we only end up with the unique ones.\n";
+    $DEBUG and print "----Start with ", scalar(@solutions), " solutions. \n";
 
    foreach my $fnetwork (reverse sort( keys %stepSeriationList )) {
       #print "fnetwork: ", $stepSeriationList{ $fnetwork }, "\n\r";
       my $exists=0;
-      my $f = $stepSeriationList{ $fnetwork};
+      my $f = $stepSeriationList{ $fnetwork };
       ##print "F: ", $$f, "\n\r";
       foreach my $tnetwork (@filteredarray) {
          #print "tnetwork: ", $stepSeriationList{ $tnetwork} , "\n\r";
@@ -1118,6 +1140,7 @@ if ( $filterflag == 1 ) {
     my $filterCount= scalar(@filteredarray);
     $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
 } elsif ($largestOnly) {
+    print "\n\rNow going to print just the largest network out of a pool of ", scalar(@networks), "\n\r";
     @filteredarray = @networks; ## just the largest one
 } else {
     @filteredarray = @solutions; ### all of the solutions as a default
@@ -1125,6 +1148,7 @@ if ( $filterflag == 1 ) {
 
 ###########################################  OUTPUT INDIVIDUAL .vcg and .dot FILES ###################
 if ($individualfileoutput) {
+    $screen and $scr->at(1,40)->puts("STEP: Individual file output  ");
     my $writer = Graph::Writer::VCG->new();
     $count = 0;
     my $name;
@@ -1159,51 +1183,55 @@ if ($individualfileoutput) {
 
 ########################################### OUTPUT SECTION ####################################
 $screen and $scr->at(13,1)->puts( "Now printing output file... ");
-
+    $screen and $scr->at(1,40)->puts("STEP: Output files...         ");
 print OUTFILE "*Node data\n";
 print OUTDOTFILE "graph seriation \n{\n";
 print OUTDOTFILE "\n/* list of nodes */\n";
 $count = 0;
+$screen and $scr->at(1,40)->puts("STEP: Printing list of nodes....     ");
 foreach my $l (@labels) {
     print OUTFILE $l, "\n";
     print OUTDOTFILE "\"".$l."\";\n";
 }
 print OUTFILE "*Tie data\n";
-print OUTFILE "From To Edge Weight Network pValue pError\n";
+print OUTFILE "From To Edge Weight Network pValue pError meanSolutionDistance\n";
 
+$screen and $scr->at(1,40)->puts("STEP: Eliminating duplicates...     ");
+my @uniqueArray = uniq @filteredarray;
 
-my @uniqueArray;
-foreach my $compareNetwork (@filteredarray) {
-    my $exists = 0;
-
-    if (ref($compareNetwork) eq "REF") {
-      $compareNetwork = $$compareNetwork;
-    }
-    foreach my $uarray (@uniqueArray) {
-      if (ref($uarray) eq "REF"){
-         $uarray = $$uarray;
-      }
-        if ( $compareNetwork eq $uarray ) {
-            $exists++;
-        }
-    }
-    if ( !$exists ) {
-        push @uniqueArray, $compareNetwork;
-    }
-}
-
+$screen and $scr->at(1,40)->puts("STEP: Printing edges...     ");
 print OUTDOTFILE "\n/* list of edges */\n";
-
+$count =0;
 ## only print unique ones...
 foreach my $network (@uniqueArray) {
+
    if (ref($network) eq "REF") {
       $network = $$network;
    }
     $count++;
+     
+    $screen and $scr->at(14,1)->puts( "Now on solution: ");
+    $screen and $scr->at(14,18)->puts($count);
+    my $eCount;   
     my $E = $network->edges;
     if ($largestOnly) {
         if ( $E == $maxEdges ) {
+            my $groupDistance=0;
             my @Edges = $network->unique_edges;
+            my $meanDistance=0.0;
+            my $eCount=0;
+            if ($xyfile) {
+               foreach my $e (@Edges) {
+                  my $edge0 = @$e[0];
+                  my $edge1 = @$e[1];
+                  my $pairname= $edge0."*".$edge1;
+                  $groupDistance += $distanceBetweenAssemblages{ $pairname };
+                  #print "\n\rGroup Distance for: ", $pairname, ":", $distanceBetweenAssemblages{ $pairname },"\n\r";
+                  $eCount++;
+               }
+               $meanDistance = $groupDistance/$eCount;      ## use the average for the group for now
+               ###         print "Mean distance for this group is: ", $meanDistance, "\n\r";
+            }
             foreach my $e (@Edges) {
                my $edge0 = @$e[0];
                my $edge1 = @$e[1];
@@ -1212,14 +1240,30 @@ foreach my $network (@uniqueArray) {
                     $pvalue{ @$e[0] . "-" . @$e[1] } = 0.0;
                 }
                 print OUTFILE @$e[0], " ", @$e[1], ", 1, ", scalar(@Edges), ", ", $count, ", ";
-                print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
+                print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, ", ", $groupDistance, "\n";
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
             }
             #print OUTFILE "---------------------------\n";
 
         }
     } else {
-        my @Edges = $network->unique_edges;
+      my @Edges = $network->unique_edges;
+      
+      my $groupDistance=0;
+      my $meanDistance=0.0;
+      my $eCount=0;
+      if ($xyfile) {
+         foreach my $e (@Edges) {
+            my $edge0 = @$e[0];
+            my $edge1 = @$e[1];
+            my $pairname= $edge0."*".$edge1;
+            $groupDistance += $distanceBetweenAssemblages{ $pairname };
+            ## print "\n\rGroup Distance for: ", $pairname, ":", $distanceBetweenAssemblages{ $pairname },"\n\r";
+            $eCount++;
+         }
+         my $meanDistance = $groupDistance/$eCount;         ##use the average distance as the metric
+         ### print "Mean distance for this group is: ", $meanDistance, "\n\r";
+      }
         foreach my $e (@Edges) {
                my $edge0 = @$e[0];
                my $edge1 = @$e[1];
@@ -1228,7 +1272,7 @@ foreach my $network (@uniqueArray) {
                 $pvalue { @$e[0] . "-" . @$e[1] } = 0.0;
             }
             print OUTFILE @$e[0], " ", @$e[1], ", 1, ", scalar(@Edges), ", ", $count, ", ";
-            print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, "\n";
+            print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, ", ", $groupDistance, "\n";
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
         }
           #print OUTFILE "---------------------------\n";
