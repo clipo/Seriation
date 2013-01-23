@@ -31,6 +31,20 @@ my $noscreen        = 0;     ## flag for screen output
 my $excel          = 0;       ## flag for excel file output (not implemented yet)
 my $xyfile = "";
 
+## find the largest valuein a hash
+sub largest_value_mem (\%) {
+    my $hash   = shift;
+    my ($key, @keys) = keys   %$hash;
+    my ($big, @vals) = values %$hash;
+
+    for (0 .. $#keys) {
+        if ($vals[$_] > $big) {
+            $big = $vals[$_];
+            $key = $keys[$_];
+        }
+    }
+    $key
+}
 # process command line options; if none, print a usage/help message.
 # note - manual page for explaining the options, what they do, and how to use them
 # is at the bottom of this file in simple POD format.
@@ -163,6 +177,8 @@ $screen and $scr->puts("Maximum possible seriation solution length: $count");
 my %xAssemblage;
 my %yAssemblage;
 my @xyAssemblages;
+my $largestX=0;
+my $largestY=0;
 my %distanceBetweenAssemblages;
 
 if ($xyfile) {
@@ -192,7 +208,11 @@ if ($xyfile) {
       $distanceBetweenAssemblages{ $pairname2 }= $distance;
       #print "pairname: $pairname: ", $distance, "\n\r";
    }
+   
+   $largestX = largest_value_mem(%xAssemblage);
+   $largestY = largest_value_mem(%yAssemblage);
 }
+
 
 
 #############################################  THRESHOLD DETERMINATION ####################################
@@ -1194,7 +1214,7 @@ $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes....     ");
 foreach my $l (@labels) {
     ##print OUTFILE $l, "\n";
     my $x = $xAssemblage{ $l }/1000000 || 0;
-    my $y = $yAssemblage{ $l }/100000 || 0;
+    my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
     print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
     #print OUTDOTFILE "\"".$l."\";\n";
 }
