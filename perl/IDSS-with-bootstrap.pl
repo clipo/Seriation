@@ -176,8 +176,9 @@ if ($xyfile) {
     my $label = shift @line;
     if ($label) {
         push @xyAssemblages, $label;
-        $xAssemblage{ $label } = $line[0];
-        $yAssemblage{ $label } = $line[1];
+        ### note: this is made for UTMs -- which are listed as Northing/Easting. So Y is first -- X is second...
+        $yAssemblage{ $label } = $line[0];
+        $xAssemblage{ $label } = $line[1];
       }
    }
    ## We use the Math::Combinatorics to get all the combinations of 2
@@ -1185,14 +1186,29 @@ if ($individualfileoutput) {
 $screen and $scr->at(13,1)->puts( "Now printing output file... ");
     $screen and $scr->at(1,40)->puts("STEP: Output files...         ");
 print OUTFILE "*Node data\n";
+print OUTFILE "ID AssemblageSize X Y \n";
 print OUTDOTFILE "graph seriation \n{\n";
 print OUTDOTFILE "\n/* list of nodes */\n";
 $count = 0;
 $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes....     ");
 foreach my $l (@labels) {
-    print OUTFILE $l, "\n";
+    ##print OUTFILE $l, "\n";
+    my $x = $xAssemblage{ $l }/1000000 || 0;
+    my $y = $yAssemblage{ $l }/100000 || 0;
+    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
+    #print OUTDOTFILE "\"".$l."\";\n";
+}
+print OUTFILE "*Node properties\n";
+print OUTFILE "ID AssemblageSize X Y\n";
+$screen and $scr->at(1,40)->puts("STEP: Printing list of nodes attributes... ");
+foreach my $l (@labels) {
+   my $x = $xAssemblage{ $l }/1000000 || 0;
+    my $y = $yAssemblage{ $l }/100000 || 0;
+    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
     print OUTDOTFILE "\"".$l."\";\n";
 }
+
+
 print OUTFILE "*Tie data\n";
 print OUTFILE "From To Edge Weight Network pValue pError meanSolutionDistance\n";
 
