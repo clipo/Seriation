@@ -1275,8 +1275,8 @@ foreach my $network (@uniqueArray) {
                     $perror{ @$e[0] . "-" . @$e[1] } = 0.0;
                     $pvalue{ @$e[0] . "-" . @$e[1] } = 0.0;
                 }
-                print OUTFILE @$e[0], " ", @$e[1], ", 1, ", scalar(@Edges), ", ", $count, ", ";
-                print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, ", ", $groupDistance, "\n";
+                print OUTFILE @$e[0], " ", @$e[1], " 1, ", scalar(@Edges), " ", $count, " ";
+                print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, "  ", $groupDistance, "\n";
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
             }
             #print OUTFILE "---------------------------\n";
@@ -1307,8 +1307,8 @@ foreach my $network (@uniqueArray) {
                 $perror{ @$e[0] . "-" . @$e[1] } = 0.0;
                 $pvalue { @$e[0] . "-" . @$e[1] } = 0.0;
             }
-            print OUTFILE @$e[0], " ", @$e[1], ", 1, ", scalar(@Edges), ", ", $count, ", ";
-            print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, ", ", $perror{ @$e[0] . "-" . @$e[1] }, ", ", $groupDistance, "\n";
+            print OUTFILE @$e[0], " ", @$e[1], " 1 ", scalar(@Edges), " ", $count, " ";
+            print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, " ", $groupDistance, "\n";
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
         }
           #print OUTFILE "---------------------------\n";
