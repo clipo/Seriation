@@ -118,9 +118,11 @@ $screen and $scr = new Term::Screen;
 $screen and $scr->clrscr();  # clear the screen
 
 ## open the data file
+my $useOutputFile = substr($inputfile,0,-4);
 open( INFILE, $inputfile ) or die "Cannot open $inputfile.\n";
-open( OUTFILE, ">$inputfile.vna" ) or die "Can't open file $inputfile.vna to write.\n";
-open( OUTDOTFILE, ">$inputfile.dot") or die "Can't open file $inputfile.dot to write.\n";
+open( OUTFILE, ">$useOutputFile.vna" ) or die "Can't open file $useOutputFile.vna to write.\n";
+open( OUTDOTFILE, ">$useOutputFile.dot") or die "Can't open file $useOutputFile.dot to write.\n";
+open( OUTPAIRSFILE, ">$useOutputFile-pairs.vna") or die "Can't open file $useOutputFile-pairs.vna to write.\n";
 
 ## some output so we know what we are doing 
 $screen and $scr->at(1,1)->puts("Filename:  $inputfile");
@@ -920,7 +922,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
    ## now push the current step solutions to the list that serves as the basis of the next step. 
    foreach my $n (@newnets) {
       push @networks,  $n;  ## use this for the next iteration -- its all the new solutions. 
-      push @solutions, $n; ## this is a list of all the solutions (shallow a)
+      push @solutions, \$n; ## this is a list of all the solutions (shallow a)
       $stepSeriationList{ $solutionCount}= \$n;  #This is supposed to be an array that keeps track of the solutions by the order they were created (low = small)
       $solutionCount++;
    }
@@ -1210,6 +1212,7 @@ if ($individualfileoutput) {
 $screen and $scr->at(13,1)->puts( "Now printing output file... ");
     $screen and $scr->at(1,40)->puts("STEP: Output files...         ");
 print OUTFILE "*Node data\n";
+print OUTPAIRSFILE "*Node data\n";
 #print OUTFILE "ID AssemblageSize X Y \n";
 print OUTDOTFILE "graph seriation \n{\n";
 print OUTDOTFILE "\n/* list of nodes */\n";
@@ -1220,21 +1223,44 @@ foreach my $l (@labels) {
     my $x = $xAssemblage{ $l }/1000000 || 0;
     my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
     print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
+    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
     print OUTDOTFILE "\"".$l."\";\n";
 }
-print OUTFILE "*Node properties\n";
-print OUTFILE "ID AssemblageSize X Y\n";
+print OUTFILE "*Node properties\nID AssemblageSize X Y\n";
+print OUTPAIRSFILE "*Node properties\nID AssemblageSize X Y\n";
 $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes attributes... ");
 foreach my $l (@labels) {
    my $x = $xAssemblage{ $l }/1000000 || 0;
     my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
     print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
+    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
     print OUTDOTFILE "\"".$l."\";\n";
 }
 
-print OUTFILE "*Tie data\n";
-print OUTFILE "From To Edge Weight Network pValue pError meanSolutionDistance\n";
+## This prints out counts of the edges as they appear in ALL of the solutions
+$screen and $scr->at(1,40)->puts("STEP: Going through and counting pairs...     ");
+print OUTPAIRSFILE "*Tie data\nFrom To Edge Count\n";
+## first count up all of the edges by going through the solutions and each edge
+## put the edge count in a hash of edges
+my %edgeHash=();
+foreach my $network (@filteredarray) {
+    my @Edges = $$network->unique_edges;
+    my $eCount=0;
+    foreach my $e (@Edges) {   
+        my $edge0 = @$e[0];
+        my $edge1 = @$e[1];
+        my $pairname= $edge0." ".$edge1;
+        $edgeHash{ $pairname }++;
+    }
+}
+## now go through the edgeHash and print out the edges
+## do this is sorted order of the counts. For fun.
+$screen and $scr->at(1,40)->puts("STEP: Doing the pair output...                ");
+foreach (sort { ($edgeHash{$b} cmp $edgeHash{$a}) || ($b cmp $a) } keys %edgeHash)  {
+    print OUTPAIRSFILE $_, " 1 ", $edgeHash{$_}, "\n";
+}
 
+print OUTFILE "*Tie data\nFrom To Edge Weight Network pValue pError meanSolutionDistance\n";
 $screen and $scr->at(1,40)->puts("STEP: Eliminating duplicates...     ");
 my @uniqueArray = uniq @filteredarray;
 
