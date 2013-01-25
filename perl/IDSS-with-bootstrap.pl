@@ -895,9 +895,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             $DEBUG and print "New network (with addition): ", $nnetwork, "\n\r";
 
                             ## copy this solution to the new array of networks
-                            
                             push @newnets, $nnetwork;   ## contains solutions for just this step
-                            
                             my $currentTotal =  scalar(@newnets);
                             if ($nnetwork->edges > $maxEdges) {
                               $maxEdges = $nnetwork->edges;
@@ -924,13 +922,9 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
       push @networks,  $n;  ## use this for the next iteration -- its all the new solutions. 
       push @solutions, \$n; ## this is a list of all the solutions (shallow a)
       $stepSeriationList{ $solutionCount}= \$n;  #This is supposed to be an array that keeps track of the solutions by the order they were created (low = small)
-      $solutionCount++;
    }
-
    $solutionSum  =  scalar(@solutions);
-   
-   @newnets=undef;  ## clear the array for the next new set of assemblages.
-   
+   @newnets=undef;  ## clear the array for the next new set of assemblages. 
    ## no match at this point so no point in going forward.
     if ( $match == 0 ) {
         $screen and $scr->at(9,1)->puts( "Maximum seriation size reached - no more assemblages added that iteration. ");
@@ -1107,16 +1101,10 @@ if ($bootstrap) {
 
                 $loop--;
             }
-
-            #print "Results:  $results matches of $loop2 trials\n";
-            #print "Probability: ", $results / $loop2, "\n";
-
             $stat->add_data( $results / $loop2 );
             $cycle--;
-
             $results = 0;
         }
-
         $pvalue{$pairs[0]} = $stat->mean();
         $perror{$pairs[0]} = $stat->standard_deviation();
         $pvalue{$pairs[1]} = $stat->mean();
@@ -1124,7 +1112,6 @@ if ($bootstrap) {
         $DEBUG and print $pairs[0], "\t", $pairs[0], "\t";
         $DEBUG and print $stat->mean(), "\t";
         $DEBUG and print $stat->standard_deviation(), "\n";
-
         undef $stat;
     }
 
@@ -1138,25 +1125,22 @@ if ($bootstrap) {
 ## first need to sort the networks by size
 my @filteredarray = ();
 if ( $filterflag == 1 ) {
-
     $screen and $scr->at(1,40)->puts("STEP: Filter to get uniques... ");
     $DEBUG and print "---Filtering solutions so we only end up with the unique ones.\n";
     $DEBUG and print "----Start with ", scalar(@solutions), " solutions. \n";
-
    foreach my $fnetwork (reverse sort( keys %stepSeriationList )) {
       #print "fnetwork: ", $stepSeriationList{ $fnetwork }, "\n\r";
       my $exists=0;
       my $f = $stepSeriationList{ $fnetwork };
       ##print "F: ", $$f, "\n\r";
       foreach my $tnetwork (@filteredarray) {
-         #print "tnetwork: ", $stepSeriationList{ $tnetwork} , "\n\r";
-               my @fnetworkArray = $$f->vertices;
-               my @tnetworkArray = $$tnetwork->vertices;
-               ##print "T: ", $$tnetwork, "\n\r";
-               my @minus = array_minus( @fnetworkArray, @tnetworkArray );
-               if (scalar(@minus)== 0) {
+        #print "tnetwork: ", $stepSeriationList{ $tnetwork} , "\n\r";
+        my @fnetworkArray = $$f->vertices;
+        my @tnetworkArray = $$tnetwork->vertices;
+            my @minus = array_minus( @fnetworkArray, @tnetworkArray );
+            if (scalar(@minus)== 0) {
                   $exists++;
-               }
+            }
          }
       if (!$exists) {
          ##print "pushing $fnetwork to list\n\r";
@@ -1274,7 +1258,6 @@ foreach my $network (@uniqueArray) {
       $network = $$network;
    }
     $count++;
-     
     $screen and $scr->at(14,1)->puts( "Now on solution: ");
     $screen and $scr->at(14,18)->puts($count);
     my $eCount;   
@@ -1295,7 +1278,7 @@ foreach my $network (@uniqueArray) {
                   $eCount++;
                }
                $meanDistance = $groupDistance/$eCount;      ## use the average for the group for now
-               ###         print "Mean distance for this group is: ", $meanDistance, "\n\r";
+               ##print "\n\rMean distance for this group is: ", $meanDistance, "\n\r";
             }
             foreach my $e (@Edges) {
                my $edge0 = @$e[0];
@@ -1305,7 +1288,7 @@ foreach my $network (@uniqueArray) {
                     $pvalue{ @$e[0] . "-" . @$e[1] } = 0.0;
                 }
                 print OUTFILE @$e[0], " ", @$e[1], " 1, ", scalar(@Edges), " ", $count, " ";
-                print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, "  ", $groupDistance, "\n";
+                print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, "  ", $meanDistance, "\n";
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
             }
             #print OUTFILE "---------------------------\n";
@@ -1326,8 +1309,8 @@ foreach my $network (@uniqueArray) {
             ## print "\n\rGroup Distance for: ", $pairname, ":", $distanceBetweenAssemblages{ $pairname },"\n\r";
             $eCount++;
          }
-         my $meanDistance = $groupDistance/$eCount;         ##use the average distance as the metric
-         ### print "Mean distance for this group is: ", $meanDistance, "\n\r";
+         $meanDistance = $groupDistance/$eCount;         ##use the average distance as the metric
+         ##print "\n\rMean distance for this group is: ", $meanDistance, "\n\r";
       }
         foreach my $e (@Edges) {
                my $edge0 = @$e[0];
@@ -1337,7 +1320,7 @@ foreach my $network (@uniqueArray) {
                 $pvalue { @$e[0] . "-" . @$e[1] } = 0.0;
             }
             print OUTFILE @$e[0], " ", @$e[1], " 1 ", scalar(@Edges), " ", $count, " ";
-            print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, " ", $groupDistance, "\n";
+            print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, " ", $meanDistance, "\n";
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
         }
           #print OUTFILE "---------------------------\n";
