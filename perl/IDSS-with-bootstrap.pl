@@ -209,8 +209,8 @@ if ($xyfile) {
       #print "pairname: $pairname: ", $distance, "\n\r";
    }
    
-   $largestX = largest_value_mem(%xAssemblage);
-   $largestY = largest_value_mem(%yAssemblage);
+   $largestX = $xAssemblage{ largest_value_mem(%xAssemblage) };
+   $largestY = $yAssemblage{ largest_value_mem(%yAssemblage)};
 }
 
 
@@ -558,8 +558,9 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
         foreach my $testAssemblage (@labels) {
             $DEBUG  and print "\t\tChecking assemblage: ", $testAssemblage, " to see if it fits on the end of the current solution.\n";
             $DEBUG  and print "\t\tFirst check to see if it is included already. If it has, move on.\n";
-            my $vTest= $nnetwork->has_vertex($testAssemblage);
-            if ( !$vTest) {
+            my @vertices = $nnetwork->vertices;
+            #my $vTest= $nnetwork->has_vertex($testAssemblage);
+            if ( ! grep { $_ eq $testAssemblage} @vertices) {   ## if the assemblage is NOT in the list of existing vertices.
                 # get the exterior vertices (should be 2)
                 my @V = $nnetwork->vertices;    ## list of all the vertices
                 $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices \n";
@@ -892,7 +893,9 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             $DEBUG and print "New network (with addition): ", $nnetwork, "\n\r";
 
                             ## copy this solution to the new array of networks
+                            
                             push @newnets, $nnetwork;   ## contains solutions for just this step
+                            
                             my $currentTotal =  scalar(@newnets);
                             if ($nnetwork->edges > $maxEdges) {
                               $maxEdges = $nnetwork->edges;
@@ -916,7 +919,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 
    ## now push the current step solutions to the list that serves as the basis of the next step. 
    foreach my $n (@newnets) {
-      push @networks,$n;  ## use this for the next iteration -- its all the new solutions. 
+      push @networks,  $n;  ## use this for the next iteration -- its all the new solutions. 
       push @solutions, $n; ## this is a list of all the solutions (shallow a)
       $stepSeriationList{ $solutionCount}= \$n;  #This is supposed to be an array that keeps track of the solutions by the order they were created (low = small)
       $solutionCount++;
@@ -924,7 +927,8 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 
    $solutionSum  =  scalar(@solutions);
    
-   @newnets=();  ## clear the array for the next new set of assemblages. 
+   @newnets=undef;  ## clear the array for the next new set of assemblages.
+   
    ## no match at this point so no point in going forward.
     if ( $match == 0 ) {
         $screen and $scr->at(9,1)->puts( "Maximum seriation size reached - no more assemblages added that iteration. ");
@@ -1206,28 +1210,27 @@ if ($individualfileoutput) {
 $screen and $scr->at(13,1)->puts( "Now printing output file... ");
     $screen and $scr->at(1,40)->puts("STEP: Output files...         ");
 print OUTFILE "*Node data\n";
-print OUTFILE "ID AssemblageSize X Y \n";
+#print OUTFILE "ID AssemblageSize X Y \n";
 print OUTDOTFILE "graph seriation \n{\n";
 print OUTDOTFILE "\n/* list of nodes */\n";
 $count = 0;
 $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes....     ");
 foreach my $l (@labels) {
-    ##print OUTFILE $l, "\n";
+    #print OUTFILE $l, "\n";
     my $x = $xAssemblage{ $l }/1000000 || 0;
     my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
     print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
-    #print OUTDOTFILE "\"".$l."\";\n";
+    print OUTDOTFILE "\"".$l."\";\n";
 }
 print OUTFILE "*Node properties\n";
 print OUTFILE "ID AssemblageSize X Y\n";
 $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes attributes... ");
 foreach my $l (@labels) {
    my $x = $xAssemblage{ $l }/1000000 || 0;
-    my $y = $yAssemblage{ $l }/100000 || 0;
+    my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
     print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
     print OUTDOTFILE "\"".$l."\";\n";
 }
-
 
 print OUTFILE "*Tie data\n";
 print OUTFILE "From To Edge Weight Network pValue pError meanSolutionDistance\n";
