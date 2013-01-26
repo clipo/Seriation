@@ -1244,16 +1244,16 @@ foreach (sort { ($edgeHash{$b} cmp $edgeHash{$a}) || ($b cmp $a) } keys %edgeHas
     print OUTPAIRSFILE $_, " 1 ", $edgeHash{$_}, "\n";
 }
 
-print OUTFILE "*Tie data\nFrom To Edge Weight Network pValue pError meanSolutionDistance\n";
+print OUTFILE "*Tie data\nFrom To Edge Weight Network pValue pError meanSolutionDistance DistanceOrder\n";
 $screen and $scr->at(1,40)->puts("STEP: Eliminating duplicates...     ");
 my @uniqueArray = uniq @filteredarray;
 
 $screen and $scr->at(1,40)->puts("STEP: Printing edges...     ");
 print OUTDOTFILE "\n/* list of edges */\n";
 $count =0;
+my %distanceHash=();
 ## only print unique ones...
 foreach my $network (@uniqueArray) {
-
    if (ref($network) eq "REF") {
       $network = $$network;
    }
@@ -1287,12 +1287,13 @@ foreach my $network (@uniqueArray) {
                     $perror{ @$e[0] . "-" . @$e[1] } = 0.0;
                     $pvalue{ @$e[0] . "-" . @$e[1] } = 0.0;
                 }
-                print OUTFILE @$e[0], " ", @$e[1], " 1, ", scalar(@Edges), " ", $count, " ";
-                print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, "  ", $meanDistance, "\n";
+                #print OUTFILE @$e[0], " ", @$e[1], " 1 ", scalar(@Edges), " ", $count, " ";
+                #print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, "  ", $meanDistance, "\n";
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
+                my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pvalue{ @$e[0] . "-" . @$e[1] }." ". $perror{ @$e[0] . "-" . @$e[1] };
+                $distanceHash{ $text }= $meanDistance;
             }
             #print OUTFILE "---------------------------\n";
-
         }
     } else {
       my @Edges = $network->unique_edges;
@@ -1319,14 +1320,25 @@ foreach my $network (@uniqueArray) {
                 $perror{ @$e[0] . "-" . @$e[1] } = 0.0;
                 $pvalue { @$e[0] . "-" . @$e[1] } = 0.0;
             }
-            print OUTFILE @$e[0], " ", @$e[1], " 1 ", scalar(@Edges), " ", $count, " ";
-            print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, " ", $meanDistance, "\n";
+            #print OUTFILE @$e[0], " ", @$e[1], " 1 ", scalar(@Edges), " ", $count, " ";
+            #print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, " ", $meanDistance, "\n";
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
+             my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pvalue{ @$e[0] . "-" . @$e[1] }." ". $perror{ @$e[0] . "-" . @$e[1] };
+            $distanceHash{ $text } = $meanDistance;
         }
           #print OUTFILE "---------------------------\n";
     }
-   
 }
+my $sortCount=0;
+my $old_network=0;
+foreach my $key (sort { $distanceHash{$a} <=> $distanceHash{$b} } keys %distanceHash ) {
+    my ($assemblage1,$assemblage2, $edge,$size, $network,$pvalue,$perr )=split(" ", $key);
+    if ($network ne $old_network) {
+            $old_network=$network;
+            $sortCount++;
+    } 
+    print OUTFILE $key, " ", $distanceHash{$key}, " $sortCount\n";
+ }   
 
 print OUTFILE "\n";
 print OUTDOTFILE "}\n";
