@@ -15,20 +15,20 @@ use Statistics::PointEstimation;
 require Term::Screen;
 use List::MoreUtils qw/ uniq /;
 
-my $debug      = 0;
-my $filterflag = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
-my $largestOnly          = 0; #       # only output the largest set of solutions
-my $individualfileoutput = 0; ## create files for all the indivdual networks
-my $bootstrap           = 0; ## flag for bootstrap
-my $bootstrapCI         = 0; ## flag for the CI bootstrap
-my $bootstrapSignificance     = 95;
-my $man                  = 0;
-my $help                 = 0;
+my $debug                   = 0;
+my $filterflag              = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
+my $largestOnly             = 0; #       # only output the largest set of solutions
+my $individualfileoutput    = 0; ## create files for all the indivdual networks
+my $bootstrap               = 0; ## flag for bootstrap
+my $bootstrapCI             = 0; ## flag for the CI bootstrap
+my $bootstrapSignificance   = 95;
+my $man                     = 0;
+my $help                    = 0;
 my $inputfile;
-my $bootstrapdebug = 0;
-my $threshold      = 0;
-my $noscreen        = 0;     ## flag for screen output
-my $excel          = 0;       ## flag for excel file output (not implemented yet)
+my $bootstrapdebug          = 0;
+my $threshold               = 0;
+my $noscreen                = 0;     ## flag for screen output
+my $excel                   = 0;       ## flag for excel file output (not implemented yet)
 my $xyfile = "";
 
 ## find the largest valuein a hash
@@ -50,21 +50,21 @@ sub largest_value_mem (\%) {
 # is at the bottom of this file in simple POD format.
 
 GetOptions(
-    'debug'          => \$debug,
-    'bootstrapCI'      => \$bootstrapCI,
-    'bootstrapSignificance=f' => \$bootstrapSignificance, 
-    'bootstrap'         => \$bootstrap,
-    'bootstrapdebug' => \$bootstrapdebug,
-    'filtered'       => \$filterflag,
-    'largestonly'    => \$largestOnly,
-    'indivfiles'     => \$individualfileoutput,
-    'help'           => sub { HelpMessage() },
-    'input=s'        => \$inputfile,
-    'excel'          => \$excel,
-    'threshold=f'      => \$threshold,
-    'noscreen'         => \$noscreen,
-    'xyfile=s'           => \$xyfile,
-    man              => \$man
+    'debug'                     => \$debug,
+    'bootstrapCI'               => \$bootstrapCI,
+    'bootstrapSignificance=f'   => \$bootstrapSignificance, 
+    'bootstrap'                 => \$bootstrap,
+    'bootstrapdebug'            => \$bootstrapdebug,
+    'filtered'                  => \$filterflag,
+    'largestonly'               => \$largestOnly,
+    'indivfiles'                => \$individualfileoutput,
+    'help'                      => sub { HelpMessage() },
+    'input=s'                   => \$inputfile,
+    'excel'                     => \$excel,
+    'threshold=f'               => \$threshold,
+    'noscreen'                  => \$noscreen,
+    'xyfile=s'                  => \$xyfile,
+    man                         => \$man
 ) or pod2usage(2);
 
 my $DEBUG = $debug;    # our "$debug level"
@@ -167,6 +167,8 @@ while (<INFILE>) {
     #print "---- row end ----\n";
 }
 $numrows = scalar(@assemblages);
+$DEBUG and print Dumper(\@assemblages),"\n";
+$DEBUG and print Dumper( \%assemblageFrequencies ),"\n";
 
 my $maxSeriations = $count;
 $screen and $scr->at(3,1);
@@ -210,7 +212,6 @@ if ($xyfile) {
       $distanceBetweenAssemblages{ $pairname2 }= $distance;
       #print "pairname: $pairname: ", $distance, "\n\r";
    }
-   
    $largestX = $xAssemblage{ largest_value_mem(%xAssemblage) };
    $largestY = $yAssemblage{ largest_value_mem(%yAssemblage)};
 }
@@ -407,12 +408,12 @@ while ( my @permu = $permutations->next_combination ) {
         } else {   ### if the bootstrapCI is not being used
             my $dif1 = $ass1 - $ass2;
             if ( $dif1 < 0 )  { $difscore = -1; }
-            if ( $dif1 > 0 )  { $difscore = 1; }
-            if ( $dif1 == 0 ) { $difscore = 0; }
+            if ( $dif1 > 0 )  { $difscore = 1;  }
+            if ( $dif1 == 0 ) { $difscore = 0;  }
         }
 
         ## now compare assemblages 2 and 3
-        if ($bootstrapCI ) {
+        if ($bootstrapCI ) {  ## boostrap confidence intervals
             my $upperCI_2 = $typeFrequencyUpperCI{ $labels[ $permu[1] ] }->[$i];
             my $lowerCI_2 = $typeFrequencyUpperCI{ $labels[ $permu[1] ] }->[$i];
             my $upperCI_3 = $typeFrequencyUpperCI{ $labels[ $permu[2] ] }->[$i];
@@ -424,22 +425,22 @@ while ( my @permu = $permutations->next_combination ) {
             } else {
                 $difscore = 0;
             }
-        } else { ### if the bootstrapCI is not being used
+        } else {            ### if the bootstrapCI is not being used
             my $dif2 = $ass3 - $ass2;
             if ( $dif2 < 0 )  { $difscore2 = -1; }
-            if ( $dif2 > 0 )  { $difscore2 = 1; }
-            if ( $dif2 == 0 ) { $difscore2 = 0; }
+            if ( $dif2 > 0 )  { $difscore2 = 1;  }
+            if ( $dif2 == 0 ) { $difscore2 = 0;  }
         }
         
-        ## F1 > F2 < F3 ## criteria not met
-        if ( ( $difscore == 1 ) && ( $difscore2 == 1 ) ) {
+        
+        if ( ( $difscore == 1 ) && ( $difscore2 == 1 ) ) {      ## F1 > F2 < F3 ## criteria not met
             $error++;
         }
-        elsif ( ( $difscore == 1 ) && ( $difscore2 == -1 ) ) {   ## F1 > F2 > F3
+        elsif ( ( $difscore == 1 ) && ( $difscore2 == -1 ) ) {   ## F1 > F2 > F3 OK
             $comparison12 .= "U";
             $comparison23 .= "D";
         }
-        elsif ( ( $difscore == -1 ) && ( $difscore2 == -1 ) ) {   #  F1 < F2 >F3
+        elsif ( ( $difscore == -1 ) && ( $difscore2 == -1 ) ) {   #  F1 < F2 >F3 OK
             $comparison12 .= "X";
             $comparison23 .= "X";
         }
@@ -469,7 +470,8 @@ while ( my @permu = $permutations->next_combination ) {
         }
         else {
             $error++;
-            print "Not Match! (other)  Difscore 1: $difscore Difscore 2: $difscore2 \n";
+            print "\n\rNo match to our possibility of combinations. Difscore 1: $difscore Difscore 2: $difscore2 \n\r";
+            print "I must quit. Debugging required.\n\r";
             exit();
         }
     }
@@ -498,6 +500,9 @@ while ( my @permu = $permutations->next_combination ) {
     $error = 0;
 
 }
+$DEBUG and print "------- ALL VALID TRIPLES ---------\n";
+$DEBUG and print Dumper(\@triples),"\n";
+$DEBUG and print "------- ALL VALID TRIPLES ---------\n";
 
 ########################################### THIS IS THE MAIN SERIATION SORTING SECTION ####################################
 ## now go through the combination of triplets that are valid (i.e., allthose that have no Z in them)
@@ -928,8 +933,8 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
    ## no match at this point so no point in going forward.
     if ( $match == 0 ) {
         $screen and $scr->at(9,1)->puts( "Maximum seriation size reached - no more assemblages added that iteration. ");
-        $screen and $scr->at(10,1)->puts("Maximum # assemblages in largest solution is: $maxEdges");
-        $DEBUG and print "Maximum # assemblages in largest solution is: $maxEdges\n\r\n";
+        $screen and $scr->at(10,1)->puts("Maximum # edges in largest solution is: $maxEdges (note # of edges = # of assemblages - 1)");
+        $DEBUG and print "Maximum # edges in largest solution is: $maxEdges (note # of edges = # assemblages -1) \n\r\n";
         $maxnumber = $currentMaxSeriationSize - $maxSeriations;
         ## to break now...
         $currentMaxSeriationSize = $maxSeriations;
