@@ -896,20 +896,24 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
 
                             ## no errors so add vertice added to the new network
                             #my $oldedgenum = $nnetwork->edges;
-                            $nnetwork->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
-                            $DEBUG and print "New network (with addition): ", $nnetwork, "\n\r";
+                            my @vertices = $nnetwork->vertices;
+                            if ( ! grep { $_ eq $testAssemblage} @vertices) { 
+                                $nnetwork->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
+                                $DEBUG and print "New network (with addition): ", $nnetwork, "\n\r";
 
-                            ## copy this solution to the new array of networks
-                            push @newnets, $nnetwork;   ## contains solutions for just this step
-                            my $currentTotal =  scalar(@newnets);
-                            if ($nnetwork->edges > $maxEdges) {
-                              $maxEdges = $nnetwork->edges;
-                           }
-                            #print "MAX EDGES!!! ", $maxEdges ,"\n";
-                            $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionSum");
-                            $screen and $scr->at(8,43)->puts("                   ");
-                            $screen and $scr->at(8,1)->puts("Current nunmber of seriation linkages at this step: $currentTotal");
-                            $DEBUG and print "-------------------------------------------------\n\r";
+                                ## copy this solution to the new array of networks
+                                push @newnets, $nnetwork;   ## contains solutions for just this step
+                                my $currentTotal =  scalar(@newnets);
+                                if ($nnetwork->edges > $maxEdges) {
+                                    $maxEdges = $nnetwork->edges;
+                                }
+                                 #print "MAX EDGES!!! ", $maxEdges ,"\n";
+
+                                $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionSum");
+                                $screen and $scr->at(8,43)->puts("                   ");
+                                $screen and $scr->at(8,1)->puts("Current nunmber of seriation linkages at this step: $currentTotal");
+                                $DEBUG and print "-------------------------------------------------\n\r";
+                            }
                         }
                     }
                     else {
@@ -1194,19 +1198,18 @@ if ($individualfileoutput) {
 }
 
 
-
-
-
 ########################################### OUTPUT SECTION ####################################
 $screen and $scr->at(13,1)->puts( "Now printing output file... ");
     $screen and $scr->at(1,40)->puts("STEP: Output files...         ");
 print OUTFILE "*Node data\n";
+print OUTFILE "ID AssemblageSize X Y\n";
 print OUTPAIRSFILE "*Node data\n";
 #print OUTFILE "ID AssemblageSize X Y \n";
 print OUTDOTFILE "graph seriation \n{\n";
 print OUTDOTFILE "\n/* list of nodes */\n";
 $count = 0;
 $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes....     ");
+## note this assumes the use of UTM coordinates (northing and easting)
 foreach my $l (@labels) {
     #print OUTFILE $l, "\n";
     my $x = $xAssemblage{ $l }/1000000 || 0;
@@ -1267,8 +1270,7 @@ foreach my $network (@uniqueArray) {
     $screen and $scr->at(14,18)->puts($count);
     my $eCount;   
     my $E = $network->edges;
-    if ($largestOnly) {
-        if ( $E == $maxEdges ) {
+    if ($largestOnly && ($E == $maxEdges) ) {
             my $groupDistance=0;
             my @Edges = $network->unique_edges;
             my $meanDistance=0.0;
@@ -1299,10 +1301,8 @@ foreach my $network (@uniqueArray) {
                 $distanceHash{ $text }= $meanDistance;
             }
             #print OUTFILE "---------------------------\n";
-        }
     } else {
       my @Edges = $network->unique_edges;
-      
       my $groupDistance=0;
       my $meanDistance=0.0;
       my $eCount=0;
@@ -1330,20 +1330,21 @@ foreach my $network (@uniqueArray) {
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
              my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pvalue{ @$e[0] . "-" . @$e[1] }." ". $perror{ @$e[0] . "-" . @$e[1] };
             $distanceHash{ $text } = $meanDistance;
+            print OUTFILE $text, " ", $meanDistance, "\n";
         }
           #print OUTFILE "---------------------------\n";
     }
 }
-my $sortCount=0;
-my $old_network=0;
-foreach my $key (sort { $distanceHash{$a} <=> $distanceHash{$b} } keys %distanceHash ) {
-    my ($assemblage1,$assemblage2, $edge,$size, $network,$pvalue,$perr )=split(" ", $key);
-    if ($network ne $old_network) {
-            $old_network=$network;
-            $sortCount++;
-    } 
-    print OUTFILE $key, " ", $distanceHash{$key}, " $sortCount\n";
- }   
+#my $sortCount=0;
+#my $old_network=0;
+#foreach my $key (sort { $distanceHash{$a} <=> $distanceHash{$b} } keys %distanceHash ) {
+#    my ($assemblage1,$assemblage2, $edge,$size, $network,$pvalue,$perr )=split(" ", $key);
+#    if ($network ne $old_network) {
+#            $old_network=$network;
+#            $sortCount++;
+#    } 
+#    print OUTFILE $key, " ", $distanceHash{$key}, " $sortCount\n";
+# }   
 
 print OUTFILE "\n";
 print OUTDOTFILE "}\n";
@@ -1365,12 +1366,43 @@ __END__
 
     =head1 SYNOPSIS
 
-    IDSS-with-bootstrap.pl [options] [file ...]
+    IDSS-with-bootstrap.pl [options] 
 
      Options:
-       -help            brief help message
-       -man             full documentation
-       --input         input file name
+       -help                brief help message
+       -man                 full documentation
+       -input=<filename>    filename of data to seriate
+       -xyfile=<filename>   filename of XY data for assemblages
+       -threshold=<value>   value specified as the maximum % difference between assemblages examined
+       -largestonly         only the largest seriation solutions are printed in output
+       -filtered            filter the output set to get just the unique solutions (no repeats)
+       -indivfiles          create individual .vna files for each solution
+       -bootstrapCI         use bootstrap confidence intervals for comparison
+       -bootstrapSignficance    specify the significance level of the bootstrap confidence intervals (default=95)
+       -bootstrap           calculate pair comparison bootstrap values (not useful yet)
+       -bootstrapdebug      print debugging statements for bootstrap set
+       -debug               print debugging output
+       -noscreen            don't use terminal output - just standard out
+       -excel               output excel files for creating graphical seriation (not working yet)
+       
+
+GetOptions(
+    'debug'                     => \$debug,
+    'bootstrapCI'               => \$bootstrapCI,
+    'bootstrapSignificance=f'   => \$bootstrapSignificance, 
+    'bootstrap'                 => \$bootstrap,
+    'bootstrapdebug'            => \$bootstrapdebug,
+    'filtered'                  => \$filterflag,
+    'largestonly'               => \$largestOnly,
+    'indivfiles'                => \$individualfileoutput,
+    'help'                      => sub { HelpMessage() },
+    'input=s'                   => \$inputfile,
+    'excel'                     => \$excel,
+    'threshold=f'               => \$threshold,
+    'noscreen'                  => \$noscreen,
+    'xyfile=s'                  => \$xyfile,
+    man                         => \$man
+) or pod2usage(2);
 
     =head1 OPTIONS
 
@@ -1388,7 +1420,6 @@ __END__
 
     =head1 DESCRIPTION
 
-    B<This program> will read the given input file(s) and do something
-    useful with the contents thereof.
+    B<This program> reads given input file(s) and create seriations.
 
     =cut
