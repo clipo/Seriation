@@ -1204,6 +1204,7 @@ $screen and $scr->at(13,1)->puts( "Now printing output file... ");
 print OUTFILE "*Node data\n";
 print OUTFILE "ID AssemblageSize X Y\n";
 print OUTPAIRSFILE "*Node data\n";
+print OUTPAIRSFILE "ID AssemblageSize X Y\n";
 #print OUTFILE "ID AssemblageSize X Y \n";
 print OUTDOTFILE "graph seriation \n{\n";
 print OUTDOTFILE "\n/* list of nodes */\n";
