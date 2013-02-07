@@ -76,19 +76,19 @@ def main(argv):
         if count > 1 and block == "nodes":
             nodename = row[0]
             nodes.append(row[0])
-            nodeX[nodename] = row[2]
-            nodeY[nodename] = row[3]
+            nodeX[nodename] = float(row[2])
+            nodeY[nodename] = float(row[3])
         if count > 1 and block == "ties":
             node1 = row[0]
             node2 = row[1]
-            weight = row[3]
+            weight = float(row[3])
             network = int(row[4])
-            print "now on network: ", network, " edge: ", edgeCount, " oldnetwork: ", old_network
-            pvalue = row[5]
-            pError = row[6]
-            meanDistance = row[7]
+            #print "now on network: ", network, " edge: ", edgeCount, " oldnetwork: ", old_network
+            pvalue = float(row[5])
+            pError = float(row[6])
+            meanDistance = float(row[7])
             if network > old_network:
-                print "adding network..."
+                #print "adding network..."
                 old_network = network
                 graphs.append(nx.Graph())
                 graphCount += 1
@@ -101,10 +101,12 @@ def main(argv):
     print count, " graphs "
     c=0
     #pp.pprint(graphs)
-    while c < count:
-
-        #print graphs[ c ].number_of_edges()
+    for g in graphs:
+        #print g.number_of_edges()
         c += 1
+
+    nx.write_shp(graphs[ 100 ], "./shapefiles/")
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
