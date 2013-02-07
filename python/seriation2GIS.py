@@ -48,7 +48,7 @@ def main(argv):
     count = 0
     old_network = 0
     G = None
-    graphCount = 0
+    graphCount = -1
     edgeCount = 0
     graphHash = {}
     row=()
@@ -82,30 +82,28 @@ def main(argv):
             node1 = row[0]
             node2 = row[1]
             weight = row[3]
-            network = row[4]
-            print "now on network: ", network, " edge: ", edgeCount
+            network = int(row[4])
+            print "now on network: ", network, " edge: ", edgeCount, " oldnetwork: ", old_network
             pvalue = row[5]
             pError = row[6]
             meanDistance = row[7]
             if network > old_network:
+                print "adding network..."
                 old_network = network
-                if G is not None:
-                    graphs.append(G)
-                graphHash[graphCount] = G
-                G = nx.Graph()
+                graphs.append(nx.Graph())
                 graphCount += 1
                 edgeCount = 0
-            G.add_edge(node1, node2, weight = weight)
+            graphs[graphCount].add_edge(node1, node2, weight = weight)
             edgeCount += 1
         count += 1
 
 
     print count, " graphs "
     c=0
-    pp.pprint(graphs)
+    #pp.pprint(graphs)
     while c < count:
 
-        print graphs[ c ].number_of_edges()
+        #print graphs[ c ].number_of_edges()
         c += 1
 
 if __name__ == "__main__":
