@@ -15,6 +15,7 @@ use Statistics::PointEstimation;
 require Term::Screen;
 use List::MoreUtils qw/ uniq /;
 
+
 my $debug                   = 0;
 my $filterflag              = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
 my $largestOnly             = 0; #       # only output the largest set of solutions
@@ -56,7 +57,7 @@ GetOptions(
     'bootstrap'                 => \$bootstrap,
     'bootstrapdebug'            => \$bootstrapdebug,
     'filtered'                  => \$filterflag,
-    'largestonly'               => \$largestOnly,
+    'largestOnly'               => \$largestOnly,
     'indivfiles'                => \$individualfileoutput,
     'help'                      => sub { HelpMessage() },
     'input=s'                   => \$inputfile,
@@ -1237,7 +1238,13 @@ print OUTPAIRSFILE "*Tie data\nFrom To Edge Count\n";
 ## put the edge count in a hash of edges
 my %edgeHash=();
 foreach my $network (@filteredarray) {
-    my @Edges = $$network->unique_edges;
+    #print "\n\r netowrk type ", ref($network),"\n\r";
+    my @Edges;
+    if (ref($network) eq 'REF') {
+        @Edges = $$network->unique_edges;
+    } else {
+        @Edges = $network->unique_edges;
+    }
     my $eCount=0;
     foreach my $e (@Edges) {   
         my $edge0 = @$e[0];
@@ -1271,6 +1278,7 @@ foreach my $network (@uniqueArray) {
     $screen and $scr->at(14,18)->puts($count);
     my $eCount;   
     my $E = $network->edges;
+    
     if ($largestOnly && ($E == $maxEdges) ) {
             my $groupDistance=0;
             my @Edges = $network->unique_edges;
