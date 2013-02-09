@@ -14,7 +14,7 @@ use Statistics::Descriptive;
 use Statistics::PointEstimation;
 require Term::Screen;
 use List::MoreUtils qw/ uniq /;
-
+use GD::Graph::histogram;
 
 my $debug                   = 0;
 my $filterflag              = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
@@ -1268,6 +1268,7 @@ $screen and $scr->at(1,40)->puts("STEP: Printing edges...     ");
 print OUTDOTFILE "\n/* list of edges */\n";
 $count =0;
 my %distanceHash=();
+my %seriationHash;
 ## only print unique ones...
 foreach my $network (@uniqueArray) {
    if (ref($network) eq "REF") {
@@ -1310,7 +1311,9 @@ foreach my $network (@uniqueArray) {
                 $distanceHash{ $text }= $meanDistance;
             }
             #print OUTFILE "---------------------------\n";
-    } else {
+    
+    } else {  ## not just the largest, but ALL seriation solutions
+            
       my @Edges = $network->unique_edges;
       my $groupDistance=0;
       my $meanDistance=0.0;
@@ -1326,6 +1329,9 @@ foreach my $network (@uniqueArray) {
          }
          $meanDistance = $groupDistance/$eCount;         ##use the average distance as the metric
          ##print "\n\rMean distance for this group is: ", $meanDistance, "\n\r";
+         $seriationHash{ $count }->{'ID'}=$count;
+         $seriationHash{ $count }->{'size'}=scalar(@Edges);
+         $seriationHash{ $count }->{'meanDistance'}= $groupDistance;
       }
         foreach my $e (@Edges) {
                my $edge0 = @$e[0];
@@ -1344,19 +1350,103 @@ foreach my $network (@uniqueArray) {
           #print OUTFILE "---------------------------\n";
     }
 }
-#my $sortCount=0;
-#my $old_network=0;
-#foreach my $key (sort { $distanceHash{$a} <=> $distanceHash{$b} } keys %distanceHash ) {
-#    my ($assemblage1,$assemblage2, $edge,$size, $network,$pvalue,$perr )=split(" ", $key);
-#    if ($network ne $old_network) {
-#            $old_network=$network;
-#            $sortCount++;
-#    } 
-#    print OUTFILE $key, " ", $distanceHash{$key}, " $sortCount\n";
-# }   
+
+my @sortedKeys = SortHashByMultipleColumns(\%seriationHash,["meanDistance:asc","size:dsc"]);
+my @data = [];
+$count=0;
+open(OUTSIZEFILE, ">$inputfile-distances.txt") or die $!;
+print OUTSIZEFILE "Seriation_Solution Mean_Distance Solution_Size\n";
+foreach my $sortedKey(@sortedKeys){
+    print OUTSIZEFILE $seriationHash{$sortedKey}->{'ID'}. " ". $seriationHash{$sortedKey}->{'meanDistance'} . " " . $seriationHash{$sortedKey}->{'size'} . "\n";
+    $data[ $count ] = int($seriationHash{$sortedKey}->{'meanDistance'});
+    $count++;
+}
+
+my $graph = new GD::Graph::histogram(400,600);
+$graph->set( 
+                x_label         => 'Mean Distance Between Assemblages',
+                y_label         => 'Count',
+                title           => "Seriation Solutions for $inputfile",
+                x_labels_vertical => 1,
+                bar_spacing     => 0,
+                shadow_depth    => 1,
+                shadowclr       => 'dred',
+                transparent     => 0,
+                 histogram_bins => 15,
+        ) 
+        or warn $graph->error;
+        
+my $gd = $graph->plot(\@data) or die $graph->error;
+open(IMG, '>$inputfile-histogram.png') or die $!;
+binmode IMG;
+print IMG $gd->png;
 
 print OUTFILE "\n";
 print OUTDOTFILE "}\n";
+
+sub SortHashByMultipleColumns{
+    my($hashRef,$sortInfoAR) = @_;
+    my $sortCriteria;
+    
+    foreach my $sortInfo(@$sortInfoAR){
+        my($sortColumn,$sortDirection) = split(/\:/,$sortInfo);
+        
+        my $sortType;
+        # VERIFY THAT THIS IS A VALID COLUMN
+        if(! defined $hashRef->{((keys %$hashRef))[0]}->{$sortColumn}){
+            print "SortHashByMultipleColumns Error: $sortColumn is not a column in this hash.\n";
+            exit(0);
+        # VALID COLUMN, FIGURE OUT IF IT IS A NUMERIC COLUMN OR ALPHA
+        } else {
+            if($hashRef->{((keys %$hashRef))[0]}->{$sortColumn} =~ /^\d+/){
+                $sortType = "numeric";
+            } else {
+                $sortType = "alpha";
+            }
+        }
+            
+        # want to sort a number 
+        if($sortType eq "numeric"){
+            # sort it asc
+            if($sortDirection =~ /asc/i){
+                # add an or if we already have something in the sort criteria
+                if($sortCriteria){
+                    $sortCriteria .= qq| or |;
+                }
+                $sortCriteria .= '$hashRef->{$a}->{\'' . $sortColumn . '\'} <=> $hashRef->{$b}->{\'' . $sortColumn . '\'}';
+            # sort it desc
+            } else {
+                # add an or if we already have something in the sort criteria
+                if($sortCriteria){
+                    $sortCriteria .= qq| or |;
+                }
+                $sortCriteria .= '$hashRef->{$b}->{\'' . $sortColumn . '\'} <=> $hashRef->{$a}->{\'' . $sortColumn . '\'}';
+            }
+        # want to sort it by alpha 
+        } else {
+            # sort it asc
+            if($sortDirection =~ /asc/i){
+                # add an or if we already have something in the sort criteria
+                if($sortCriteria){
+                    $sortCriteria .= qq| or |;
+                }
+                $sortCriteria .= '$hashRef->{$a}->{\'' . $sortColumn . '\'} cmp $hashRef->{$b}->{\'' . $sortColumn . '\'}';
+            # sort it desc
+            } else {
+                # add an or if we already have something in the sort criteria
+                if($sortCriteria){
+                    $sortCriteria .= qq| or |;
+                }
+                $sortCriteria .= '$hashRef->{$b}->{\'' . $sortColumn . '\'} cmp $hashRef->{$a}->{\'' . $sortColumn . '\'}';
+            }
+        }
+    }
+    
+    my $sortfunc = eval "sub { $sortCriteria }";
+       my @sortedKeys = sort $sortfunc keys %$hashRef;
+
+    return @sortedKeys;
+}
 
 ###########################################
 if ($excel) {
