@@ -1220,8 +1220,8 @@ foreach my $l (@labels) {
     print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
     print OUTDOTFILE "\"".$l."\";\n";
 }
-print OUTFILE "*Node properties\nID AssemblageSize X Y\n";
-print OUTPAIRSFILE "*Node properties\nID AssemblageSize X Y\n";
+print OUTFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
+print OUTPAIRSFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
 $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes attributes... ");
 foreach my $l (@labels) {
    my $x = $xAssemblage{ $l }/1000000 || 0;
@@ -1484,24 +1484,6 @@ __END__
        -noscreen            don't use terminal output - just standard out
        -excel               output excel files for creating graphical seriation (not working yet)
        
-
-GetOptions(
-    'debug'                     => \$debug,
-    'bootstrapCI'               => \$bootstrapCI,
-    'bootstrapSignificance=f'   => \$bootstrapSignificance, 
-    'bootstrap'                 => \$bootstrap,
-    'bootstrapdebug'            => \$bootstrapdebug,
-    'filtered'                  => \$filterflag,
-    'largestonly'               => \$largestOnly,
-    'indivfiles'                => \$individualfileoutput,
-    'help'                      => sub { HelpMessage() },
-    'input=s'                   => \$inputfile,
-    'excel'                     => \$excel,
-    'threshold=f'               => \$threshold,
-    'noscreen'                  => \$noscreen,
-    'xyfile=s'                  => \$xyfile,
-    man                         => \$man
-) or pod2usage(2);
 
     =head1 OPTIONS
 
