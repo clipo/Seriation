@@ -1203,9 +1203,9 @@ if ($individualfileoutput) {
 $screen and $scr->at(13,1)->puts( "Now printing output file... ");
     $screen and $scr->at(1,40)->puts("STEP: Output files...         ");
 print OUTFILE "*Node data\n";
-print OUTFILE "ID AssemblageSize X Y\n";
+print OUTFILE "ID AssemblageSize X Y Easting Northing\n";
 print OUTPAIRSFILE "*Node data\n";
-print OUTPAIRSFILE "ID AssemblageSize X Y\n";
+print OUTPAIRSFILE "ID AssemblageSize X Y Easting Northing\n";
 #print OUTFILE "ID AssemblageSize X Y \n";
 print OUTDOTFILE "graph seriation \n{\n";
 print OUTDOTFILE "\n/* list of nodes */\n";
@@ -1216,8 +1216,8 @@ foreach my $l (@labels) {
     #print OUTFILE $l, "\n";
     my $x = $xAssemblage{ $l }/1000000 || 0;
     my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
-    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
-    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
+    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
+    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
     print OUTDOTFILE "\"".$l."\";\n";
 }
 print OUTFILE "*Node properties\nID AssemblageSize X Y\n";
@@ -1226,8 +1226,8 @@ $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes attributes... ");
 foreach my $l (@labels) {
    my $x = $xAssemblage{ $l }/1000000 || 0;
     my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
-    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
-    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y."\n";
+    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
+    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
     print OUTDOTFILE "\"".$l."\";\n";
 }
 
