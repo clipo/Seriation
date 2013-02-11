@@ -4,11 +4,10 @@ use Data::Dumper;
 use Getopt::Long qw(HelpMessage);
 use Pod::Usage;
 
-my ($debug,$inputfile,$man,$separator,$halfmatchflag,$dissimilarity);
+my ($debug,$inputfile,$man,$separator,$halfmatchflag,$dissimilarity, $xyfile);
 
-
-# Are the values separated by (1) nothing, (2) tabs, or (3) spaces (1,2,3) : ";
-$separator = 0;	   #Default is 0 ( nothing )
+# Are the values separated by (0) -- tabs and frequency data (1) nothing, (2) tabs, or (3) spaces (1,2,3) : ";
+$separator = 1;	   #Default is 1 ( tabs and frequency data )
 # "Do you want to use (1) 0.5 matching for ? or (0) strict matching where ? are ignored (1, 0) : ";
 $halfmatchflag=0;   # Default is 0
 # "Do you want to calculate similarity (0) or dissimilarity (1) :";
@@ -21,6 +20,7 @@ GetOptions(
     'separator=s'		=> \$separator,
     'probabilitymatching'	=> \$halfmatchflag,
     'dissimilarity'		=> \$dissimilarity,
+    'xyfile=s'			=> \$xyfile,
     man                         => \$man
 ) or pod2usage(2);
 
@@ -34,10 +34,9 @@ if ($DEBUG) {
 ## open the data file
 my $useOutputFile = substr($inputfile,0,-4);
 open( FILE, $inputfile ) or die "Cannot open $inputfile.\n";
-open OUTFILE, ">$useOutputFile.out";
-my $workbook = Spreadsheet::WriteExcel->new("$useOutputFile.xls");
+open OUTFILE, ">$useOutputFile-occur.out";
+my $workbook = Spreadsheet::WriteExcel->new("$useOutputFile-occur.xls");
 my $worksheet=$workbook->addworksheet();
-
 
 my @array;
 my $count;
@@ -45,18 +44,35 @@ my $length;
 my @namearray;
 my %hashOfNodes;
 
-
 while (<FILE>)
 {
 	my $line =$_;
 	chomp($line);
 	my ($name, $val);
 	$count++;
+	if ($separator==0) {
+		my @vals= split("\t", $line);
+		my $numClasses= scalar(@vals)-1;
+		push @namearray,$vals[0];
+		#print $vals[0]," - ",$vals[1], " - ", $vals[2], "\n";
+		$worksheet->write($count,0, $vals[0]);
+		$worksheet->write(0,$count,$vals[0]);
+		my $descriptor;
+		for (my $i=1; $i<$numClasses; $i++) {
+			#print vals[$i],"\n";
+			if ($vals[$i]>0) {
+				$descriptor .= "1";
+			} else {
+				$descriptor .= "0";
+			}
+		}	
+		push(@array, $descriptor);
+	}
 	if ($separator==1) {
 		($name, $val) = split("\t", $line);
 		push(@namearray, $name);	
 		push(@array, $val);
-		$length = length($val);
+		$length = scalar($val);
 		$worksheet->write($count,0, $name);
 		$worksheet->write(0,$count,$name);
 	}
@@ -83,6 +99,7 @@ while (<FILE>)
 }
 close FILE;
 
+#print Dumper(\@array);
 #outer loop
 for (my $m=0; $m<$count; $m++)
 {
@@ -92,7 +109,7 @@ for (my $m=0; $m<$count; $m++)
 		my $comparename = $namearray[$n];
 #		print "Comparing :-->$testinstance-->with->$compareinstance\n";
 		my $score=0;
-		if ($separator == 1) { ## case where nosparator
+		if ($separator == 1 || $separator==0) { ## case where nosparator
 			my $testinstance = $array[$m];
 			my $compareinstance = $array[$n];
 			for (my $o=0; $o<length($testinstance); $o++)
@@ -102,7 +119,7 @@ for (my $m=0; $m<$count; $m++)
 				$score=$score + comparevalues($test, $compare); 
 			}
 		}
-		if ($separator == 2   ) { ## case with tab separator
+		if ($separator == 2    ) { ## case with tab separator
 			my @testinstance = @{$array[$m]} ;	
 			my @compareinstance = @{$array[$n]};		
 		#	print "Comparing :-->Dumper(@testinstance)-->with->Dumper(@compareinstance)\n";
@@ -138,8 +155,13 @@ foreach my $value (sort {$hashOfNodes{$b} <=> $hashOfNodes{$a} }
 }
 
 close OUTFILE;
-
-print "Done: you can now type:  perl makenetwork.pl -input=$useOutputFile.out\n";
+if ($xyfile){
+	system("perl makenetwork.pl -input=$useOutputFile-occur.out -xyfile=$xyfile");
+} else {
+	system("perl makenetwork.pl -input=$useOutputFile-occur.out ");
+}
+print "Done!\n";
+exit();
 
 sub comparevalues {
 	my ($ctest, $ccompare) =  @_;
@@ -153,6 +175,7 @@ sub comparevalues {
 	}
 return $tempscore;
 }
+
 
 __END__
 
