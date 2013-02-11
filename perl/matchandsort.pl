@@ -193,8 +193,11 @@ __END__
        -input=<filename>    filename of data to seriate
        -dissimilarity	    use dissimilarity for comparison
        -probabilitymatching	use 0.5 as chance for matching missing data (?)
-       -separator=<1,2,3>	1= no separator, 2=tabs, 3=space
+       -separator=<0, 1,2,3>	0=frequency data, 1= no separator, 2=tabs, 3=space
+       -xyfile=<filename>	filename with XY data
 
+    Example: perl matchandsort.pl -input=../testdata/pfg-cpl.txt -xyfile=../testdata/pfgXY.txt -separator=0
+    
     =head1 OPTIONS
 
     =over 8
