@@ -23,7 +23,7 @@ def main(argv):
     except getopt.GetoptError:
         usage()
         sys.exit(2)
-
+    filename = None
     inputFile = None
     verbose = False
     for opt, arg in opts:
@@ -34,6 +34,7 @@ def main(argv):
             sys.exit()
         elif opt in ("-f", "--file"):
             inputFile = arg
+            filename= inputFile[0:-4]
         elif opt in ("-b", "--bootstrap"):
             bootstrapFile=arg
         else:
@@ -75,12 +76,12 @@ def main(argv):
     graphHash = {}
     row = ()
     ## Read in all of the data from the .vna file Reconstruct the graphs.
+
     try:
         file = open(inputFile)
     except IOError:
         print "can't open ", inputFile, ". I will now exit."
         sys.exit()
-
     megaGraph = nx.Graph()
     while 1:
         line=file.readline()
@@ -104,14 +105,14 @@ def main(argv):
         if count > 1 and block == "nodes":
             nodename = row[0]
             nodes.append(row[0])
-            nodeX[nodename] = float(row[2])
-            nodeY[nodename] = float(row[3])
+            nodeX[nodename] = float(row[4])
+            nodeY[nodename] = float(row[5])
             nodeSize[nodename] = float(row[1])
         if count > 1 and block == "ties":
             node1 = row[0]
             node2 = row[1]
-            node1x,node1y = nodeX[node1],nodeY[node1]
-            node2x,node2y = nodeX[node2],nodeY[node2]
+            node1x,node1y = nodeX[node1], nodeY[node1]
+            node2x,node2y = nodeX[node2], nodeY[node2]
             node1Size=nodeSize[node1]
             node2Size=nodeSize[node2]
 
@@ -127,6 +128,7 @@ def main(argv):
                 graphs.append(nx.Graph())
                 graphCount += 1
                 edgeCount = 0
+
             graphs[graphCount].add_node(node1, x = node1x, y = node1y, name=node1, size=node1Size )
             graphs[graphCount].add_node(node2, x = node2x, y = node2y, name=node2, size=node2Size )
             graphs[graphCount].add_edge(node1,node2,
@@ -142,6 +144,7 @@ def main(argv):
                                pvalue = pvalue,
                                pError = pError,
                                color ='black')
+
             edgeCount += 1
         count += 1
 
@@ -153,12 +156,16 @@ def main(argv):
     for g in graphs:
         edges = g.edges()
         for e in edges:
-            node1=e[0]
-            node2=e[1]
-
-            print g[node1]
-            print "--------"
-            #w.poly(parts=[[n1x,n1y],[n2x,n2y]], shapeType=shapefile.POLYLINE)
+            node1 = e[0]
+            node2 = e[1]
+            print g[node1][node2]
+            x1 = g[node1][node2]['xy1'][0]
+            y1 = g[node1][node2]['xy1'][1]
+            x2 = g[node2][node1]['xy2'][0]
+            y2 = g[node2][node1]['xy2'][1]
+            print x1, "-", y1
+            print x2, "-", y2
+            w.poly(parts=[[[x1,y1],[x2,y2]]])
         c += 1
 
     mst=nx.minimum_spanning_edges(megaGraph,data=True)
@@ -167,7 +174,9 @@ def main(argv):
     for edge in edgelist:
         print edge[0], " - ", edge[1]
 
+    w.save(filename)
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
+    print "done!"
