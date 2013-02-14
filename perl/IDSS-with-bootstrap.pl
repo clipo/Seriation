@@ -1377,7 +1377,7 @@ $graph->set(
         or warn $graph->error;
         
 my $gd = $graph->plot(\@data) or die $graph->error;
-open(IMG, '>$inputfile-histogram.png') or die $!;
+open(IMG, ">$inputfile-histogram.png") or die $!;
 binmode IMG;
 print IMG $gd->png;
 
