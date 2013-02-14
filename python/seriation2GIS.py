@@ -172,7 +172,7 @@ def main(argv):
     edgelist = list(mst) # make a list of the edges
 
     for edge in edgelist:
-        print edge[0], " - ", edge[1]
+        print edge[0], " - ", edge[1], " ", edge[0][1]['weight']
 
     w.save(filename)
 
