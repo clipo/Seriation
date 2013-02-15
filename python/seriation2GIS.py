@@ -15,11 +15,11 @@ pp = pprint.PrettyPrinter(indent=4)
 dumper = Dumper.Dumper(max_depth=5)
 
 def usage():
-    print "seriation2Network -file <filename.txt> -bootstrap <filename.txt>\n";
+    print "seriation2Network --file <filename.txt> --bootstrap <filename.txt> --gps\n";
 
 def main(argv):
     try:
-        opts, args = getopt.getopt(argv, "hb:f:d", ["help", "bootstrap=","file="])
+        opts, args = getopt.getopt(argv, "hb:f:dg", ["help", "bootstrap=","file="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -34,24 +34,27 @@ def main(argv):
             sys.exit()
         elif opt in ("-f", "--file"):
             inputFile = arg
-            filename= inputFile[0:-4]
+            gpsfilename = inputFile[0:-4]
         elif opt in ("-b", "--bootstrap"):
-            bootstrapFile=arg
+            bootstrapFile = arg
+        elif opt in ("-g", "--gps"):
+            gpsFlag = arg
         else:
             assert False, "unhandled option"
 
-    try:
-        file = open(bootstrapFile)
-    except IOError:
-        print "can't open ", bootstrapFile, ". I will now exit."
-        sys.exit()
+    if bootstrapFile is not None:
+        try:
+            file = open(bootstrapFile)
+        except IOError:
+            print "can't open ", bootstrapFile, ". I will now exit."
+            sys.exit()
 
-    bootstrapValues = []
-    bootstrapError = []
-    while 1:
-        line = file.readline()
-        if line in ['\n', '\r\n']:
-            break
+        bootstrapValues = []
+        bootstrapError = []
+        while 1:
+            line = file.readline()
+            if line in ['\n', '\r\n']:
+                break
         row = line.split()
         bootstrapValues[row[0]][row[1]] = row[2]
         bootstrapValues[row[1]][row[0]] = row[2]
@@ -62,6 +65,8 @@ def main(argv):
     x,y,id_no,date,target = [], [], [], [], []
     nodeX = {}
     nodeY = {}
+    nodeEasting = {}
+    nodeNorthing = {}
     nodes = []
     graphs = []
     nodeSize = {}
@@ -75,8 +80,9 @@ def main(argv):
     edgeCount = 0
     graphHash = {}
     row = ()
-    ## Read in all of the data from the .vna file Reconstruct the graphs.
 
+
+    ## Read in all of the data from the .vna file Reconstruct the graphs.
     try:
         file = open(inputFile)
     except IOError:
@@ -105,14 +111,16 @@ def main(argv):
         if count > 1 and block == "nodes":
             nodename = row[0]
             nodes.append(row[0])
-            nodeX[nodename] = float(row[4])
-            nodeY[nodename] = float(row[5])
+            nodeX[nodename] = float(row[2])
+            nodeY[nodename] = float(row[3])
+            nodeEasting[nodename] = float(row[4])
+            nodeNorthing[nodename] = float(row[5])
             nodeSize[nodename] = float(row[1])
         if count > 1 and block == "ties":
             node1 = row[0]
             node2 = row[1]
-            node1x,node1y = nodeX[node1], nodeY[node1]
-            node2x,node2y = nodeX[node2], nodeY[node2]
+            node1x,node1y = nodeEasting[node1], nodeNorthing[node1]
+            node2x,node2y = nodeEasting[node2], nodeNorthing[node2]
             node1Size=nodeSize[node1]
             node2Size=nodeSize[node2]
 
@@ -131,51 +139,58 @@ def main(argv):
 
             graphs[graphCount].add_node(node1, x = node1x, y = node1y, name=node1, size=node1Size )
             graphs[graphCount].add_node(node2, x = node2x, y = node2y, name=node2, size=node2Size )
-            graphs[graphCount].add_edge(node1,node2,
-                                    xy1 = (node1x,node1y),
-                                    xy2 = (node2x,node2y),
-                                    weight = weight,
-                                    meanDistance = meanDistance,
-                                    pvalue = pvalue,pError=pError,color='black')
-            megaGraph.add_edge(node1,node2, xy1=(node1x,node1y), xy2=(node2x,node2y),
+            graphs[graphCount].add_edge(node1,node2, xy1=(node1x, node1y), xy2=(node2x, node2y),
+                                                weight=weight,
+                                                meanDistance=meanDistance,
+                                                pvalue=pvalue,pError=pError,color='black')
+            if bootstrapFile is not None:
+                megaGraph.add_edge(node1,node2, xy1=(node1x,node1y), xy2=(node2x,node2y),
                                weight = bootstrapValues[node1][node2],
                                pvalueError = bootstrapError[node1][node2],
                                meanDistance = meanDistance,
                                pvalue = pvalue,
                                pError = pError,
                                color ='black')
-
             edgeCount += 1
         count += 1
 
-    w = shapefile.Writer(shapefile.POLYLINE)  # 3= polylines
+    if gpsFlag is not None:
+        w = shapefile.Writer(shapefile.POLYLINE)  # 3= polylines
+        #print count, " graphs "
+        c=0
+        #pp.pprint(graphs)
+        for g in graphs:
+            edges = g.edges()
+            for e in edges:
+                node1 = e[0]
+                node2 = e[1]
+                print g[node1][node2]
+                x1 = g[node1][node2]['xy1'][0]
+                y1 = g[node1][node2]['xy1'][1]
+                x2 = g[node2][node1]['xy2'][0]
+                y2 = g[node2][node1]['xy2'][1]
+                #print x1, "-", y1
+                #print x2, "-", y2
+                w.poly(parts=[[[x1,y1],[x2,y2]]])
+            c += 1
+        w.save(gpsfilename)
 
-    print count, " graphs "
-    c=0
-    #pp.pprint(graphs)
-    for g in graphs:
-        edges = g.edges()
-        for e in edges:
-            node1 = e[0]
-            node2 = e[1]
-            print g[node1][node2]
-            x1 = g[node1][node2]['xy1'][0]
-            y1 = g[node1][node2]['xy1'][1]
-            x2 = g[node2][node1]['xy2'][0]
-            y2 = g[node2][node1]['xy2'][1]
-            print x1, "-", y1
-            print x2, "-", y2
-            w.poly(parts=[[[x1,y1],[x2,y2]]])
-        c += 1
-
-    mst=nx.minimum_spanning_edges(megaGraph,data=True)
-    edgelist = list(mst) # make a list of the edges
-
-    for edge in edgelist:
-        print edge[0], " - ", edge[1], " ", edge[0][1]['weight']
-
-    w.save(filename)
-
+    if bootstrapFile is not None:
+        outputFile = inputFile[0,-4]+"-bootstrap.vna"
+        f = open(outputFile, 'w')
+        f.write("*node data\n")
+        f.write("ID X Y")
+        vertices = megaGraph.vertices()
+        for v in vertices:
+            output = v[0]+" "+nodeX[v[0]]+" "+nodeY[v[0]]+"\n"
+            f.write(output)
+        mst=nx.minimum_spanning_edges(megaGraph,data=True)
+        edgelist = list(mst) # make a list of the edges
+        f.write("*tie data\n*from to weight error\n")
+        for edge in edgelist:
+            output = edge[0]+" "+edge[1]+" "+edge[0][1]['weight']+" "+edge[0][1]['pvalueError']+"\n"
+            print edge[0], " - ", edge[1], " ", edge[0][1]['weight']," ", edge[0][1]['pvalueError'],"\n"
+            f.write(output)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
