@@ -15,17 +15,18 @@ pp = pprint.PrettyPrinter(indent=4)
 dumper = Dumper.Dumper(max_depth=5)
 
 def usage():
-    print "seriation2Network --file <filename.txt> --bootstrap <filename.txt> --gps\n";
+    print "seriation2Network --file <filename.txt> --bootstrap <filename.txt> --shapefile\n";
 
 def main(argv):
     try:
-        opts, args = getopt.getopt(argv, "hb:f:dg", ["help", "bootstrap=","file="])
+        opts, args = getopt.getopt(argv, "hb:f:ds", ["help", "bootstrap=","file="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
     filename = None
     inputFile = None
     verbose = False
+    bootstrapFile = None
     for opt, arg in opts:
         if opt == "-v":
             verbose = True
@@ -34,11 +35,11 @@ def main(argv):
             sys.exit()
         elif opt in ("-f", "--file"):
             inputFile = arg
-            gpsfilename = inputFile[0:-4]
+            shapefilename = inputFile[0:-4]
         elif opt in ("-b", "--bootstrap"):
             bootstrapFile = arg
-        elif opt in ("-g", "--gps"):
-            gpsFlag = arg
+        elif opt in ("-s", "--shapefile"):
+            shapefileFlag = arg
         else:
             assert False, "unhandled option"
 
@@ -88,6 +89,10 @@ def main(argv):
     except IOError:
         print "can't open ", inputFile, ". I will now exit."
         sys.exit()
+    except TypeError:
+        print "No file specified (use --file=<filename>). I will now exit."
+        sys.exit()
+
     megaGraph = nx.Graph()
     while 1:
         line=file.readline()
@@ -154,7 +159,7 @@ def main(argv):
             edgeCount += 1
         count += 1
 
-    if gpsFlag is not None:
+    if shapefileFlag is not None:
         w = shapefile.Writer(shapefile.POLYLINE)  # 3= polylines
         #print count, " graphs "
         c=0
@@ -173,7 +178,7 @@ def main(argv):
                 #print x2, "-", y2
                 w.poly(parts=[[[x1,y1],[x2,y2]]])
             c += 1
-        w.save(gpsfilename)
+        w.save(shapefilename)
 
     if bootstrapFile is not None:
         outputFile = inputFile[0,-4]+"-bootstrap.vna"

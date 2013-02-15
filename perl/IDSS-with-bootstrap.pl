@@ -31,6 +31,8 @@ my $threshold               = 0;
 my $noscreen                = 0;     ## flag for screen output
 my $excel                   = 0;       ## flag for excel file output (not implemented yet)
 my $xyfile = "";
+my $mst                     = 0; ## minimum spanning tree
+my $pairwiseFile = "";
 
 ## find the largest valuein a hash
 sub largest_value_mem (\%) {
@@ -65,6 +67,8 @@ GetOptions(
     'threshold=f'               => \$threshold,
     'noscreen'                  => \$noscreen,
     'xyfile=s'                  => \$xyfile,
+    'pairwise=s'                => \$pairwiseFile,
+    'mst'                       => \$mst,
     man                         => \$man
 ) or pod2usage(2);
 
@@ -84,6 +88,8 @@ if ($DEBUG) {
     print "noscreen: ", $noscreen, "\n";
     print "excel:  ", $excel, "\n";
     print "xyfile: ", $xyfile,"\n";
+    print "pairwise:", $pairwiseFile,"\n";
+    print "mst:  ", $mst, "\n";
 }
 
 # start the clock to track how long this run takes
@@ -124,7 +130,22 @@ open( INFILE, $inputfile ) or die "Cannot open $inputfile.\n";
 open( OUTFILE, ">$useOutputFile.vna" ) or die "Can't open file $useOutputFile.vna to write.\n";
 open( OUTDOTFILE, ">$useOutputFile.dot") or die "Can't open file $useOutputFile.dot to write.\n";
 open( OUTPAIRSFILE, ">$useOutputFile-pairs.vna") or die "Can't open file $useOutputFile-pairs.vna to write.\n";
+if ($mst) {
+    open(OUTBOOTSTRAPFILE, ">$useOutputFile-mst.vna") or die "Can't open file $useOutputFile-mst.vna to write\n";
+    open(OUTDISTANCEFILE, ">$useOutputFile-mst-distance.vna") or die "Can't open file $useOutputFile-mst-distance.vna to write\n";
+}
+my %pairwise = {};
+my %pairwiseError = {};
 
+if ($pairwiseFile) {
+    open (PAIRWISE,$pairwiseFile ) or die "Cannot open $pairwiseFile.\n";
+    while (<PAIRWISE>) {
+        my @line = split /\s+/, $_;
+        my $pair = $line[0]."#".$line[1];
+        $pairwise{ $pair } = $line[2];
+        $pairwiseError{ $pair } = $line[3];
+    }
+}
 ## some output so we know what we are doing 
 $screen and $scr->at(1,1)->puts("Filename:  $inputfile");
 $screen and $scr->at(2,1)->puts("Threshold: $threshold");
@@ -1115,10 +1136,13 @@ if ($bootstrap) {
             $cycle--;
             $results = 0;
         }
-        $pvalue{$pairs[0]} = $stat->mean();
-        $perror{$pairs[0]} = $stat->standard_deviation();
-        $pvalue{$pairs[1]} = $stat->mean();
-        $perror{$pairs[1]} = $stat->standard_deviation();
+        my $pairname = $pairs[0]."#".$pairs[1];
+        my $pairname2 = $pairs[1]."#".$pairs[0];
+        
+        $pvalue{$pairname} = $stat->mean();
+        $perror{$pairname} = $stat->standard_deviation();
+        $pvalue{$pairname2} = $stat->mean();
+        $perror{$pairname2} = $stat->standard_deviation();
         $DEBUG and print $pairs[0], "\t", $pairs[0], "\t";
         $DEBUG and print $stat->mean(), "\t";
         $DEBUG and print $stat->standard_deviation(), "\n";
@@ -1209,6 +1233,10 @@ print OUTPAIRSFILE "ID AssemblageSize X Y Easting Northing\n";
 #print OUTFILE "ID AssemblageSize X Y \n";
 print OUTDOTFILE "graph seriation \n{\n";
 print OUTDOTFILE "\n/* list of nodes */\n";
+if ($mst) {
+    print OUTBOOTSTRAPFILE "*Node data\nID AssemblageSize X Y Easting Northing\n";
+    print OUTDISTANCEFILE "*Node data\nID AssemblageSize X Y Easting Northing\n";
+}
 $count = 0;
 $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes....     ");
 ## note this assumes the use of UTM coordinates (northing and easting)
@@ -1219,9 +1247,17 @@ foreach my $l (@labels) {
     print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
     print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
     print OUTDOTFILE "\"".$l."\";\n";
+    if ($mst){
+        print OUTBOOTSTRAPFILE  $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
+        print OUTDISTANCEFILE  $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
+    }
 }
 print OUTFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
 print OUTPAIRSFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
+if ($mst) {
+    print OUTBOOTSTRAPFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
+    print OUTDISTANCEFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
+}
 $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes attributes... ");
 foreach my $l (@labels) {
    my $x = $xAssemblage{ $l }/1000000 || 0;
@@ -1229,11 +1265,19 @@ foreach my $l (@labels) {
     print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
     print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
     print OUTDOTFILE "\"".$l."\";\n";
+    if ($mst) {
+        print OUTBOOTSTRAPFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
+        print OUTDISTANCEFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
+    }
 }
 
 ## This prints out counts of the edges as they appear in ALL of the solutions
 $screen and $scr->at(1,40)->puts("STEP: Going through and counting pairs...     ");
 print OUTPAIRSFILE "*Tie data\nFrom To Edge Count\n";
+if ($mst) {
+    print OUTBOOTSTRAPFILE "*Tie data\nFrom To Edge Weight\n";
+    print OUTDISTANCEFILE "*Tie data\nFrom To Edge Weight \n";
+}
 ## first count up all of the edges by going through the solutions and each edge
 ## put the edge count in a hash of edges
 my %edgeHash=();
@@ -1301,13 +1345,18 @@ foreach my $network (@uniqueArray) {
                my $edge0 = @$e[0];
                my $edge1 = @$e[1];
                 if ( !$bootstrap ) {
-                    $perror{ @$e[0] . "-" . @$e[1] } = 0.0;
-                    $pvalue{ @$e[0] . "-" . @$e[1] } = 0.0;
+                    $perror{ @$e[0] . "#" . @$e[1] } = 0.0;
+                    $pvalue{ @$e[0] . "#" . @$e[1] } = 0.0;
+                }
+                if ( $pairwiseFile ) {
+                    my $pairname= $edge0."#".$edge1;
+                    $perror{ @$e[0] . "#" . @$e[1] } = $pairwise{ $pairname };
+                    $pvalue{ @$e[0] . "#" . @$e[1] } = $pairwiseError{ $pairname };
                 }
                 #print OUTFILE @$e[0], " ", @$e[1], " 1 ", scalar(@Edges), " ", $count, " ";
                 #print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, "  ", $meanDistance, "\n";
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
-                my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pvalue{ @$e[0] . "-" . @$e[1] }." ". $perror{ @$e[0] . "-" . @$e[1] };
+                my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pvalue{ @$e[0] . "#" . @$e[1] }." ". $perror{ @$e[0] . "#" . @$e[1] };
                 $distanceHash{ $text }= $meanDistance;
             }
             #print OUTFILE "---------------------------\n";
@@ -1340,14 +1389,86 @@ foreach my $network (@uniqueArray) {
                 $perror{ @$e[0] . "-" . @$e[1] } = 0.0;
                 $pvalue { @$e[0] . "-" . @$e[1] } = 0.0;
             }
+            if ( $pairwiseFile ) {
+                my $pairname= $edge0."#".$edge1;
+                $perror{ @$e[0] . "#" . @$e[1] } = $pairwise{ $pairname };
+                $pvalue{ @$e[0] . "#" . @$e[1] } = $pairwiseError{ $pairname };
+            }
             #print OUTFILE @$e[0], " ", @$e[1], " 1 ", scalar(@Edges), " ", $count, " ";
             #print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, " ", $meanDistance, "\n";
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
-             my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pvalue{ @$e[0] . "-" . @$e[1] }." ". $perror{ @$e[0] . "-" . @$e[1] };
+             my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pvalue{ @$e[0] . "#" . @$e[1] }." ". $perror{ @$e[0] . "#" . @$e[1] };
             $distanceHash{ $text } = $meanDistance;
             print OUTFILE $text, " ", $meanDistance, "\n";
         }
           #print OUTFILE "---------------------------\n";
+    }
+}
+
+## Do a MST analysis
+
+if ($mst) {
+    use Graph::Undirected;
+    my $megaNetwork = Graph::Undirected->new;
+    my $distanceNetwork = Graph::Undirected->new;
+    
+    foreach my $network (@uniqueArray) {
+        if (ref($network) eq "REF") {
+            $network = $$network;
+        }
+        $screen and $scr->at(14,1)->puts( "MST creation - solution: ");
+        $screen and $scr->at(14,26)->puts($count);
+        my $eCount;   
+        my @Edges = $network->unique_edges;
+        my $groupDistance=0;
+        my $meanDistance=0.0;    
+        # make a gigantic nework
+      
+        foreach my $e (@Edges) {
+            my $edge0 = @$e[0];
+            my $edge1 = @$e[1];
+            if ( !$bootstrap ) {
+                $perror{ @$e[0] . "#" . @$e[1] } = 0.0;
+                $pvalue { @$e[0] . "#" . @$e[1] } = 0.0;
+            }
+            if ( $pairwiseFile ) {
+                my $pairname= $edge0."#".$edge1;
+                $perror{ @$e[0] . "#" . @$e[1] } = $pairwiseError{ $pairname };
+                $pvalue{ @$e[0] . "#" . @$e[1] } = $pairwise{ $pairname };
+            }
+            my $pairname= $edge0."#".$edge1;
+            $megaNetwork->add_vertex( $edge0 );
+            $megaNetwork->add_vertex( $edge1 );
+            $megaNetwork->add_edge($edge0, $edge1);
+            $megaNetwork->set_edge_weight($edge0, $edge1, $pairwise{ $pairname } );
+            my $distpairname= $edge0."*".$edge1;
+            $distanceNetwork->add_vertex( $edge0 );
+            $distanceNetwork->add_vertex( $edge1 );
+            my $distance = $distanceBetweenAssemblages{ $distpairname };
+            $distanceNetwork->add_edge($edge0,$edge1,$distance);
+            $distanceNetwork->set_edge_weight($edge0, $edge1, $distance)
+        }
+    }
+        
+    my $mstgBootstrap = $megaNetwork->minimum_spanning_tree;
+    $count=1;
+    my @Edges = $mstgBootstrap->unique_edges;
+    foreach my $e (@Edges) {
+        my $edge0 = @$e[0];
+        my $edge1 = @$e[1];
+        my $pairname= $edge0."#".$edge1;
+        print OUTBOOTSTRAPFILE $edge0, " ", $edge1, " ", $count, " ", $pairwise{ $pairname }, "\n";
+        $count++;
+    }
+    my $mstgDistance = $distanceNetwork->minimum_spanning_tree;
+    $count=1;
+    @Edges = $mstgDistance->unique_edges;
+    foreach my $e (@Edges) {
+        my $edge0 = @$e[0];
+        my $edge1 = @$e[1];
+        my $pairname= $edge0."*".$edge1;
+        print OUTBOOTSTRAPFILE $edge0, " ", $edge1, " ", $count, " ", $distanceBetweenAssemblages{ $pairname }, "\n";
+        $count++;
     }
 }
 
@@ -1470,7 +1591,7 @@ __END__
      Options:
        -help                brief help message
        -man                 full documentation
-       -input=<filename>    filename of data to seriate
+       -input=<filename.txt>    filename of data to seriate
        -xyfile=<filename>   filename of XY data for assemblages
        -threshold=<value>   value specified as the maximum % difference between assemblages examined
        -largestonly         only the largest seriation solutions are printed in output
@@ -1483,8 +1604,13 @@ __END__
        -debug               print debugging output
        -noscreen            don't use terminal output - just standard out
        -excel               output excel files for creating graphical seriation (not working yet)
+       -mst                 minimum spanning tree
+       -pairwise=<filename> pairwise comparisons
        
-
+    Output will be:
+        <filename>.vna      Netdraw file
+        <filename>.dot      DOT file
+        
     =head1 OPTIONS
 
     =over 8
