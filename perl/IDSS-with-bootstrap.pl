@@ -501,6 +501,7 @@ while ( my @permu = $permutations->next_combination ) {
     if ( $error == 0 ) {
         undef $net;
         $net = Graph::Directed->new;
+        $net->set_graph_attribute("GraphID", $numberOfTriplets);
         $net->add_vertex( $labels[ $permu[0] ] );
         $net->add_vertex( $labels[ $permu[1] ] );
         $net->add_vertex( $labels[ $permu[2] ] );
@@ -509,11 +510,14 @@ while ( my @permu = $permutations->next_combination ) {
             $labels[ $permu[1] ],
             $comparison12
         );
+        $net->set_edge_attribute($labels[ $permu[0]], $labels[ $permu[1] ] , "GraphID", $numberOfTriplets);
         $net->add_weighted_edge(
             $labels[ $permu[1] ],
             $labels[ $permu[2] ],
             $comparison23
         );
+        $net->set_edge_attribute($labels[ $permu[1]], $labels[ $permu[2] ] , "GraphID", $numberOfTriplets);
+        
         $DEBUG and print "VALID SOLUTION: " . $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ] . " * " . $labels[ $permu[2] ] . "\n";
         $DEBUG and print "VALID SOLUTION: \t  $comparison12\t  ---   $comparison23\n";
         push @triples, $net;
@@ -1275,8 +1279,8 @@ foreach my $l (@labels) {
 $screen and $scr->at(1,40)->puts("STEP: Going through and counting pairs...     ");
 print OUTPAIRSFILE "*Tie data\nFrom To Edge Count\n";
 if ($mst) {
-    print OUTBOOTSTRAPFILE "*Tie data\nFrom To Edge Weight\n";
-    print OUTDISTANCEFILE "*Tie data\nFrom To Edge Weight \n";
+    print OUTBOOTSTRAPFILE "*Tie data\nFrom To Edge Weight ID\n";
+    print OUTDISTANCEFILE "*Tie data\nFrom To Edge Weight ID\n";
 }
 ## first count up all of the edges by going through the solutions and each edge
 ## put the edge count in a hash of edges
@@ -1416,10 +1420,12 @@ if ($mst) {
         if (ref($network) eq "REF") {
             $network = $$network;
         }
+        
         $screen and $scr->at(14,1)->puts( "MST creation - solution: ");
         $screen and $scr->at(14,26)->puts($count);
         my $eCount;   
         my @Edges = $network->unique_edges;
+        my $graphID = $network->get_graph_attribute("GraphID");
         my $groupDistance=0;
         my $meanDistance=0.0;    
         # make a gigantic nework
@@ -1441,12 +1447,14 @@ if ($mst) {
             $megaNetwork->add_vertex( $edge1 );
             $megaNetwork->add_edge($edge0, $edge1);
             $megaNetwork->set_edge_weight($edge0, $edge1, $pairwise{ $pairname } );
+            $megaNetwork->set_edge_attribute($edge0, $edge1, "GraphID", $graphID);
             my $distpairname= $edge0."*".$edge1;
             $distanceNetwork->add_vertex( $edge0 );
             $distanceNetwork->add_vertex( $edge1 );
             my $distance = $distanceBetweenAssemblages{ $distpairname };
             $distanceNetwork->add_edge($edge0,$edge1);
-            $distanceNetwork->set_edge_weight($edge0, $edge1, $distance)
+            $distanceNetwork->set_edge_weight($edge0, $edge1, $distance);
+            $distanceNetwork->set_edge_attribute($edge0, $edge1, "GraphID", $graphID);
         }
     }
         
@@ -1457,7 +1465,7 @@ if ($mst) {
         my $edge0 = @$e[0];
         my $edge1 = @$e[1];
         my $pairname= $edge0."#".$edge1;
-        print OUTBOOTSTRAPFILE $edge0, " ", $edge1, " ", $count, " ", $pairwise{ $pairname }, "\n";
+        print OUTBOOTSTRAPFILE $edge0, " ", $edge1, " ", $count, " ", $pairwise{ $pairname }, " ", $megaNetwork->get_edge_attribute( $edge0, $edge1, "GraphID"), "\n";
         $count++;
     }
     my $mstgDistance = $distanceNetwork->minimum_spanning_tree;
@@ -1467,7 +1475,7 @@ if ($mst) {
         my $edge0 = @$e[0];
         my $edge1 = @$e[1];
         my $pairname= $edge0."*".$edge1;
-        print OUTDISTANCEFILE $edge0, " ", $edge1, " ", $count, " ", $distanceBetweenAssemblages{ $pairname }, "\n";
+        print OUTDISTANCEFILE $edge0, " ", $edge1, " ", $count, " ", $distanceBetweenAssemblages{ $pairname }, " ", $distanceNetwork->get_edge_attribute( $edge0, $edge1, "GraphID"),"\n";
         $count++;
     }
 }
