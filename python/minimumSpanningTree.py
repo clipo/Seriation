@@ -146,7 +146,7 @@ def main(argv):
             graphs[graphCount].add_edge(node1,node2, xy1=(node1x, node1y), xy2=(node2x, node2y),
                                         weight=weight,
                                         meanDistance=meanDistance,
-                                        pvalue=weight,pError=pError,color='black',
+                                        pvalue=weight,pError=pError,color=network,
                                         size=(nodeSize[node1],nodeSize[node2]))
             megaGraph.add_node(node1, x = node1x, y = node1y, name=node1, size=node1Size )
             megaGraph.add_node(node2, x = node2x, y = node2y, name=node2, size=node2Size )
@@ -156,7 +156,7 @@ def main(argv):
                                    meanDistance = meanDistance,
                                    pvalue = pvalue,
                                    pError = pError,
-                                   color ='black',
+                                   color =network,
                                    size=(node1Size,node2Size),
                                     )
             edgeCount += 1
@@ -183,6 +183,8 @@ def main(argv):
             c += 1
         w.save(shapefilename)
 
+    plt.rcParams['text.usetex'] = False
+    plt.figure(figsize=(8,8))
     mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
 
     pos=nx.spring_layout(mst,iterations=200)
@@ -190,25 +192,29 @@ def main(argv):
     # edge width is proportional number of games played
     edgewidth=[]
     weights = nx.get_edge_attributes(mst, 'weight')
-    #print weights
-    maxval = max(weights)
-
     for w in weights:
-        #print weights[w]
         edgewidth.append(weights[w]*10)
+
     maxValue = max(edgewidth)
-    #print "MAX: ", maxValue
     widths=[]
     for w in edgewidth:
         widths.append(((maxValue-w)+1)*5)
 
+    color = nx.get_edge_attributes(mst, 'color')
+    colorList = []
+    for c in color:
+        colorList.append(color[c])
+    colors=[]
+    colorMax = max(colorList)
+    for c in colorList:
+        colors.append(c/colorMax)
     assemblageSizes=[]
     sizes = nx.get_node_attributes(mst, 'size')
     #print sizes
     for s in sizes:
         #print sizes[s]
         assemblageSizes.append(sizes[s])
-    nx.draw_networkx_edges(mst,pos,alpha=0.3,width=widths, edge_color='m')
+    nx.draw_networkx_edges(mst,pos,alpha=0.3,width=widths, edge_color=colorList)
     sizes = nx.get_node_attributes(mst,'size')
     nx.draw_networkx_nodes(mst,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
     nx.draw_networkx_edges(mst,pos,alpha=0.4,node_size=0,width=1,edge_color='k')

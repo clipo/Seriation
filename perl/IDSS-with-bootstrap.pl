@@ -1445,7 +1445,7 @@ if ($mst) {
             $distanceNetwork->add_vertex( $edge0 );
             $distanceNetwork->add_vertex( $edge1 );
             my $distance = $distanceBetweenAssemblages{ $distpairname };
-            $distanceNetwork->add_edge($edge0,$edge1,$distance);
+            $distanceNetwork->add_edge($edge0,$edge1);
             $distanceNetwork->set_edge_weight($edge0, $edge1, $distance)
         }
     }
@@ -1467,7 +1467,7 @@ if ($mst) {
         my $edge0 = @$e[0];
         my $edge1 = @$e[1];
         my $pairname= $edge0."*".$edge1;
-        print OUTBOOTSTRAPFILE $edge0, " ", $edge1, " ", $count, " ", $distanceBetweenAssemblages{ $pairname }, "\n";
+        print OUTDISTANCEFILE $edge0, " ", $edge1, " ", $count, " ", $distanceBetweenAssemblages{ $pairname }, "\n";
         $count++;
     }
 }
