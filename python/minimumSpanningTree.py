@@ -11,13 +11,22 @@ import Dumper
 from pylab import *
 import matplotlib.pyplot as plt
 import time
-
+from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic as isomorphic
+import random
 
 pp = pprint.PrettyPrinter(indent=4)
 dumper = Dumper.Dumper(max_depth=5)
 
 def usage():
     print "minimumSpanningTree --file <filename.vna> --shapefile\n";
+
+
+def iso(G1, glist):
+    """Quick and dirty nonisomorphism checker used to check isomorphisms."""
+    for G2 in glist:
+        if isomorphic(G1,G2):
+            return True
+    return False
 
 def main(argv):
     try:
@@ -120,7 +129,7 @@ def main(argv):
             node2x,node2y = nodeEasting[node2], nodeNorthing[node2]
             node1Size=nodeSize[node1]
             node2Size=nodeSize[node2]
-            weight = 1-float(row[5])
+            weight = float(row[5])
             weightError = float(row[6])
             pair = node1 + "#" + node2
             pair2 = node2 + "#" + node1
@@ -137,16 +146,17 @@ def main(argv):
             if network > old_network:
                 #print "adding network..."
                 old_network = network
-                graphs.append(nx.Graph())
+                graphs.append(nx.Graph(ID=graphCount))
                 graphCount += 1
                 edgeCount = 0
-
-            graphs[graphCount].add_node(node1, x = node1x, y = node1y, name=node1, size=node1Size )
-            graphs[graphCount].add_node(node2, x = node2x, y = node2y, name=node2, size=node2Size )
-            graphs[graphCount].add_edge(node1,node2, xy1=(node1x, node1y), xy2=(node2x, node2y),
+            node1name = node1+"_"+str(graphCount)
+            node2name = node2+"_"+str(graphCount)
+            graphs[graphCount].add_node(node1name, label= node1, x = node1x, y = node1y, name=node1, size=node1Size )
+            graphs[graphCount].add_node(node2name, label= node2, x = node2x, y = node2y, name=node2, size=node2Size )
+            graphs[graphCount].add_edge(node1name, node2name, xy1=(node1x, node1y), xy2=(node2x, node2y),
                                         weight=weight,
                                         meanDistance=meanDistance,
-                                        pvalue=weight,pError=pError,color=network,
+                                        pvalue=weight,pError=pError,
                                         size=(nodeSize[node1],nodeSize[node2]))
             megaGraph.add_node(node1, x = node1x, y = node1y, name=node1, size=node1Size )
             megaGraph.add_node(node2, x = node2x, y = node2y, name=node2, size=node2Size )
@@ -183,11 +193,16 @@ def main(argv):
             c += 1
         w.save(shapefilename)
 
-    plt.rcParams['text.usetex'] = False
-    plt.figure(figsize=(8,8))
-    mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
+    try:
+        from networkx import graphviz_layout
+    except ImportError:
+        raise ImportError("This example needs Graphviz and either PyGraphviz or Pydot")
 
-    pos=nx.spring_layout(mst,iterations=200)
+    plt.rcParams['text.usetex'] = False
+    plt.figure(0,figsize=(8,8))
+    mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
+    pos=nx.graphviz_layout(mst,prog="neato")
+    #pos=nx.spring_layout(mst,iterations=500)
 
     # edge width is proportional number of games played
     edgewidth=[]
@@ -238,6 +253,40 @@ def main(argv):
         output = u +" "+ v + " "+str(d['weight'])+" "+str(d['pError'])+" "+str(d['meanDistance'])+"\n"
         #print output
         f.write(output)
+
+    plt.figure(1,figsize=(30,20))
+    # layout graphs with positions using graphviz neato
+
+    UU=nx.Graph()
+    # do quick isomorphic-like check, not a true isomorphism checker
+    nlist=[] # list of nonisomorphic graphs
+    for G in graphs:
+        # check against all nonisomorphic graphs so far
+        if not iso(G, nlist):
+            nlist.append(G)
+
+    UU=nx.union_all(graphs) # union the nonisomorphic graphs
+    #UU=nx.disjoint_union_all(nlist) # union the nonisomorphic graphs
+    #pos=nx.spring_layout(UU,iterations=50)
+
+    ##pos=nx.graphviz_layout(UU,prog="neato")
+    pos=nx.graphviz_layout(UU,prog="twopi",root=0)
+    ##labels=nx.draw_networkx_labels(UU,pos)
+    # color nodes the same in each connected subgraph
+    C=nx.connected_component_subgraphs(UU)
+    for g in C:
+        c = [random.random()] * nx.number_of_nodes(g) # random color...
+        nx.draw(g,
+            pos,
+            node_size=40,
+            node_color=c,
+            vmin=0.0,
+            vmax=1.0,
+            alpha=.2,
+            font_size=7,
+        )
+    plt.savefig("atlas.png",dpi=250)
+
     plt.show() # display
 
 
