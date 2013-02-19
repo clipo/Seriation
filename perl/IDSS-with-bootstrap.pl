@@ -503,8 +503,12 @@ while ( my @permu = $permutations->next_combination ) {
         $net = Graph::Directed->new;
         $net->set_graph_attribute("GraphID", $numberOfTriplets);
         $net->add_vertex( $labels[ $permu[0] ] );
+        $net->set_vertex_attribute($labels[ $permu[0] ] ,"End",1);
         $net->add_vertex( $labels[ $permu[1] ] );
+        $net->set_vertex_attribute($labels[ $permu[1] ] ,"End",0);
         $net->add_vertex( $labels[ $permu[2] ] );
+        $net->set_vertex_attribute($labels[ $permu[0] ] ,"End",1);
+        
         $net->add_weighted_edge(
             $labels[ $permu[0] ],
             $labels[ $permu[1] ],
@@ -516,8 +520,7 @@ while ( my @permu = $permutations->next_combination ) {
             $labels[ $permu[2] ],
             $comparison23
         );
-        $net->set_edge_attribute($labels[ $permu[1]], $labels[ $permu[2] ] , "GraphID", $numberOfTriplets);
-        
+        $net->set_edge_attribute($labels[ $permu[1]], $labels[ $permu[2] ] , "GraphID", $numberOfTriplets);     
         $DEBUG and print "VALID SOLUTION: " . $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ] . " * " . $labels[ $permu[2] ] . "\n";
         $DEBUG and print "VALID SOLUTION: \t  $comparison12\t  ---   $comparison23\n";
         push @triples, $net;
@@ -923,7 +926,12 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             ## no errors so add vertice added to the new network
                             #my $oldedgenum = $nnetwork->edges;
                             my @vertices = $nnetwork->vertices;
-                            if ( ! grep { $_ eq $testAssemblage} @vertices) { 
+                            if ( ! grep { $_ eq $testAssemblage} @vertices) {
+                                $nnetwork->add_vertex($testAssemblage);
+                                ## mark this vertice as the new "END"
+                                $network->set_vertex_attribute($testAssemblage,"End",1);
+                                ## mark the interior vertice as not and "END"
+                                $network->set_vertex_attribute($endAssemblage,"End",0);
                                 $nnetwork->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
                                 $DEBUG and print "New network (with addition): ", $nnetwork, "\n\r";
 
