@@ -18,7 +18,7 @@ use GD::Graph::histogram;
 
 my $debug                   = 0;
 my $filterflag              = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
-my $largestOnly             = 0; #       # only output the largest set of solutions
+my $largestonly             = 0; #  only output the largest set of solutions
 my $individualfileoutput    = 0; ## create files for all the indivdual networks
 my $bootstrap               = 0; ## flag for bootstrap
 my $bootstrapCI             = 0; ## flag for the CI bootstrap
@@ -59,7 +59,7 @@ GetOptions(
     'bootstrap'                 => \$bootstrap,
     'bootstrapdebug'            => \$bootstrapdebug,
     'filtered'                  => \$filterflag,
-    'largestOnly'               => \$largestOnly,
+    'largestonly'               => \$largestonly,
     'indivfiles'                => \$individualfileoutput,
     'help'                      => sub { HelpMessage() },
     'input=s'                   => \$inputfile,
@@ -82,7 +82,7 @@ if ($DEBUG) {
     print "bootstrapCI: ", $bootstrapCI, "\n";
     print "bootstrapSignificance: ", $bootstrapSignificance, "\n";
     print "bootstrap: ", $bootstrap, "\n";
-    print "largestOnly: ", $largestOnly, "\n";
+    print "largestonly: ", $largestonly, "\n";
     print "individualfileouput: ", $individualfileoutput, "\n";
     print "threshold is currently set to: $threshold\n";
     print "noscreen: ", $noscreen, "\n";
@@ -930,14 +930,13 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                 ## copy this solution to the new array of networks
                                 push @newnets, $nnetwork;   ## contains solutions for just this step
                                 my $currentTotal =  scalar(@newnets);
-                                if ($nnetwork->edges > $maxEdges) {
-                                    $maxEdges = $nnetwork->edges;
+                                if (($nnetwork->unique_edges) > $maxEdges) {
+                                    $maxEdges = $nnetwork->unique_edges;
+                                    $screen and $scr->at(6,1)->puts("Current Max Edges: $maxEdges   ");
                                 }
-                                 #print "MAX EDGES!!! ", $maxEdges ,"\n";
-
                                 $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionSum");
                                 $screen and $scr->at(8,43)->puts("                   ");
-                                $screen and $scr->at(8,1)->puts("Current nunmber of seriation linkages at this step: $currentTotal");
+                                $screen and $scr->at(8,1)->puts("Current number of seriation linkages at this step: $currentTotal");
                                 $DEBUG and print "-------------------------------------------------\n\r";
                             }
                         }
@@ -1188,7 +1187,7 @@ if ( $filterflag == 1 ) {
     $DEBUG and print "End with ", scalar(@filteredarray), " solutions.\n";
     my $filterCount= scalar(@filteredarray);
     $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
-} elsif ($largestOnly) {
+} elsif ($largestonly>0) {
     print "\n\rNow going to print just the largest network out of a pool of ", scalar(@networks), "\n\r";
     @filteredarray = @networks; ## just the largest one
 } else {
@@ -1234,7 +1233,6 @@ print OUTFILE "*Node data\n";
 print OUTFILE "ID AssemblageSize X Y Easting Northing\n";
 print OUTPAIRSFILE "*Node data\n";
 print OUTPAIRSFILE "ID AssemblageSize X Y Easting Northing\n";
-#print OUTFILE "ID AssemblageSize X Y \n";
 print OUTDOTFILE "graph seriation \n{\n";
 print OUTDOTFILE "\n/* list of nodes */\n";
 if ($mst) {
@@ -1248,12 +1246,14 @@ foreach my $l (@labels) {
     #print OUTFILE $l, "\n";
     my $x = $xAssemblage{ $l }/1000000 || 0;
     my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
-    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
-    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
+    my $easting = $xAssemblage{ $l } || 0;
+    my $northing = $yAssemblage{ $l } || 0;
+    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
     print OUTDOTFILE "\"".$l."\";\n";
     if ($mst){
-        print OUTBOOTSTRAPFILE  $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
-        print OUTDISTANCEFILE  $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
+        print OUTBOOTSTRAPFILE  $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+        print OUTDISTANCEFILE  $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
     }
 }
 print OUTFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
@@ -1266,12 +1266,14 @@ $screen and $scr->at(1,40)->puts("STEP: Printing list of nodes attributes... ");
 foreach my $l (@labels) {
    my $x = $xAssemblage{ $l }/1000000 || 0;
     my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
-    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
-    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
+    my $easting = $xAssemblage{ $l } || 0;
+    my $northing = $yAssemblage{ $l } || 0;
+    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
     print OUTDOTFILE "\"".$l."\";\n";
     if ($mst) {
-        print OUTBOOTSTRAPFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
-        print OUTDISTANCEFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$xAssemblage{ $l }." ".$yAssemblage{ $l }."\n";
+        print OUTBOOTSTRAPFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+        print OUTDISTANCEFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
     }
 }
 
@@ -1308,7 +1310,7 @@ foreach (sort { ($edgeHash{$b} cmp $edgeHash{$a}) || ($b cmp $a) } keys %edgeHas
     print OUTPAIRSFILE $_, " 1 ", $edgeHash{$_}, "\n";
 }
 
-print OUTFILE "*Tie data\nFrom To Edge Weight Network pValue pError meanSolutionDistance DistanceOrder\n";
+print OUTFILE "*Tie data\nFrom To Edge Weight Network pValue pError meanSolutionDistance\n";
 $screen and $scr->at(1,40)->puts("STEP: Eliminating duplicates...     ");
 my @uniqueArray = uniq @filteredarray;
 
@@ -1326,9 +1328,9 @@ foreach my $network (@uniqueArray) {
     $screen and $scr->at(14,1)->puts( "Now on solution: ");
     $screen and $scr->at(14,18)->puts($count);
     my $eCount;   
-    my $E = $network->edges;
     
-    if ($largestOnly && ($E == $maxEdges) ) {
+    if ($largestonly>0) {
+        if ($network->unique_edges == $maxEdges) {
             my $groupDistance=0;
             my @Edges = $network->unique_edges;
             my $meanDistance=0.0;
@@ -1339,7 +1341,6 @@ foreach my $network (@uniqueArray) {
                   my $edge1 = @$e[1];
                   my $pairname= $edge0."*".$edge1;
                   $groupDistance += $distanceBetweenAssemblages{ $pairname };
-                  #print "\n\rGroup Distance for: ", $pairname, ":", $distanceBetweenAssemblages{ $pairname },"\n\r";
                   $eCount++;
                }
                $meanDistance = $groupDistance/$eCount;      ## use the average for the group for now
@@ -1348,23 +1349,28 @@ foreach my $network (@uniqueArray) {
             foreach my $e (@Edges) {
                my $edge0 = @$e[0];
                my $edge1 = @$e[1];
-                if ( !$bootstrap ) {
-                    $perror{ @$e[0] . "#" . @$e[1] } = 0.0;
-                    $pvalue{ @$e[0] . "#" . @$e[1] } = 0.0;
-                }
-                if ( $pairwiseFile ) {
+               my ($pVal, $pErr);
+                if ( $bootstrap ) {
+                    $pVal = $perror{ @$e[0] . "#" . @$e[1] };
+                    $pErr = $pvalue{ @$e[0] . "#" . @$e[1] };
+                } elsif ( $pairwiseFile ) {
                     my $pairname= $edge0."#".$edge1;
-                    $perror{ @$e[0] . "#" . @$e[1] } = $pairwise{ $pairname };
-                    $pvalue{ @$e[0] . "#" . @$e[1] } = $pairwiseError{ $pairname };
+                    $pVal = $pairwise{ $pairname };
+                    $pErr = $pairwiseError{ $pairname };
+                } else {
+                    $pVal = 0.0;
+                    $pErr = 0.0;
                 }
-                #print OUTFILE @$e[0], " ", @$e[1], " 1 ", scalar(@Edges), " ", $count, " ";
-                #print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, "  ", $meanDistance, "\n";
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
-                my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pvalue{ @$e[0] . "#" . @$e[1] }." ". $perror{ @$e[0] . "#" . @$e[1] };
-                $distanceHash{ $text }= $meanDistance;
+                my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pVal." ". $pErr;
+                print OUTFILE $text, " ", $meanDistance, "\n";
+                if ($xyfile) {
+                    $distanceHash{ $text }= $meanDistance;
+                } else {
+                    $distanceHash{ $text } = 0;
+                }
             }
-            #print OUTFILE "---------------------------\n";
-    
+        }
     } else {  ## not just the largest, but ALL seriation solutions
             
       my @Edges = $network->unique_edges;
@@ -1377,31 +1383,34 @@ foreach my $network (@uniqueArray) {
             my $edge1 = @$e[1];
             my $pairname= $edge0."*".$edge1;
             $groupDistance += $distanceBetweenAssemblages{ $pairname };
-            ## print "\n\rGroup Distance for: ", $pairname, ":", $distanceBetweenAssemblages{ $pairname },"\n\r";
             $eCount++;
          }
          $meanDistance = $groupDistance/$eCount;         ##use the average distance as the metric
-         ##print "\n\rMean distance for this group is: ", $meanDistance, "\n\r";
          $seriationHash{ $count }->{'ID'}=$count;
          $seriationHash{ $count }->{'size'}=scalar(@Edges);
-         $seriationHash{ $count }->{'meanDistance'}= $groupDistance;
+         if ($xyfile) {
+            $seriationHash{ $count }->{'meanDistance'}= $groupDistance;
+         } else {
+            $seriationHash{ $count }->{'meanDistance'}= 0;
+         }
       }
         foreach my $e (@Edges) {
                my $edge0 = @$e[0];
                my $edge1 = @$e[1];
-            if ( !$bootstrap ) {
-                $perror{ @$e[0] . "-" . @$e[1] } = 0.0;
-                $pvalue { @$e[0] . "-" . @$e[1] } = 0.0;
-            }
-            if ( $pairwiseFile ) {
-                my $pairname= $edge0."#".$edge1;
-                $perror{ @$e[0] . "#" . @$e[1] } = $pairwise{ $pairname };
-                $pvalue{ @$e[0] . "#" . @$e[1] } = $pairwiseError{ $pairname };
-            }
-            #print OUTFILE @$e[0], " ", @$e[1], " 1 ", scalar(@Edges), " ", $count, " ";
-            #print OUTFILE $pvalue{ @$e[0] . "-" . @$e[1] }, " ", $perror{ @$e[0] . "-" . @$e[1] }, " ", $meanDistance, "\n";
+               my ($pVal, $pErr);
+                if ( $bootstrap ) {
+                    $pVal = $perror{ @$e[0] . "#" . @$e[1] };
+                    $pErr = $pvalue{ @$e[0] . "#" . @$e[1] };
+                } elsif ( $pairwiseFile ) {
+                    my $pairname= $edge0."#".$edge1;
+                    $pVal = $pairwise{ $pairname };
+                    $pErr = $pairwiseError{ $pairname };
+                } else {
+                    $pVal = 0.0;
+                    $pErr = 0.0;
+                }
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
-             my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pvalue{ @$e[0] . "#" . @$e[1] }." ". $perror{ @$e[0] . "#" . @$e[1] };
+            my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pVal." ". $pErr;
             $distanceHash{ $text } = $meanDistance;
             print OUTFILE $text, " ", $meanDistance, "\n";
         }
@@ -1480,19 +1489,20 @@ if ($mst) {
     }
 }
 
-my @sortedKeys = SortHashByMultipleColumns(\%seriationHash,["meanDistance:asc","size:dsc"]);
-my @data = [];
-$count=0;
-open(OUTSIZEFILE, ">$inputfile-distances.txt") or die $!;
-print OUTSIZEFILE "Seriation_Solution Mean_Distance Solution_Size\n";
-foreach my $sortedKey(@sortedKeys){
-    print OUTSIZEFILE $seriationHash{$sortedKey}->{'ID'}. " ". $seriationHash{$sortedKey}->{'meanDistance'} . " " . $seriationHash{$sortedKey}->{'size'} . "\n";
-    $data[ $count ] = int($seriationHash{$sortedKey}->{'meanDistance'});
-    $count++;
-}
+if ($xyfile ) {
+    my @sortedKeys = SortHashByMultipleColumns(\%seriationHash,["meanDistance:asc","size:dsc"]);
+    my @data = [];
+    $count=0;
+    open(OUTSIZEFILE, ">$inputfile-distances.txt") or die $!;
+    print OUTSIZEFILE "Seriation_Solution Mean_Distance Solution_Size\n";
+    foreach my $sortedKey(@sortedKeys){
+        print OUTSIZEFILE $seriationHash{$sortedKey}->{'ID'}. " ". $seriationHash{$sortedKey}->{'meanDistance'} . " " . $seriationHash{$sortedKey}->{'size'} . "\n";
+        $data[ $count ] = int($seriationHash{$sortedKey}->{'meanDistance'});
+        $count++;
+    }
 
-my $graph = new GD::Graph::histogram(400,600);
-$graph->set( 
+    my $graph = new GD::Graph::histogram(400,600);
+    $graph->set( 
                 x_label         => 'Mean Distance Between Assemblages',
                 y_label         => 'Count',
                 title           => "Seriation Solutions for $inputfile",
@@ -1502,14 +1512,14 @@ $graph->set(
                 shadowclr       => 'dred',
                 transparent     => 0,
                  histogram_bins => 15,
-        ) 
-        or warn $graph->error;
+            ) 
+            or warn $graph->error;
         
-my $gd = $graph->plot(\@data) or die $graph->error;
-open(IMG, ">$inputfile-histogram.png") or die $!;
-binmode IMG;
-print IMG $gd->png;
-
+    my $gd = $graph->plot(\@data) or die $graph->error;
+    open(IMG, ">$inputfile-histogram.png") or die $!;
+    binmode IMG;
+    print IMG $gd->png;
+}
 print OUTFILE "\n";
 print OUTDOTFILE "}\n";
 
