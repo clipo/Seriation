@@ -515,12 +515,14 @@ while ( my @permu = $permutations->next_combination ) {
             $comparison12
         );
         $net->set_edge_attribute($labels[ $permu[0]], $labels[ $permu[1] ] , "GraphID", $numberOfTriplets);
+        $net->set_edge_attribute($labels[ $permu[0]], $labels[ $permu[1] ] , "End", 1);
         $net->add_weighted_edge(
             $labels[ $permu[1] ],
             $labels[ $permu[2] ],
             $comparison23
         );
-        $net->set_edge_attribute($labels[ $permu[1]], $labels[ $permu[2] ] , "GraphID", $numberOfTriplets);     
+        $net->set_edge_attribute($labels[ $permu[1]], $labels[ $permu[2] ] , "GraphID", $numberOfTriplets);
+        $net->set_edge_attribute($labels[ $permu[1]], $labels[ $permu[2] ]  , "End", 1);
         $DEBUG and print "VALID SOLUTION: " . $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ] . " * " . $labels[ $permu[2] ] . "\n";
         $DEBUG and print "VALID SOLUTION: \t  $comparison12\t  ---   $comparison23\n";
         push @triples, $net;
@@ -929,12 +931,17 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                             if ( ! grep { $_ eq $testAssemblage} @vertices) {
                                 $nnetwork->add_vertex($testAssemblage);
                                 ## mark this vertice as the new "END"
-                                $network->set_vertex_attribute($testAssemblage,"End",1);
+                                $nnetwork->set_vertex_attribute($testAssemblage,"End",1);
                                 ## mark the interior vertice as not and "END"
-                                $network->set_vertex_attribute($endAssemblage,"End",0);
+                                $$network->set_vertex_attribute($endAssemblage,"End",0);
                                 $nnetwork->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
+                                ## mark this as the end edge
+                                $nnetwork->set_edge_attribute($testAssemblage, $endAssemblage , "End", 1);
+                                ## mark the previous edge as no longer the end
+                                my @n = $nnetwork->neighbours($endAssemblage);  ## assume 0 is the only neighbor (should be only one!)
+                                $nnetwork->set_edge_attribute($n[0], $endAssemblage , "End", 0);
+                                $nnetwork->set_edge_attribute( $endAssemblage, $n[0], "End", 0);
                                 $DEBUG and print "New network (with addition): ", $nnetwork, "\n\r";
-
                                 ## copy this solution to the new array of networks
                                 push @newnets, $nnetwork;   ## contains solutions for just this step
                                 my $currentTotal =  scalar(@newnets);
@@ -1289,8 +1296,8 @@ foreach my $l (@labels) {
 $screen and $scr->at(1,40)->puts("STEP: Going through and counting pairs...     ");
 print OUTPAIRSFILE "*Tie data\nFrom To Edge Count\n";
 if ($mst) {
-    print OUTBOOTSTRAPFILE "*Tie data\nFrom To Edge Weight ID\n";
-    print OUTDISTANCEFILE "*Tie data\nFrom To Edge Weight ID\n";
+    print OUTBOOTSTRAPFILE "*Tie data\nFrom To Edge End Weight ID\n";
+    print OUTDISTANCEFILE "*Tie data\nFrom To Edge End Weight ID\n";
 }
 ## first count up all of the edges by going through the solutions and each edge
 ## put the edge count in a hash of edges
@@ -1318,7 +1325,7 @@ foreach (sort { ($edgeHash{$b} cmp $edgeHash{$a}) || ($b cmp $a) } keys %edgeHas
     print OUTPAIRSFILE $_, " 1 ", $edgeHash{$_}, "\n";
 }
 
-print OUTFILE "*Tie data\nFrom To Edge Weight Network pValue pError meanSolutionDistance\n";
+print OUTFILE "*Tie data\nFrom To Edge Weight Network End pValue pError meanSolutionDistance\n";
 $screen and $scr->at(1,40)->puts("STEP: Eliminating duplicates...     ");
 my @uniqueArray = uniq @filteredarray;
 
@@ -1370,7 +1377,7 @@ foreach my $network (@uniqueArray) {
                     $pErr = 0.0;
                 }
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
-                my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pVal." ". $pErr;
+                my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
                 print OUTFILE $text, " ", $meanDistance, "\n";
                 if ($xyfile) {
                     $distanceHash{ $text }= $meanDistance;
@@ -1418,7 +1425,7 @@ foreach my $network (@uniqueArray) {
                     $pErr = 0.0;
                 }
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
-            my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $pVal." ". $pErr;
+            my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
             $distanceHash{ $text } = $meanDistance;
             print OUTFILE $text, " ", $meanDistance, "\n";
         }
@@ -1482,7 +1489,7 @@ if ($mst) {
         my $edge0 = @$e[0];
         my $edge1 = @$e[1];
         my $pairname= $edge0."#".$edge1;
-        print OUTBOOTSTRAPFILE $edge0, " ", $edge1, " ", $count, " ", $pairwise{ $pairname }, " ", $megaNetwork->get_edge_attribute( $edge0, $edge1, "GraphID"), "\n";
+        print OUTBOOTSTRAPFILE $edge0, " ", $edge1, " ", $count, " ", $megaNetwork->get_edge_attribute( $edge0, $edge1, "End"), " ", $pairwise{ $pairname }, " ", $megaNetwork->get_edge_attribute( $edge0, $edge1, "GraphID"), "\n";
         $count++;
     }
     my $mstgDistance = $distanceNetwork->minimum_spanning_tree;
@@ -1492,7 +1499,7 @@ if ($mst) {
         my $edge0 = @$e[0];
         my $edge1 = @$e[1];
         my $pairname= $edge0."*".$edge1;
-        print OUTDISTANCEFILE $edge0, " ", $edge1, " ", $count, " ", $distanceBetweenAssemblages{ $pairname }, " ", $distanceNetwork->get_edge_attribute( $edge0, $edge1, "GraphID"),"\n";
+        print OUTDISTANCEFILE $edge0, " ", $edge1, " ", $count, " ", $megaNetwork->get_edge_attribute( $edge0, $edge1, "End"), " ", $distanceBetweenAssemblages{ $pairname }, " ", $distanceNetwork->get_edge_attribute( $edge0, $edge1, "GraphID"),"\n";
         $count++;
     }
 }
@@ -1636,6 +1643,9 @@ __END__
     Output will be:
         <filename>.vna      Netdraw file
         <filename>.dot      DOT file
+
+    Example:
+        perl IDSS-with-bootstrap.pl -input=../testdata/pfg-cpl.txt -xyfile=../testdata/pfgXY.txt -bootstrapCI -bootstrapsignificance=99.5 -pairwise=../testdata/pfg-cpl-bootstrap.txt -mst
         
     =head1 OPTIONS
 
