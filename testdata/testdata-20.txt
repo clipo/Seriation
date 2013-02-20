@@ -1,8 +1,8 @@
-Assemblage-1	0	55	0	3	0	42	0
-Assemblage-2	0	48	0	4	0	48	0
-Assemblage-3	0	45	0	5	0	50	0
-Assemblage-4	0	40	0	10	0	50	0
-Assemblage-5	0	30	0	20	0	50	0
+Assemblage-1	0	60	0	0	0	40	0
+Assemblage-2	0	50	0	5	0	45	0
+Assemblage-3	0	47	0	8	0	50	0
+Assemblage-4	0	40	0	15	0	55	0
+Assemblage-5	0	20	0	20	0	60	0
 Assemblage-6	0	5	0	25	0	70	0
 Assemblage-7	5	0	0	30	0	65	0
 Assemblage-8	10	0	0	30	0	60	0
