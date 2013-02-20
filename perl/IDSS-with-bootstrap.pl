@@ -33,6 +33,7 @@ my $excel                   = 0;       ## flag for excel file output (not implem
 my $xyfile = "";
 my $mst                     = 0; ## minimum spanning tree
 my $pairwiseFile = "";
+my $stats                   =0; ## output stats, histograms of counts, etc
 
 ## find the largest valuein a hash
 sub largest_value_mem (\%) {
@@ -69,6 +70,7 @@ GetOptions(
     'xyfile=s'                  => \$xyfile,
     'pairwise=s'                => \$pairwiseFile,
     'mst'                       => \$mst,
+    'stats'                     => \$stats,
     man                         => \$man
 ) or pod2usage(2);
 
@@ -90,6 +92,7 @@ if ($DEBUG) {
     print "xyfile: ", $xyfile,"\n";
     print "pairwise:", $pairwiseFile,"\n";
     print "mst:  ", $mst, "\n";
+    print "stats: ", $stats, "\n";
 }
 
 # start the clock to track how long this run takes
@@ -1515,7 +1518,6 @@ if ($xyfile ) {
         $data[ $count ] = int($seriationHash{$sortedKey}->{'meanDistance'});
         $count++;
     }
-
     my $graph = new GD::Graph::histogram(400,600);
     $graph->set( 
                 x_label         => 'Mean Distance Between Assemblages',
@@ -1532,6 +1534,41 @@ if ($xyfile ) {
         
     my $gd = $graph->plot(\@data) or die $graph->error;
     open(IMG, ">$inputfile-histogram.png") or die $!;
+    binmode IMG;
+    print IMG $gd->png;
+}
+
+if ($stats>0 ) {
+    my %vertHash;
+    foreach my $network (@uniqueArray) {
+        if (ref($network) eq "REF") {
+            $network = $$network;
+        }
+        my @verts = $network->vertices;      
+        foreach my $vert (@verts) {
+            $vertHash{ $vert }++;
+        }
+    }
+    my @data;
+    foreach my $key (keys %vertHash){
+        push @{$data[0]},$key;
+        push @{$data[1]}, $vertHash{ $key };
+    }
+    my $graph = new GD::Graph::bars(400,600);
+    $graph->set( 
+                x_label         => 'Assemblages',
+                y_label         => 'Count',
+                title           => "Counts of assemblages in solutions for $inputfile",
+                x_labels_vertical => 1,
+                bar_spacing     => 0,
+                shadow_depth    => 1,
+                shadowclr       => 'dred',
+                transparent     => 0,
+            ) 
+            or warn $graph->error;
+        
+    my $gd = $graph->plot(\@data) or die $graph->error;
+    open(IMG, ">$inputfile-count-histogram.png") or die $!;
     binmode IMG;
     print IMG $gd->png;
 }
@@ -1639,6 +1676,7 @@ __END__
        -excel               output excel files for creating graphical seriation (not working yet)
        -mst                 minimum spanning tree
        -pairwise=<filename> pairwise comparisons
+       -stats               statistics output
        
     Output will be:
         <filename>.vna      Netdraw file
