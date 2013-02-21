@@ -2,6 +2,7 @@
 use strict;
 use Data::Dumper;
 use Graph::Directed;
+use Graph::Undirected;
 use Graph::Writer::VCG;
 use Graph::Writer::Dot;
 use Math::Combinatorics;
@@ -20,19 +21,17 @@ my $debug                   = 0;
 my $filterflag              = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
 my $largestonly             = 0; #  only output the largest set of solutions
 my $individualfileoutput    = 0; ## create files for all the indivdual networks
-my $bootstrap               = 0; ## flag for bootstrap
 my $bootstrapCI             = 0; ## flag for the CI bootstrap
 my $bootstrapSignificance   = 95;
 my $man                     = 0;
 my $help                    = 0;
 my $inputfile;
-my $bootstrapdebug          = 0;
 my $threshold               = 0;
 my $noscreen                = 0;     ## flag for screen output
 my $excel                   = 0;       ## flag for excel file output (not implemented yet)
-my $xyfile = "";
+my $xyfile                  = "";
 my $mst                     = 0; ## minimum spanning tree
-my $pairwiseFile = "";
+my $pairwiseFile            = "";
 my $stats                   =0; ## output stats, histograms of counts, etc
 
 ## find the largest valuein a hash
@@ -57,8 +56,6 @@ GetOptions(
     'debug'                     => \$debug,
     'bootstrapCI'               => \$bootstrapCI,
     'bootstrapSignificance=f'   => \$bootstrapSignificance, 
-    'bootstrap'                 => \$bootstrap,
-    'bootstrapdebug'            => \$bootstrapdebug,
     'filtered'                  => \$filterflag,
     'largestonly'               => \$largestonly,
     'indivfiles'                => \$individualfileoutput,
@@ -74,16 +71,31 @@ GetOptions(
     man                         => \$man
 ) or pod2usage(2);
 
-my $DEBUG = $debug;    # our "$debug level"
 
-if ($DEBUG) {
     print "Verbose debugging output is on!!!\n";
-    print "bootstrapdebug: ", $bootstrapdebug, "\n";
     print "Processing input file: $inputfile\n";
     print "filterflag: ", $filterflag, "\n";
     print "bootstrapCI: ", $bootstrapCI, "\n";
     print "bootstrapSignificance: ", $bootstrapSignificance, "\n";
-    print "bootstrap: ", $bootstrap, "\n";
+    print "largestonly: ", $largestonly, "\n";
+    print "individualfileouput: ", $individualfileoutput, "\n";
+    print "threshold is currently set to: $threshold\n";
+    print "noscreen: ", $noscreen, "\n";
+    print "excel:  ", $excel, "\n";
+    print "xyfile: ", $xyfile,"\n";
+    print "pairwise:", $pairwiseFile,"\n";
+    print "mst:  ", $mst, "\n";
+    print "stats: ", $stats, "\n";
+
+my $DEBUG = $debug;    # our "$debug level"
+
+if ($DEBUG) {
+    print "Verbose debugging output is on!!!\n";
+
+    print "Processing input file: $inputfile\n";
+    print "filterflag: ", $filterflag, "\n";
+    print "bootstrapCI: ", $bootstrapCI, "\n";
+    print "bootstrapSignificance: ", $bootstrapSignificance, "\n";
     print "largestonly: ", $largestonly, "\n";
     print "individualfileouput: ", $individualfileoutput, "\n";
     print "threshold is currently set to: $threshold\n";
@@ -113,6 +125,7 @@ my %collections;
 my @assemblageNumber      = ();
 my @arrayOfSeriations     = ();
 my %assemblageFrequencies = ();
+my %assemblageValues =      ();
 my %assemblageSize = ();
 my @allNetworks           = ();
 my $maxnumber;
@@ -158,6 +171,7 @@ $screen and $scr->at(2,1)->puts("Threshold: $threshold");
 # might want to change that...\
 $screen and $scr->at(1,40)->puts("STEP: Read in data...");
 my $typecount;
+
 while (<INFILE>) {
     #print;
     chomp;
@@ -172,21 +186,25 @@ while (<INFILE>) {
             $rowtotal += $_;
         }
         push @rowtotals, $rowtotal;
+        
 
         #print "rowtotal: $rowtotal\n";
         my $freq = [];
+        my $values = [];
         $typecount=0;
         for (@line) {
             # push @freq, $_;
-            my $f = $_ / $rowtotal;
+            my $in = $_;
+            my $f = $in / $rowtotal;
             my $ff = sprintf( "%.4f", $f );
             push @$freq, $ff;
+            push @$values, $in;
             $typecount++;
         }
         push @assemblages, [@$freq];
         $assemblageFrequencies{$label} = [@$freq];
+        $assemblageValues{ $label } = [@$values];
         $assemblageSize{ $label }= $rowtotal;
-
         $count++;
     }
     #print "---- row end ----\n";
@@ -396,7 +414,7 @@ my $net          = Graph::Directed->new;
 my $comparison12;
 my $comparison23;
 my $error;
-my $numberOfTriplets;
+my $numberOfTriplets = 0;
 
 ## This uses the Math::Combinatorics to create all the permutations of 3. This is the simplest solution programmatically
 ## Why recreate the wheel? Use Perl!
@@ -563,13 +581,14 @@ my $solutionCount=0;   ## an index of the current number of solutions
 ### This is just preparing the intial set of threes into the array that will be used as the seed for all future
 ### seriation sets.
 foreach my $n (@triples) {
-      push @networks, \$n;        ## this is the array of the current successful set
-      push @solutions, \$n;      ## This is an array of ALL solutions to date
-      $stepSeriationList{ $solutionCount } = \$n;     ## this is an ordered list of all solutions (order in which found for each step)
+      push @networks, $n;        ## this is the array of the current successful set
+      push @solutions, $n;      ## This is an array of ALL solutions to date
+      $stepSeriationList{ $solutionCount } = $n;     ## this is an ordered list of all solutions (order in which found for each step)
       $solutionCount++;          ## counts the current set of solutions
 }
 my $solutionSum = scalar(@networks);  ## number of solutions to this point (which is equal to all 3s);
 my %seriationStep={};        ## hash of the array of solutions for this step
+
 
 while ( $currentMaxSeriationSize < $maxSeriations ) {
     $currentMaxSeriationSize++;
@@ -587,9 +606,12 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
     $screen and $scr->at(5,1)->puts("Number of solutions from previous step: $netnum");
     $match = 0;      ## set the current match to zero for this step (sees if there are any new solutions for step)
     ## look through the set of existing valid networks.
-    foreach my $network (@networks) {
-        #my $index = 0;
-        my $nnetwork = $$network;
+    foreach my $nnetwork (@networks) {
+        if (ref($nnetwork) eq "REF") {
+            $nnetwork = $$nnetwork;
+        } elsif ($nnetwork eq undef ) {
+            next;
+        }
         $DEBUG and print "-----------------------------------------------------------------------------------\n";
         $DEBUG and print "Network: ", $nnetwork, "\n";
         $DEBUG and print "-----------------------------------------------------------------------------------\n";
@@ -624,7 +646,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         my @edge = $nnetwork->edges_at($endAssemblage);
                         $DEBUG and print "\t\t\t The number of edges at $endAssemblage:  ", scalar(@edge), " (should be just one).\n";
                         my $connectedAssemblage = $edge[0][1];
-                        my $g = $$network->get_edge_weight( $edge[0][0], $edge[0][1] );
+                        my $g = $nnetwork->get_edge_weight( $edge[0][0], $edge[0][1] );
 
                         #print Dumper $g;
                         $DEBUG and print "\t\t\tThere should be just 2 vertices here 0: $edge[0][0] and 1: $edge[0][1]\n";
@@ -648,7 +670,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                         my $pairname = $testAssemblage . " * " . $endAssemblage;
                         my $diff     = $assemblageComparison{$pairname};
                         $DEBUG and print "\t\t\tFor $pairname the max frequency difference is $diff.\n";
-                        if ($diff=="") {
+                        if ($diff eq undef) {
                            print "\n\rError: pairname: $pairname not found in hash lookup!\n\r";
                            print "Probably a problem with the names of the assemblages. Check for weird characters. Exiting.\n\r";
                            exit();
@@ -718,7 +740,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     $DEBUG and print "\t\t\t\tType $i: Got a difscore of 1 and a comparison of a M. This could be okay.\n";
                                     my $xerror        =     0;
                                     $DEBUG and print "\t\t\t\tType $i:   Matching case A (1, M)  \n";
-                                    $DEBUG and print "\t\t\t\t\ This will only work if there no Xs anywhere previously.\n";
+                                    $DEBUG and print "\t\t\t\t\ This will only work if there no Xs anywhere previously OR if the opposite end doesnt ALSO go up!\n";
                                     my $stopFlag      =     0;   ## use this flag to determine if one needs to keep checking through the pairs.
                                     my ($outwardEdge, $inwardEdge);
                                     my $old_inner= $outerEdge;
@@ -726,7 +748,6 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                     my @currentEdges  = $nnetwork->edges05($innerEdge);
                                     my $ccount;
                                     foreach my $checkEdge (@currentEdges) {     ### no need to go in order -- jsut look at all the other edges to see if there is an X
-                                       
                                        $DEBUG and print "\t\t\t\t\ Now on @$checkEdge[0] @$checkEdge[1] \n";
                                        $inwardEdge= @$checkEdge[0];
                                        $outwardEdge = @$checkEdge[1];
@@ -738,14 +759,14 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                        }
                                        $DEBUG and print "\t\t\t\tType $i: Here is what we get for comparison # $ccount \n";  ## note that i is the current type
                                        $DEBUG and print " \t\t\t\t\t $inwardEdge - $outwardEdge: ", $comparison, "->", $compArray[$i], "\n";
-                                       if ($compArray[$i] =~ "X")  {
-                                             $xerror = 1;  ### BLARGH a previous X! This will not be tolerated!
+                                       if ($compArray[$i] =~ "X" || $compArray[$i] =~ "U" )  {
+                                             $xerror = 1;  ### BLARGH a previous X or an UP ! This will not be tolerated!
                                              $stopFlag = 1; ## We can stop
                                        }
                                        $DEBUG and print "\t\t\t\t\t Since I got $compArray[$i] my potential new value is still X.\n";
                                        $DEBUG and print "\t\t\t\t\t Now going to get the next pair of assembalges to examine in the chain\n";
                                        $ccount++;
-                                       if ($ccount>$numrows) {
+                                       if ($ccount>scalar(@currentEdges)) {  ## to keep searching from going on forever
                                           print "PROBLEM. Too many checks. Quitting\n\r\n\r";
                                           exit();
                                        }
@@ -923,33 +944,45 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                   and print "\t\t\t\tType $i:  Error so far $error\n\r\n\r";
                             }
                         }
-                        if ( !$error)  {
+                        if ( $error==0 )  {
                             $DEBUG and print "--------------------------------------------------\n\r\n\r";
-                            $DEBUG and print "Original network: ", $$network, "\n\r";
+                            $DEBUG and print "Original network: ", $nnetwork, "\n\r";
                             $DEBUG and print "New comparison map is: $comparisonMap\n\r";
 
                             ## no errors so add vertice added to the new network
                             #my $oldedgenum = $nnetwork->edges;
                             my @vertices = $nnetwork->vertices;
                             if ( ! grep { $_ eq $testAssemblage} @vertices) {
-                                $nnetwork->add_vertex($testAssemblage);
+                                #first make a copy
+                                #print Dumper($nnetwork);
+                                my $new_network = $nnetwork->deep_copy_graph;
+                                #print Dumper($new_network);
+                                $solutionCount++;
+                                $new_network->set_graph_attribute("GraphID", $solutionCount);
+                                ## now add to this *new one*
+                                $new_network->add_vertex($testAssemblage);
                                 ## mark this vertice as the new "END"
-                                $nnetwork->set_vertex_attribute($testAssemblage,"End",1);
+                                $new_network->set_vertex_attribute($testAssemblage,"End",1);
                                 ## mark the interior vertice as not and "END"
-                                $$network->set_vertex_attribute($endAssemblage,"End",0);
-                                $nnetwork->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
+                                $new_network->set_vertex_attribute($endAssemblage,"End",0);
+                                $new_network->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
                                 ## mark this as the end edge
-                                $nnetwork->set_edge_attribute($testAssemblage, $endAssemblage , "End", 1);
+                                $new_network->set_edge_attribute($testAssemblage, $endAssemblage , "End", 1);
+                                $new_network->set_edge_attribute($testAssemblage, $endAssemblage , "GraphID", $solutionCount);
                                 ## mark the previous edge as no longer the end
-                                my @n = $nnetwork->neighbours($endAssemblage);  ## assume 0 is the only neighbor (should be only one!)
-                                $nnetwork->set_edge_attribute($n[0], $endAssemblage , "End", 0);
-                                $nnetwork->set_edge_attribute( $endAssemblage, $n[0], "End", 0);
-                                $DEBUG and print "New network (with addition): ", $nnetwork, "\n\r";
+                                my @n = $new_network->neighbours($endAssemblage);  ## assume 0 is the only neighbor (should be only one!)
+                                $new_network->set_edge_attribute($n[0], $endAssemblage , "End", 0);
+                                $new_network->set_edge_attribute( $endAssemblage, $n[0], "End", 0);
+                                $DEBUG and print "New network (with addition): ", $new_network, "\n\r";
                                 ## copy this solution to the new array of networks
-                                push @newnets, $nnetwork;   ## contains solutions for just this step
+                                #print Dumper($new_network);
+                                #print $new_network, "\n";
+                                push @newnets, $new_network;   ## contains solutions for just this step - add to list
+                                push @solutions, $new_network; ## this is a list of all the solutions (shallow a)
+                                #print Dumper(\@newnets);
                                 my $currentTotal =  scalar(@newnets);
-                                if (($nnetwork->unique_edges) > $maxEdges) {
-                                    $maxEdges = $nnetwork->unique_edges;
+                                if (($new_network->edges) > $maxEdges) {
+                                    $maxEdges = $new_network->edges;
                                     $screen and $scr->at(6,1)->puts("Current Max Edges: $maxEdges   ");
                                 }
                                 $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionSum");
@@ -965,212 +998,37 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                 }    # end of iterate through the existing network link
             }    # end of if assemblage not already in netowrk check
         }    #end of assemblage loop
-    }    #end of network loop
-   ########################################### AFTER ALL THE SORTING AND WINNOWING ######################
-   $DEBUG and print "Number of current solutions now: ", scalar(@newnets), "\n\r";
+    }
 
-   ## now push the current step solutions to the list that serves as the basis of the next step. 
-   foreach my $n (@newnets) {
-      push @networks,  $n;  ## use this for the next iteration -- its all the new solutions. 
-      push @solutions, \$n; ## this is a list of all the solutions (shallow a)
-      $stepSeriationList{ $solutionCount}= \$n;  #This is supposed to be an array that keeps track of the solutions by the order they were created (low = small)
-   }
-   $solutionSum  =  scalar(@solutions);
-   @newnets=undef;  ## clear the array for the next new set of assemblages. 
-   ## no match at this point so no point in going forward.
-    if ( $match == 0 ) {
-        $screen and $scr->at(9,1)->puts( "Maximum seriation size reached - no more assemblages added that iteration. ");
+    #print Dumper(\@networks);
+    ########################################### AFTER ALL THE SORTING AND WINNOWING ######################
+    $DEBUG and print "Number of current solutions now: ", scalar(@newnets), "\n\r";
+
+    ## now push the current step solutions to the list that serves as the basis of the next step. 
+
+    $solutionSum  =  scalar(@solutions);
+    #print "num of new nets: ", scalar(@newnets),"\n";
+    ## no match at this point so no point in going forward.
+    if ( scalar(@newnets) == 0 ) {
+        my $text = "Maximum seriation size reached - no more assemblages added that iteration. Size of solution set: ". scalar(@networks);
+        $screen and $scr->at(9,1)->puts( $text );
         $screen and $scr->at(10,1)->puts("Maximum # edges in largest solution is: $maxEdges (note # of edges = # of assemblages - 1)");
+        sleep(2);
         $DEBUG and print "Maximum # edges in largest solution is: $maxEdges (note # of edges = # assemblages -1) \n\r\n";
+        
         $maxnumber = $currentMaxSeriationSize - $maxSeriations;
-        ## to break now...
+         ## to break now...
+        #print "Maximum # edges in largest solution is: $maxEdges (note # of edges = # assemblages -1) \n\r\n";
         $currentMaxSeriationSize = $maxSeriations;
         ## copy the old network set to the new array (just in this case -- otherwise its empty
-    }
+    } else {
+        ## copy the array of new solutions back to the working set to continue. over time this should get smaller and smaller...
+        @networks= @{\@newnets};
+        @newnets=undef;  ## clear the array for the next new set of assemblages.
+    }    #end of network loop
 }    #end of master loop through iterations
 
 
-
-########################################### BOOTSTRAP SECTION ####################################
-#bootrap stuff
-
-
-# now do ALL the pairwise assemblage comparisons
-# go to sleep and come back later.
-
-if ($bootstrap) {
-    $screen and $scr->at(1,40)->puts("STEP: Bootstrap pairs...        ");  
-    $numrows = scalar(@assemblages);
-    srand($start);
-    %perror  = ();
-    %pvalue  = ();  
-    $results = 0;
-    my $loop    = 1000;
-    my $bigloop = 5;
-    my $loop2   = $loop;
-
-    $classes = 0;
-
-    my $pairSet = Math::Combinatorics->new( count => 2, data => [@assemblageNumber] );
-    while ( my @pairs = $pairSet->next_combination ) {
-
-        my $stat = new Statistics::PointEstimation;
-            
-        my @a    = @{ $pairs[0]  };
-        my @b    = @{  $pairs[1] };
-        my $numa = $assemblageSize{ $pairs[0] };
-        my $numb = $assemblageSize{ $pairs[1] };
-
-        # calculate the directionality for later
-        my @direction = ();
-        my $num       = scalar(@a);
-        my $c         = 0;
-        for ( $c = 0 ; $c < $num ; $c++ ) {
-            if    ( $a[$c] < $b[$c] ) { push @direction, -1; }
-            elsif ( $a[$c] > $b[$c] ) { push @direction, +1; }
-            else                      { push @direction, 0; }
-        }
-
-        my ( @cum_a, @cum_b, $count );
-        $classes = scalar(@a);
-        my $index_a = 0;
-        my $total_a = 0.0;
-        $count   = 0;
-        for ( $count = 0 ; $count < $classes ; $count++ ) {
-            $cum_a[$index_a] = $a[$count];
-            $total_a += $a[$count];
-            $index_a++;
-        }
-        $classes = scalar(@b);
-        my $index_b = 0;
-        my $total_b = 0.0;
-        $count = 0;
-        for ( $count = 0 ; $count < $classes ; $count++ ) {
-            $cum_b[$index_b] = $b[$count];
-            $total_b += $b[$count];
-            $index_b++;
-        }
-
-        $index_a--;
-        $index_b--;
-
-        # now we loop 100 times and keep track
-        my $cycle = $bigloop;
-        while ($cycle) {
-
-            #print "($debug) cycle value: $cycle\n";
-
-            # now we loop 1000 times and resample
-            $loop = $loop2;
-            while ($loop) {
-                my $assemsize = $numa;
-                my @assem_a   = ();
-                my $class;
-                my $total = scalar(@a);
-                my $rand;
-                while ($assemsize) {
-
-                    #$rand = ( truly_random_value() % 10000 ) / 10000 ;
-                    $rand  = rand;
-                    $class = 0;
-                    while (( $class < $index_a ) && ( $rand > $cum_a[$class] ) )
-                    {
-                        $rand -= $cum_a[$class];
-                        $class++;
-                    }
-                    push @assem_a, $class;
-                    $assemsize--;
-                }
-
-                $assemsize = $numb;
-                my @assem_b   = ();
-                $total = scalar(@b);
-                while ($assemsize) {
-
-                    #$rand = ( truly_random_value() % 10000 ) / 10000 ;
-                    $rand  = rand;
-                    $class = 0;
-                    while (( $class < $index_b )
-                        && ( $rand > $cum_b[$class] ) )
-                    {
-                        $rand -= $cum_b[$class];
-                        $class++;
-                    }
-                    push @assem_b, $class;
-                    $assemsize--;
-                }
-
-                my ( @ahat, @bhat, %aholder, %bholder );
-                %aholder = ();
-                %bholder = ();
-                my $index = 0;
-
-                for ( $index = 0 ; $index < $cols ; $index++ ) {
-                    $ahat[$index] = 0;
-                    $bhat[$index] = 0;
-                }
-
-                for (@assem_a) {
-                    $aholder{$_}++;
-                }
-
-                for (@assem_b) {
-                    $bholder{$_}++;
-                }
-
-                for ( keys %aholder ) {
-                    $ahat[$_] = ( $aholder{$_} / $numa );
-                }
-
-                for ( keys %bholder ) {
-                    $bhat[$_] = ( $bholder{$_} / $numb );
-                }
-
-                # calculate the directionality for later
-                my @dir = ();
-                my $num = scalar(@ahat);
-                my $c   = 0;
-                for ( $c = 0 ; $c < $num ; $c++ ) {
-                    $bootstrapdebug and print "loop $loop ", $ahat[$c] - $bhat[$c], "\t";
-                    if    ( $ahat[$c] < $bhat[$c] ) { push @dir, -1; }
-                    elsif ( $ahat[$c] > $bhat[$c] ) { push @dir, +1; }
-                    else                            { push @dir, 0; }
-                }
-                $bootstrapdebug and print "\n";
-
-                # compare the two sets of results
-                $num = scalar(@dir);
-                $c   = 0;
-                my $diff = 0;
-                for ( $c = 0 ; $c < $num ; $c++ ) {
-                    $bootstrapdebug and print "loop $loop ", $direction[$c], "/",
-                      $dir[$c], "\t";
-                    if ( $direction[$c] == $dir[$c] ) { next; }
-                    $diff++;
-                }
-                $bootstrapdebug and print "\n";
-                if ( $diff == 0 ) { $results++; }
-
-                $loop--;
-            }
-            $stat->add_data( $results / $loop2 );
-            $cycle--;
-            $results = 0;
-        }
-        my $pairname = $pairs[0]."#".$pairs[1];
-        my $pairname2 = $pairs[1]."#".$pairs[0];
-        
-        $pvalue{$pairname} = $stat->mean();
-        $perror{$pairname} = $stat->standard_deviation();
-        $pvalue{$pairname2} = $stat->mean();
-        $perror{$pairname2} = $stat->standard_deviation();
-        $DEBUG and print $pairs[0], "\t", $pairs[0], "\t";
-        $DEBUG and print $stat->mean(), "\t";
-        $DEBUG and print $stat->standard_deviation(), "\n";
-        undef $stat;
-    }
-
-}
 
 ########################################### DO SOME FILTERING (OR NOT) ####################################
 # now do some weeding. Basically start with the first network that is the largest, and work backwards. Ignore any
@@ -1183,14 +1041,11 @@ if ( $filterflag == 1 ) {
     $screen and $scr->at(1,40)->puts("STEP: Filter to get uniques... ");
     $DEBUG and print "---Filtering solutions so we only end up with the unique ones.\n";
     $DEBUG and print "----Start with ", scalar(@solutions), " solutions. \n";
-   foreach my $fnetwork (reverse sort( keys %stepSeriationList )) {
-      #print "fnetwork: ", $stepSeriationList{ $fnetwork }, "\n\r";
+   for (my $i=scalar(@solutions)-1;$i>-1;$i--) {
       my $exists=0;
-      my $f = $stepSeriationList{ $fnetwork };
-      ##print "F: ", $$f, "\n\r";
       foreach my $tnetwork (@filteredarray) {
         #print "tnetwork: ", $stepSeriationList{ $tnetwork} , "\n\r";
-        my @fnetworkArray = $$f->vertices;
+        my @fnetworkArray = $solutions[$i]->vertices;
         my @tnetworkArray = $$tnetwork->vertices;
             my @minus = array_minus( @fnetworkArray, @tnetworkArray );
             if (scalar(@minus)== 0) {
@@ -1199,7 +1054,7 @@ if ( $filterflag == 1 ) {
          }
       if (!$exists) {
          ##print "pushing $fnetwork to list\n\r";
-         push @filteredarray, $f;
+         push @filteredarray, $solutions[$i] ;
       } 
    }
     $DEBUG and print "End with ", scalar(@filteredarray), " solutions.\n";
@@ -1207,7 +1062,7 @@ if ( $filterflag == 1 ) {
     $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
 } elsif ($largestonly>0) {
     print "\n\rNow going to print just the largest network out of a pool of ", scalar(@networks), "\n\r";
-    @filteredarray = @networks; ## just the largest one
+    @filteredarray = @{ \@networks } ; ## just the largest one
 } else {
     @filteredarray = @solutions; ### all of the solutions as a default
 }
@@ -1309,9 +1164,11 @@ foreach my $network (@filteredarray) {
     #print "\n\r netowrk type ", ref($network),"\n\r";
     my @Edges;
     if (ref($network) eq 'REF') {
-        @Edges = $$network->unique_edges;
+        @Edges = $$network->edges;
+    } elsif ($network eq undef ) {
+        next;
     } else {
-        @Edges = $network->unique_edges;
+        @Edges = $network->edges
     }
     my $eCount=0;
     foreach my $e (@Edges) {   
@@ -1339,9 +1196,11 @@ my %distanceHash=();
 my %seriationHash;
 ## only print unique ones...
 foreach my $network (@uniqueArray) {
-   if (ref($network) eq "REF") {
-      $network = $$network;
-   }
+    if (ref($network) eq 'REF') {
+        $network = $$network;
+    } elsif ($network eq undef ) {
+        next;
+    }
     $count++;
     $screen and $scr->at(14,1)->puts( "Now on solution: ");
     $screen and $scr->at(14,18)->puts($count);
@@ -1368,10 +1227,7 @@ foreach my $network (@uniqueArray) {
                my $edge0 = @$e[0];
                my $edge1 = @$e[1];
                my ($pVal, $pErr);
-                if ( $bootstrap ) {
-                    $pVal = $perror{ @$e[0] . "#" . @$e[1] };
-                    $pErr = $pvalue{ @$e[0] . "#" . @$e[1] };
-                } elsif ( $pairwiseFile ) {
+                if ( $pairwiseFile ) {
                     my $pairname= $edge0."#".$edge1;
                     $pVal = $pairwise{ $pairname };
                     $pErr = $pairwiseError{ $pairname };
@@ -1380,7 +1236,7 @@ foreach my $network (@uniqueArray) {
                     $pErr = 0.0;
                 }
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
-                my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
+                my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
                 print OUTFILE $text, " ", $meanDistance, "\n";
                 if ($xyfile) {
                     $distanceHash{ $text }= $meanDistance;
@@ -1416,10 +1272,7 @@ foreach my $network (@uniqueArray) {
                my $edge0 = @$e[0];
                my $edge1 = @$e[1];
                my ($pVal, $pErr);
-                if ( $bootstrap ) {
-                    $pVal = $perror{ @$e[0] . "#" . @$e[1] };
-                    $pErr = $pvalue{ @$e[0] . "#" . @$e[1] };
-                } elsif ( $pairwiseFile ) {
+                if ( $pairwiseFile ) {
                     my $pairname= $edge0."#".$edge1;
                     $pVal = $pairwise{ $pairname };
                     $pErr = $pairwiseError{ $pairname };
@@ -1428,7 +1281,7 @@ foreach my $network (@uniqueArray) {
                     $pErr = 0.0;
                 }
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
-            my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $count. " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
+            my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
             $distanceHash{ $text } = $meanDistance;
             print OUTFILE $text, " ", $meanDistance, "\n";
         }
@@ -1439,13 +1292,14 @@ foreach my $network (@uniqueArray) {
 ## Do a MST analysis
 
 if ($mst) {
-    use Graph::Undirected;
     my $megaNetwork = Graph::Undirected->new;
     my $distanceNetwork = Graph::Undirected->new;
     
     foreach my $network (@uniqueArray) {
-        if (ref($network) eq "REF") {
+        if (ref($network) eq 'REF') {
             $network = $$network;
+        } elsif ($network eq undef ) {
+            next;
         }
         
         $screen and $scr->at(14,1)->puts( "MST creation - solution: ");
@@ -1460,7 +1314,7 @@ if ($mst) {
         foreach my $e (@Edges) {
             my $edge0 = @$e[0];
             my $edge1 = @$e[1];
-            if ( !$bootstrap ) {
+            if ( !$pairwiseFile ) {
                 $perror{ @$e[0] . "#" . @$e[1] } = 0.0;
                 $pvalue { @$e[0] . "#" . @$e[1] } = 0.0;
             }
@@ -1533,7 +1387,7 @@ if ($xyfile ) {
             or warn $graph->error;
         
     my $gd = $graph->plot(\@data) or die $graph->error;
-    open(IMG, ">$inputfile-histogram.png") or die $!;
+    open(IMG, ">$useOutputFile-histogram.png") or die $!;
     binmode IMG;
     print IMG $gd->png;
 }
@@ -1566,14 +1420,86 @@ if ($stats>0 ) {
                 transparent     => 0,
             ) 
             or warn $graph->error;
-        
+    
     my $gd = $graph->plot(\@data) or die $graph->error;
-    open(IMG, ">$inputfile-count-histogram.png") or die $!;
+    open(IMG, ">$useOutputFile-count-histogram.png") or die $!;
     binmode IMG;
     print IMG $gd->png;
 }
 print OUTFILE "\n";
 print OUTDOTFILE "}\n";
+
+
+
+###########################################
+if ($excel) {
+    print "\n\rNow printing excel output file... \n\r";
+    # Create a new Excel workbook
+    my $filename = $useOutputFile."-seriationList.xlsx";
+    my $workbook = Excel::Writer::XLSX->new( $filename );
+    
+    # Add a worksheet
+    my $worksheet = $workbook->add_worksheet();
+
+    my $row = 1;
+    my $solutionNumber=1;
+    foreach my $network (@uniqueArray) {    
+        if (ref($network) eq 'REF') {
+            $network = $$network;
+        } elsif ($network eq undef ) {
+            next;
+        }
+        my $undirectedNetwork = $network->undirected_copy;
+        my $col=0;
+        if ($largestonly>0) {
+            if ($network->edges == $maxEdges) {
+                $worksheet->write( $row, $col, "Seriation Solution");
+                $col++;
+                my @verts = $undirectedNetwork->longest_path;
+                my $vs= scalar(@verts);
+                for (my $j; $j<$vs; $j++) {
+                    $worksheet->write( $row, $col, $network->get_graph_attribute("GraphID")  );
+                    $col++;
+                    $worksheet->write( $row, $col, $verts[$j] );
+                    my @assemblage= @{ $assemblageValues{ $verts[$j] } };
+                    my $cols = scalar(@assemblage);
+                    for ( my $i = 0 ; $i < $cols ; $i++ ) {
+                        $col++;
+                        $worksheet->write($row, $col, $assemblage[$i]);
+                    }
+                    $col=1;
+                    $row++;
+                }
+                $row = $row+2;
+                $solutionNumber++;
+            }
+        } else {
+            $worksheet->write( $row, $col, "Seriation Solution");
+            $col++;
+            my @verts = $undirectedNetwork->longest_path;      
+                my $vs= scalar(@verts);
+                for (my $j; $j<$vs; $j++) {
+                    $worksheet->write( $row, $col, $network->get_graph_attribute("GraphID") );
+                    $col++;
+                    $worksheet->write( $row, $col, $verts[$j] );
+                    my @assemblage= @{ $assemblageValues{ $verts[$j] } };
+                    my $cols = scalar(@assemblage);
+                    for ( my $i = 0 ; $i < $cols ; $i++ ) {
+                        $col++;
+                        $worksheet->write($row, $col, $assemblage[$i]);
+                    }
+                    $col=1;
+                    $row++;
+                }
+                $row = $row+2;
+                $solutionNumber++
+        }
+    }       
+}
+my $timediff= Time::HiRes::gettimeofday() - $start;
+$screen and $scr->at(14,1)->puts( "Time for processing: $timediff seconds");
+print "\n\r\n\r\n\r\n\r";
+
 
 sub SortHashByMultipleColumns{
     my($hashRef,$sortInfoAR) = @_;
@@ -1639,15 +1565,6 @@ sub SortHashByMultipleColumns{
     return @sortedKeys;
 }
 
-###########################################
-if ($excel) {
-    print "\n\rNow printing excel output file... \n\r";
-    ## nothing yet
-}
-my $timediff= Time::HiRes::gettimeofday() - $start;
-$screen and $scr->at(14,1)->puts( "Time for processing: $timediff seconds");
-print "\n\r\n\r\n\r\n\r";
-
 __END__
 
     =head1 IDSS-with-bootstrap.pl
@@ -1669,8 +1586,6 @@ __END__
        -indivfiles          create individual .vna files for each solution
        -bootstrapCI         use bootstrap confidence intervals for comparison
        -bootstrapSignficance    specify the significance level of the bootstrap confidence intervals (default=95)
-       -bootstrap           calculate pair comparison bootstrap values (not useful yet)
-       -bootstrapdebug      print debugging statements for bootstrap set
        -debug               print debugging output
        -noscreen            don't use terminal output - just standard out
        -excel               output excel files for creating graphical seriation (not working yet)
