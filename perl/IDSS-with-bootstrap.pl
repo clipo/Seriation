@@ -574,7 +574,7 @@ my $solutionSum = scalar(@networks);  ## number of solutions to this point (whic
 my %seriationStep={};        ## hash of the array of solutions for this step
 
 
-while ( $currentMaxSeriationSize < $maxSeriations ) {
+while ( $currentMaxSeriationSize <= $maxSeriations ) {
     #my $index    = 0;
     $stepcount++;
     $DEBUG and print "__________________________________________________________________________________________\n";
