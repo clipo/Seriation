@@ -71,22 +71,6 @@ GetOptions(
     man                         => \$man
 ) or pod2usage(2);
 
-
-    print "Verbose debugging output is on!!!\n";
-    print "Processing input file: $inputfile\n";
-    print "filterflag: ", $filterflag, "\n";
-    print "bootstrapCI: ", $bootstrapCI, "\n";
-    print "bootstrapSignificance: ", $bootstrapSignificance, "\n";
-    print "largestonly: ", $largestonly, "\n";
-    print "individualfileouput: ", $individualfileoutput, "\n";
-    print "threshold is currently set to: $threshold\n";
-    print "noscreen: ", $noscreen, "\n";
-    print "excel:  ", $excel, "\n";
-    print "xyfile: ", $xyfile,"\n";
-    print "pairwise:", $pairwiseFile,"\n";
-    print "mst:  ", $mst, "\n";
-    print "stats: ", $stats, "\n";
-
 my $DEBUG = $debug;    # our "$debug level"
 
 if ($DEBUG) {
@@ -410,7 +394,7 @@ my @triples;
 my @triplettype;
 my @tripletNames = ();
 my @tripletArray = ();
-my $net          = Graph::Directed->new;
+my $net          = Graph::Undirected->new;
 my $comparison12;
 my $comparison23;
 my $error;
@@ -521,7 +505,7 @@ while ( my @permu = $permutations->next_combination ) {
 
     if ( $error == 0 ) {
         undef $net;
-        $net = Graph::Directed->new;
+        $net = Graph::Undirected->new;
         $net->set_graph_attribute("GraphID", $numberOfTriplets);
         $net->add_vertex( $labels[ $permu[0] ] );
         $net->set_vertex_attribute($labels[ $permu[0] ] ,"End",1);
@@ -565,7 +549,7 @@ my @array = ();
 $screen and $scr->at(1,40)->puts("STEP: Main seriation sorting... ");
 
 #my $currentMaxSeriations = 3;
-my $currentMaxSeriationSize = 3;
+my $currentMaxSeriationSize = 4;
 
 #print "Number of Triplets:  ",$numberOfTriplets, "\n";
 my $maxEdges  = 0;      ## keeps track of the current largest size of solution
@@ -591,10 +575,8 @@ my %seriationStep={};        ## hash of the array of solutions for this step
 
 
 while ( $currentMaxSeriationSize < $maxSeriations ) {
-    $currentMaxSeriationSize++;
     #my $index    = 0;
     $stepcount++;
-    
     $DEBUG and print "__________________________________________________________________________________________\n";
     $DEBUG and print "Step number:  $currentMaxSeriationSize\n";
     $DEBUG and print "__________________________________________________________________________________________\n";
@@ -623,7 +605,7 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
             $DEBUG  and print "\t\tFirst check to see if it is included already. If it has, move on.\n";
             my @vertices = $nnetwork->vertices;
             #my $vTest= $nnetwork->has_vertex($testAssemblage);
-            if ( ! grep { $_ eq $testAssemblage} @vertices) {   ## if the assemblage is NOT in the list of existing vertices.
+            if ( (! grep { $_ eq $testAssemblage} @vertices) ) {   ## if the assemblage is NOT in the list of existing vertices.
                 # get the exterior vertices (should be 2)
                 my @V = $nnetwork->vertices;    ## list of all the vertices
                 $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices \n";
@@ -638,8 +620,11 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                     my @oldassemblage = ();
                     my $comparisonMap;
                     ## only if it has one edge. We only want to consider the ends of the netowrk -- so skip the others.
+                    ## skip if it already exists
                     ## Just the ends.
-                    if ( $edges == 1 ) {
+                    if ( ($edges == 1) &&
+                        (!$nnetwork->has_edge($testAssemblage, $endAssemblage)) &&
+                        (!$nnetwork->has_edge($endAssemblage, $testAssemblage)) )  {
                         $DEBUG and print "\t\t", $endAssemblage, " is on the edge since it only has one vertice.\n";
                         @newassemblage = @{ $assemblageFrequencies{ $testAssemblage } };
                         @oldassemblage = @{ $assemblageFrequencies{ $endAssemblage } };
@@ -766,10 +751,6 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                        $DEBUG and print "\t\t\t\t\t Since I got $compArray[$i] my potential new value is still X.\n";
                                        $DEBUG and print "\t\t\t\t\t Now going to get the next pair of assembalges to examine in the chain\n";
                                        $ccount++;
-                                       if ($ccount>scalar(@currentEdges)) {  ## to keep searching from going on forever
-                                          print "PROBLEM. Too many checks. Quitting\n\r\n\r";
-                                          exit();
-                                       }
                                     }
                                     if ( $xerror ) {
                                         $error++;
@@ -981,12 +962,12 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
                                 push @solutions, $new_network; ## this is a list of all the solutions (shallow a)
                                 #print Dumper(\@newnets);
                                 my $currentTotal =  scalar(@newnets);
-                                if (($new_network->edges) > $maxEdges) {
-                                    $maxEdges = $new_network->edges;
+                                if (($new_network->unique_edges) > $maxEdges) {
+                                    $maxEdges = $new_network->unique_edges;
                                     $screen and $scr->at(6,1)->puts("Current Max Edges: $maxEdges   ");
                                 }
                                 $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionSum");
-                                $screen and $scr->at(8,43)->puts("                   ");
+                                $screen and $scr->at(8,43)->puts("                                           ");
                                 $screen and $scr->at(8,1)->puts("Current number of seriation linkages at this step: $currentTotal");
                                 $DEBUG and print "-------------------------------------------------\n\r";
                             }
@@ -1010,21 +991,24 @@ while ( $currentMaxSeriationSize < $maxSeriations ) {
     #print "num of new nets: ", scalar(@newnets),"\n";
     ## no match at this point so no point in going forward.
     if ( scalar(@newnets) == 0 ) {
-        my $text = "Maximum seriation size reached - no more assemblages added that iteration. Size of solution set: ". scalar(@networks);
+        my $text = "Max seriation size reached - Largest solution set: ". scalar(@networks). " out of ". scalar(@solutions); 
         $screen and $scr->at(9,1)->puts( $text );
         $screen and $scr->at(10,1)->puts("Maximum # edges in largest solution is: $maxEdges (note # of edges = # of assemblages - 1)");
-        sleep(2);
+        sleep(5);
         $DEBUG and print "Maximum # edges in largest solution is: $maxEdges (note # of edges = # assemblages -1) \n\r\n";
         
         $maxnumber = $currentMaxSeriationSize - $maxSeriations;
          ## to break now...
         #print "Maximum # edges in largest solution is: $maxEdges (note # of edges = # assemblages -1) \n\r\n";
-        $currentMaxSeriationSize = $maxSeriations;
+        #$currentMaxSeriationSize = $maxSeriations;
         ## copy the old network set to the new array (just in this case -- otherwise its empty
+        #print Dumper(\@networks);
+        last;
     } else {
         ## copy the array of new solutions back to the working set to continue. over time this should get smaller and smaller...
         @networks= @{\@newnets};
         @newnets=undef;  ## clear the array for the next new set of assemblages.
+        $currentMaxSeriationSize++;
     }    #end of network loop
 }    #end of master loop through iterations
 
@@ -1061,8 +1045,12 @@ if ( $filterflag == 1 ) {
     my $filterCount= scalar(@filteredarray);
     $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
 } elsif ($largestonly>0) {
-    print "\n\rNow going to print just the largest network out of a pool of ", scalar(@networks), "\n\r";
-    @filteredarray = @{ \@networks } ; ## just the largest one
+    #print "\n\rNow going to print just the largest network out of a pool of ", scalar(@networks), "\n\r";
+    @filteredarray = @networks ; ## just the largest one
+    #print " In this final array I have just ", scalar(@filteredarray), " solutions. \n\r";
+    
+    #print Dumper(\@filteredarray);
+    sleep(5);
 } else {
     @filteredarray = @solutions; ### all of the solutions as a default
 }
@@ -1074,7 +1062,7 @@ if ($individualfileoutput) {
     $count = 0;
     my $name;
     foreach my $network (@filteredarray) {
-        my $E = $network->edges;
+        my $E = $network->unique_edges;
         if ( $E > $maxnumber - 1 ) {
             $count++;
             $name = $count . '.vcg';
@@ -1164,11 +1152,11 @@ foreach my $network (@filteredarray) {
     #print "\n\r netowrk type ", ref($network),"\n\r";
     my @Edges;
     if (ref($network) eq 'REF') {
-        @Edges = $$network->edges;
+        @Edges = $$network->unique_edges;
     } elsif ($network eq undef ) {
         next;
     } else {
-        @Edges = $network->edges
+        @Edges = $network->unique_edges
     }
     my $eCount=0;
     foreach my $e (@Edges) {   
@@ -1449,13 +1437,13 @@ if ($excel) {
         } elsif ($network eq undef ) {
             next;
         }
-        my $undirectedNetwork = $network->undirected_copy;
+        #my $undirectedNetwork = $network->undirected_copy;
         my $col=0;
         if ($largestonly>0) {
-            if ($network->edges == $maxEdges) {
+            if ($network->unique_edges == $maxEdges) {
                 $worksheet->write( $row, $col, "Seriation Solution");
                 $col++;
-                my @verts = $undirectedNetwork->longest_path;
+                my @verts = $network->longest_path;
                 my $vs= scalar(@verts);
                 for (my $j; $j<$vs; $j++) {
                     $worksheet->write( $row, $col, $network->get_graph_attribute("GraphID")  );
@@ -1476,7 +1464,7 @@ if ($excel) {
         } else {
             $worksheet->write( $row, $col, "Seriation Solution");
             $col++;
-            my @verts = $undirectedNetwork->longest_path;      
+            my @verts = $network->longest_path;      
                 my $vs= scalar(@verts);
                 for (my $j; $j<$vs; $j++) {
                     $worksheet->write( $row, $col, $network->get_graph_attribute("GraphID") );
