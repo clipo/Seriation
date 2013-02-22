@@ -1228,8 +1228,10 @@ foreach my $network (@uniqueArray) {
                 print OUTFILE $text, " ", $meanDistance, "\n";
                 if ($xyfile) {
                     $distanceHash{ $text }= $meanDistance;
+                    $seriationHash{ $count }->{'meanDistance'}= $groupDistance;
                 } else {
                     $distanceHash{ $text } = 0;
+                    $seriationHash{ $count }->{'meanDistance'}= 0;
                 }
             }
         }
