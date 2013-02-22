@@ -33,6 +33,7 @@ my $xyfile                  = "";
 my $mst                     = 0; ## minimum spanning tree
 my $pairwiseFile            = "";
 my $stats                   =0; ## output stats, histograms of counts, etc
+my $nosum                   =0;
 
 ## find the largest valuein a hash
 sub largest_value_mem (\%) {
@@ -68,6 +69,7 @@ GetOptions(
     'pairwise=s'                => \$pairwiseFile,
     'mst'                       => \$mst,
     'stats'                     => \$stats,
+    'nosum'                     => \$nosum,
     man                         => \$man
 ) or pod2usage(2);
 
@@ -75,7 +77,7 @@ my $DEBUG = $debug;    # our "$debug level"
 
 if ($DEBUG) {
     print "Verbose debugging output is on!!!\n";
-
+    print "Dont keep track of ALL solutions: $nosum\n";
     print "Processing input file: $inputfile\n";
     print "filterflag: ", $filterflag, "\n";
     print "bootstrapCI: ", $bootstrapCI, "\n";
@@ -960,7 +962,9 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                 #print Dumper($new_network);
                                 #print $new_network, "\n";
                                 push @newnets, $new_network;   ## contains solutions for just this step - add to list
-                                push @solutions, $new_network; ## this is a list of all the solutions (shallow a)
+                                if (!$nosum) {
+                                    push @solutions, $new_network; ## this is a list of all the solutions (shallow a)
+                                }
                                 #print Dumper(\@newnets);
                                 my $currentTotal =  scalar(@newnets);
                                 if (($new_network->unique_edges) > $maxEdges) {
@@ -1049,7 +1053,6 @@ if ( $filterflag == 1 ) {
     #print "\n\rNow going to print just the largest network out of a pool of ", scalar(@networks), "\n\r";
     @filteredarray = @networks ; ## just the largest one
     #print " In this final array I have just ", scalar(@filteredarray), " solutions. \n\r";
-    
     #print Dumper(\@filteredarray);
     sleep(5);
 } else {
