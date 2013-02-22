@@ -943,17 +943,18 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                 ## now add to this *new one*
                                 $new_network->add_vertex($testAssemblage);
                                 ## mark this vertice as the new "END"
-                                $new_network->set_vertex_attribute($testAssemblage,"End",1);
+                                $new_network->set_vertex_attribute($testAssemblage,"End", "1" );
                                 ## mark the interior vertice as not and "END"
-                                $new_network->set_vertex_attribute($endAssemblage,"End",0);
+                                $new_network->set_vertex_attribute($endAssemblage,"End", "0" );
                                 $new_network->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
                                 ## mark this as the end edge
-                                $new_network->set_edge_attribute($testAssemblage, $endAssemblage , "End", 1);
+                                $new_network->set_edge_attribute($endAssemblage, $testAssemblage, "End", "1");
+                                $new_network->set_edge_attribute($testAssemblage, $endAssemblage , "End", "1");
                                 $new_network->set_edge_attribute($testAssemblage, $endAssemblage , "GraphID", $solutionCount);
                                 ## mark the previous edge as no longer the end
                                 my @n = $new_network->neighbours($endAssemblage);  ## assume 0 is the only neighbor (should be only one!)
-                                $new_network->set_edge_attribute($n[0], $endAssemblage , "End", 0);
-                                $new_network->set_edge_attribute( $endAssemblage, $n[0], "End", 0);
+                                $new_network->set_edge_attribute($n[0], $endAssemblage , "End", "0");
+                                $new_network->set_edge_attribute( $endAssemblage, $n[0], "End", "0");
                                 $DEBUG and print "New network (with addition): ", $new_network, "\n\r";
                                 ## copy this solution to the new array of networks
                                 #print Dumper($new_network);
@@ -1237,45 +1238,41 @@ foreach my $network (@uniqueArray) {
         }
     } else {  ## not just the largest, but ALL seriation solutions
             
-      my @Edges = $network->unique_edges;
-      my $groupDistance=0;
-      my $meanDistance=0.0;
-      my $eCount=0;
-      if ($xyfile) {
-         foreach my $e (@Edges) {
-            my $edge0 = @$e[0];
-            my $edge1 = @$e[1];
-            my $pairname= $edge0."*".$edge1;
-            $groupDistance += $distanceBetweenAssemblages{ $pairname };
-            $eCount++;
-         }
-         $meanDistance = $groupDistance/$eCount;         ##use the average distance as the metric
-         $seriationHash{ $count }->{'ID'}=$count;
-         $seriationHash{ $count }->{'size'}=scalar(@Edges);
-         if ($xyfile) {
-            $seriationHash{ $count }->{'meanDistance'}= $groupDistance;
-         } else {
-            $seriationHash{ $count }->{'meanDistance'}= 0;
-         }
-      }
+        my @Edges = $network->unique_edges;
+        my $groupDistance=0;
+        my $meanDistance=0.0;
+        my $eCount=0;
+        if ($xyfile) {
+           foreach my $e (@Edges) {
+              my $edge0 = @$e[0];
+              my $edge1 = @$e[1];
+              my $pairname= $edge0."*".$edge1;
+              $groupDistance += $distanceBetweenAssemblages{ $pairname };
+              $eCount++;
+           }
+           $meanDistance = $groupDistance/$eCount;         ##use the average distance as the metric
+           $seriationHash{ $count }->{'ID'}=$count;
+           $seriationHash{ $count }->{'size'}=scalar(@Edges);
+           $seriationHash{ $count }->{'meanDistance'}= $groupDistance;
+   
+        }
         foreach my $e (@Edges) {
-               my $edge0 = @$e[0];
-               my $edge1 = @$e[1];
-               my ($pVal, $pErr);
-                if ( $pairwiseFile ) {
-                    my $pairname= $edge0."#".$edge1;
-                    $pVal = $pairwise{ $pairname };
-                    $pErr = $pairwiseError{ $pairname };
-                } else {
-                    $pVal = 0.0;
-                    $pErr = 0.0;
-                }
+           my $edge0 = @$e[0];
+           my $edge1 = @$e[1];
+           my ($pVal, $pErr);
+            if ( $pairwiseFile ) {
+                my $pairname= $edge0."#".$edge1;
+                $pVal = $pairwise{ $pairname };
+                $pErr = $pairwiseError{ $pairname };
+            } else {
+                $pVal = 0.0;
+                $pErr = 0.0;
+            }
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
             my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
             $distanceHash{ $text } = $meanDistance;
             print OUTFILE $text, " ", $meanDistance, "\n";
         }
-          #print OUTFILE "---------------------------\n";
     }
 }
 
