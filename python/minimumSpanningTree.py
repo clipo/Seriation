@@ -137,7 +137,7 @@ def main(argv):
             pairwise[ pair2 ]=weight
             #print weight
             network = int(row[4])
-            #print "now on network: ", network, " edge: ", edgeCount, " oldnetwork: ", old_network
+            print "now on network: ", network, " edge: ", edgeCount, " oldnetwork: ", old_network
             pvalue = float(row[5])
             pError = float(row[6])
             pairwiseError[ pair ]=pError
@@ -149,8 +149,8 @@ def main(argv):
                 graphs.append(nx.Graph(ID=graphCount))
                 graphCount += 1
                 edgeCount = 0
-            node1name = node1+"_"+str(graphCount)
-            node2name = node2+"_"+str(graphCount)
+            node1name = node1+"_"+str(network)
+            node2name = node2+"_"+str(network)
             graphs[graphCount].add_node(node1name, label= node1, x = node1x, y = node1y, name=node1, size=node1Size )
             graphs[graphCount].add_node(node2name, label= node2, x = node2x, y = node2y, name=node2, size=node2Size )
             graphs[graphCount].add_edge(node1name, node2name, xy1=(node1x, node1y), xy2=(node2x, node2y),
