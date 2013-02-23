@@ -17,23 +17,25 @@ require Term::Screen;
 use List::MoreUtils qw/ uniq /;
 use GD::Graph::histogram;
 
+
 my $debug                   = 0;
 my $filterflag              = 0; ## do you want to try to output all of the solutions (filtered for non trivial)
 my $largestonly             = 0; #  only output the largest set of solutions
 my $individualfileoutput    = 0; ## create files for all the indivdual networks
 my $bootstrapCI             = 0; ## flag for the CI bootstrap
-my $bootstrapSignificance   = 95;
+my $bootstrapSignificance   = 99.5;
 my $man                     = 0;
 my $help                    = 0;
 my $inputfile;
-my $threshold               = 0;
+my $threshold               = 0.5;
 my $noscreen                = 0;     ## flag for screen output
 my $excel                   = 0;       ## flag for excel file output (not implemented yet)
 my $xyfile                  = "";
 my $mst                     = 0; ## minimum spanning tree
 my $pairwiseFile            = "";
-my $stats                   =0; ## output stats, histograms of counts, etc
-my $nosum                   =0;
+my $stats                   = 0; ## output stats, histograms of counts, etc
+my $nosum                   = 0;
+my $allSolutions            = 0;
 
 ## find the largest valuein a hash
 sub largest_value_mem (\%) {
@@ -70,6 +72,7 @@ GetOptions(
     'mst'                       => \$mst,
     'stats'                     => \$stats,
     'nosum'                     => \$nosum,
+    'allsolutions'              => \$allSolutions,
     man                         => \$man
 ) or pod2usage(2);
 
@@ -507,7 +510,7 @@ while ( my @permu = $permutations->next_combination ) {
 
     if ( $error == 0 ) {
         undef $net;
-        $net = Graph::Undirected->new;
+        $net = Graph::Directed->new();
         $net->set_graph_attribute("GraphID", $numberOfTriplets);
         $net->add_vertex( $labels[ $permu[0] ] );
         $net->set_vertex_attribute($labels[ $permu[0] ] ,"End",1);
@@ -554,7 +557,7 @@ $screen and $scr->at(1,40)->puts("STEP: Main seriation sorting... ");
 my $currentMaxSeriationSize = 4;
 
 #print "Number of Triplets:  ",$numberOfTriplets, "\n";
-my $maxEdges  = 0;      ## keeps track of the current largest size of solution
+my $maxEdges  = 2;      ## keeps track of the current largest size of solution
 my $stepcount = 0;     ## keeps track of the current step (from 0, adds one each step)
 my $match     = 0;      ## keeps track of whether a solution is found for each step. Once no new solution is found, the search is over!
 
@@ -567,10 +570,12 @@ my $solutionCount=0;   ## an index of the current number of solutions
 ### This is just preparing the intial set of threes into the array that will be used as the seed for all future
 ### seriation sets.
 foreach my $n (@triples) {
-      push @networks, $n;        ## this is the array of the current successful set
-      push @solutions, $n;      ## This is an array of ALL solutions to date
-      $stepSeriationList{ $solutionCount } = $n;     ## this is an ordered list of all solutions (order in which found for each step)
-      $solutionCount++;          ## counts the current set of solutions
+     if ($n ne undef) {
+        push @networks, $n;        ## this is the array of the current successful set
+        push @solutions, $n;      ## This is an array of ALL solutions to date
+        $stepSeriationList{ $solutionCount } = $n;     ## this is an ordered list of all solutions (order in which found for each step)
+        $solutionCount++;          ## counts the current set of solutions
+     }
 }
 my $solutionSum = scalar(@networks);  ## number of solutions to this point (which is equal to all 3s);
 my %seriationStep={};        ## hash of the array of solutions for this step
@@ -940,7 +945,6 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                             $DEBUG and print "--------------------------------------------------\n\r\n\r";
                             $DEBUG and print "Original network: ", $nnetwork, "\n\r";
                             $DEBUG and print "New comparison map is: $comparisonMap\n\r";
-
                             ## no errors so add vertice added to the new network
                             #my $oldedgenum = $nnetwork->edges;
                             my @vertices = $nnetwork->vertices;
@@ -970,9 +974,11 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                 ## copy this solution to the new array of networks
                                 #print Dumper($new_network);
                                 #print $new_network, "\n";
-                                push @newnets, $new_network;   ## contains solutions for just this step - add to list
-                                if (!$nosum) {
-                                    push @solutions, $new_network; ## this is a list of all the solutions (shallow a)
+                                if ($new_network ne undef) {
+                                    push @newnets, $new_network;   ## contains solutions for just this step - add to list
+                                    if ($nosum ==0 ) {
+                                        push @solutions, $new_network; ## this is a list of all the solutions (shallow a)
+                                    }
                                 }
                                 #print Dumper(\@newnets);
                                 my $currentTotal =  scalar(@newnets);
@@ -994,39 +1000,33 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
             }    # end of if assemblage not already in netowrk check
         }    #end of assemblage loop
     }
-
     #print Dumper(\@networks);
     ########################################### AFTER ALL THE SORTING AND WINNOWING ######################
     $DEBUG and print "Number of current solutions now: ", scalar(@newnets), "\n\r";
 
     ## now push the current step solutions to the list that serves as the basis of the next step. 
-
     $solutionSum  =  scalar(@solutions);
+    #print Dumper(\@solutions);
     #print "num of new nets: ", scalar(@newnets),"\n";
     ## no match at this point so no point in going forward.
     if ( scalar(@newnets) == 0 ) {
         my $text = "Max seriation size reached - Largest solution set: ". scalar(@networks). " out of ". scalar(@solutions); 
         $screen and $scr->at(9,1)->puts( $text );
         $screen and $scr->at(10,1)->puts("Maximum # edges in largest solution is: $maxEdges (note # of edges = # of assemblages - 1)");
-        sleep(5);
         $DEBUG and print "Maximum # edges in largest solution is: $maxEdges (note # of edges = # assemblages -1) \n\r\n";
-        
-        $maxnumber = $currentMaxSeriationSize - $maxSeriations;
-         ## to break now...
-        #print "Maximum # edges in largest solution is: $maxEdges (note # of edges = # assemblages -1) \n\r\n";
-        #$currentMaxSeriationSize = $maxSeriations;
-        ## copy the old network set to the new array (just in this case -- otherwise its empty
-        #print Dumper(\@networks);
-        last;
+        $currentMaxSeriationSize = $maxSeriations+1;
     } else {
         ## copy the array of new solutions back to the working set to continue. over time this should get smaller and smaller...
         @networks= @{\@newnets};
-        @newnets=undef;  ## clear the array for the next new set of assemblages.
+        @newnets=();  ## clear the array for the next new set of assemblages.
         $currentMaxSeriationSize++;
     }    #end of network loop
 }    #end of master loop through iterations
 
-
+if (scalar(@networks)==0 || $networks[0] eq undef ) {
+    print "\n\r\n\r\n\r\n\r\n\rNo solutions Found!!\n\r";
+    exit();
+}
 
 ########################################### DO SOME FILTERING (OR NOT) ####################################
 # now do some weeding. Basically start with the first network that is the largest, and work backwards. Ignore any
@@ -1058,13 +1058,12 @@ if ( $filterflag == 1 ) {
     $DEBUG and print "End with ", scalar(@filteredarray), " solutions.\n";
     my $filterCount= scalar(@filteredarray);
     $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
-} elsif ($largestonly>0) {
-    #print "\n\rNow going to print just the largest network out of a pool of ", scalar(@networks), "\n\r";
-    @filteredarray = @networks ; ## just the largest one
-    #print " In this final array I have just ", scalar(@filteredarray), " solutions. \n\r";
-    #print Dumper(\@filteredarray);
-    sleep(5);
 } else {
+    #print "\n\rNow going to print just the largest network out of a pool of ", scalar(@networks), "\n\r";
+    @filteredarray = @{\@networks}; ; ## just the largest one
+    }
+
+if ($allSolutions>0) {
     @filteredarray = @solutions; ### all of the solutions as a default
 }
 
@@ -1161,6 +1160,7 @@ if ($mst) {
 ## first count up all of the edges by going through the solutions and each edge
 ## put the edge count in a hash of edges
 my %edgeHash=();
+
 foreach my $network (@filteredarray) {
     #print "\n\r netowrk type ", ref($network),"\n\r";
     my @Edges;
@@ -1192,23 +1192,24 @@ my @uniqueArray = uniq @filteredarray;
 
 $screen and $scr->at(1,40)->puts("STEP: Printing edges...     ");
 print OUTDOTFILE "\n/* list of edges */\n";
-$count =0;
+
 my %distanceHash=();
 my %seriationHash;
 ## only print unique ones...
+
 foreach my $network (@uniqueArray) {
     if (ref($network) eq 'REF') {
         $network = $$network;
     } elsif ($network eq undef ) {
         next;
     }
-    $count++;
     $screen and $scr->at(14,1)->puts( "Now on solution: ");
-    $screen and $scr->at(14,18)->puts($count);
+    $screen and $scr->at(14,18)->puts($network->get_graph_attribute("GraphID") );
     my $eCount;   
     
     if ($largestonly>0) {
         if ($network->unique_edges == $maxEdges) {
+            
             my $groupDistance=0;
             my @Edges = $network->unique_edges;
             my $meanDistance=0.0;
@@ -1222,8 +1223,13 @@ foreach my $network (@uniqueArray) {
                   $eCount++;
                }
                $meanDistance = $groupDistance/$eCount;      ## use the average for the group for now
-               ##print "\n\rMean distance for this group is: ", $meanDistance, "\n\r";
+               #print "\n\rMean distance for this group is: ", $meanDistance, "\n\r";
+               $network->set_graph_attribute("meanDistance", $meanDistance);
+            } else {
+                $meanDistance="0";
+                $network->set_graph_attribute("meanDistance", "0");
             }
+            my $text;
             foreach my $e (@Edges) {
                my $edge0 = @$e[0];
                my $edge1 = @$e[1];
@@ -1237,16 +1243,14 @@ foreach my $network (@uniqueArray) {
                     $pErr = 0.0;
                 }
                 print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
-                my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
+                $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
                 print OUTFILE $text, " ", $meanDistance, "\n";
-                if ($xyfile) {
-                    $distanceHash{ $text }= $meanDistance;
-                    $seriationHash{ $count }->{'meanDistance'}= $groupDistance;
-                } else {
-                    $distanceHash{ $text } = 0;
-                    $seriationHash{ $count }->{'meanDistance'}= 0;
-                }
             }
+            $network->set_graph_attribute("meanDistance", $meanDistance);
+            $distanceHash{ $network->get_graph_attribute("GraphID") }= $meanDistance;
+            $seriationHash{ $network->get_graph_attribute("GraphID") }->{'meanDistance'}= $meanDistance;
+            $seriationHash{ $network->get_graph_attribute("GraphID") }->{'ID'}=$network->get_graph_attribute("GraphID");
+            $seriationHash{ $network->get_graph_attribute("GraphID") }->{'size'}=scalar(@Edges);
         }
     } else {  ## not just the largest, but ALL seriation solutions
             
@@ -1254,6 +1258,7 @@ foreach my $network (@uniqueArray) {
         my $groupDistance=0;
         my $meanDistance=0.0;
         my $eCount=0;
+        my $text;
         if ($xyfile) {
            foreach my $e (@Edges) {
               my $edge0 = @$e[0];
@@ -1263,10 +1268,8 @@ foreach my $network (@uniqueArray) {
               $eCount++;
            }
            $meanDistance = $groupDistance/$eCount;         ##use the average distance as the metric
-           $seriationHash{ $count }->{'ID'}=$count;
-           $seriationHash{ $count }->{'size'}=scalar(@Edges);
-           $seriationHash{ $count }->{'meanDistance'}= $groupDistance;
-   
+        } else {
+           $meanDistance = "0";
         }
         foreach my $e (@Edges) {
            my $edge0 = @$e[0];
@@ -1281,10 +1284,15 @@ foreach my $network (@uniqueArray) {
                 $pErr = 0.0;
             }
             print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
-            my $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
-            $distanceHash{ $text } = $meanDistance;
-            print OUTFILE $text, " ", $meanDistance, "\n";
+            $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
+            print OUTFILE $text, " ", $meanDistance, "\n";        
         }
+
+        $network->set_graph_attribute("meanDistance", $meanDistance);
+        $distanceHash{ $text }= $meanDistance;
+        $seriationHash{ $network->get_graph_attribute("GraphID") }->{'meanDistance'}= $meanDistance;
+        $seriationHash{ $network->get_graph_attribute("GraphID") }->{'ID'}=$network->get_graph_attribute("GraphID");
+        $seriationHash{ $network->get_graph_attribute("GraphID") }->{'size'}=scalar(@Edges);
     }
 }
 
@@ -1300,9 +1308,8 @@ if ($mst) {
         } elsif ($network eq undef ) {
             next;
         }
-        
         $screen and $scr->at(14,1)->puts( "MST creation - solution: ");
-        $screen and $scr->at(14,26)->puts($count);
+        $screen and $scr->at(14,26)->puts($network->get_graph_attribute("GraphID"));
         my $eCount;   
         my @Edges = $network->unique_edges;
         my $graphID = $network->get_graph_attribute("GraphID");
@@ -1361,13 +1368,14 @@ if ($mst) {
 }
 
 if ($xyfile ) {
+    #print "SeriationHash: ", Dumper(\%seriationHash);
     my @sortedKeys = SortHashByMultipleColumns(\%seriationHash,["meanDistance:asc","size:dsc"]);
     my @data = [];
     $count=0;
     open(OUTSIZEFILE, ">$inputfile-distances.txt") or die $!;
     print OUTSIZEFILE "Seriation_Solution Mean_Distance Solution_Size\n";
     foreach my $sortedKey(@sortedKeys){
-        print OUTSIZEFILE $seriationHash{$sortedKey}->{'ID'}. " ". $seriationHash{$sortedKey}->{'meanDistance'} . " " . $seriationHash{$sortedKey}->{'size'} . "\n";
+        print OUTSIZEFILE $sortedKey. " ". $seriationHash{$sortedKey}->{'meanDistance'} . " " . $seriationHash{$sortedKey}->{'size'} . "\n";
         $data[ $count ] = int($seriationHash{$sortedKey}->{'meanDistance'});
         $count++;
     }
@@ -1396,6 +1404,8 @@ if ($stats>0 ) {
     foreach my $network (@uniqueArray) {
         if (ref($network) eq "REF") {
             $network = $$network;
+        }  elsif ($network eq undef ) {
+            next;
         }
         my @verts = $network->vertices;      
         foreach my $vert (@verts) {
@@ -1439,7 +1449,7 @@ if ($excel) {
     
     # Add a worksheet
     my $worksheet = $workbook->add_worksheet();
-
+    my $percentWorksheet = $workbook->add_worksheet();
     my $row = 1;
     my $solutionNumber=1;
     foreach my $network (@uniqueArray) {    
@@ -1453,18 +1463,26 @@ if ($excel) {
         if ($largestonly>0) {
             if ($network->unique_edges == $maxEdges) {
                 $worksheet->write( $row, $col, "Seriation Solution");
+                $percentWorksheet->write($row,$col, "Seriation Solution");
                 $col++;
+                
+                my $endAssemblage;
                 my @verts = $network->longest_path;
+                
                 my $vs= scalar(@verts);
                 for (my $j; $j<$vs; $j++) {
                     $worksheet->write( $row, $col, $network->get_graph_attribute("GraphID")  );
+                    $percentWorksheet->write($row, $col, $network->get_graph_attribute("GraphID")  );
                     $col++;
                     $worksheet->write( $row, $col, $verts[$j] );
+                    $percentWorksheet->write( $row, $col, $verts[$j] );
                     my @assemblage= @{ $assemblageValues{ $verts[$j] } };
+                    my @assemblageFreq = @{ $assemblageFrequencies{ $verts[$j] } };
                     my $cols = scalar(@assemblage);
                     for ( my $i = 0 ; $i < $cols ; $i++ ) {
                         $col++;
                         $worksheet->write($row, $col, $assemblage[$i]);
+                        $percentWorksheet->write($row,$col, $assemblageFreq[$i]);
                     }
                     $col=1;
                     $row++;
@@ -1474,24 +1492,30 @@ if ($excel) {
             }
         } else {
             $worksheet->write( $row, $col, "Seriation Solution");
+            $percentWorksheet->write( $row, $col, "Seriation Solution");
             $col++;
-            my @verts = $network->longest_path;      
-                my $vs= scalar(@verts);
-                for (my $j; $j<$vs; $j++) {
-                    $worksheet->write( $row, $col, $network->get_graph_attribute("GraphID") );
+            my $endAssemblage;
+            my @verts = $network->longest_path;
+            my $vs= scalar(@verts);
+            for (my $j; $j<$vs; $j++) {
+                $worksheet->write( $row, $col, $network->get_graph_attribute("GraphID") );
+                $percentWorksheet->write( $row, $col, $network->get_graph_attribute("GraphID") );
+                $col++;
+                $worksheet->write( $row, $col, $verts[$j] );
+                $percentWorksheet->write($row, $col, $verts[$j] );
+                my @assemblage= @{ $assemblageValues{ $verts[$j] } };
+                my @assemblageFreq = @{ $assemblageFrequencies{ $verts[$j] } };
+                my $cols = scalar(@assemblage);
+                for ( my $i = 0 ; $i < $cols ; $i++ ) {
                     $col++;
-                    $worksheet->write( $row, $col, $verts[$j] );
-                    my @assemblage= @{ $assemblageValues{ $verts[$j] } };
-                    my $cols = scalar(@assemblage);
-                    for ( my $i = 0 ; $i < $cols ; $i++ ) {
-                        $col++;
-                        $worksheet->write($row, $col, $assemblage[$i]);
-                    }
-                    $col=1;
-                    $row++;
+                    $worksheet->write($row, $col, $assemblage[$i]);
+                    $percentWorksheet->write($row,$col, $assemblageFreq[$i]);
                 }
-                $row = $row+2;
-                $solutionNumber++
+                $col=1;
+                $row++;
+            }
+            $row = $row+2;
+            $solutionNumber++;
         }
     }       
 }
