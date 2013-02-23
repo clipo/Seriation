@@ -627,7 +627,27 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                     if ( ($edges == 1) &&
                         (!$nnetwork->has_edge($testAssemblage, $endAssemblage)) &&
                         (!$nnetwork->has_edge($endAssemblage, $testAssemblage)) )  {
+                        
                         $DEBUG and print "\t\t", $endAssemblage, " is on the edge since it only has one vertice.\n";
+                        
+                        #first determine if the pairs are within the threshold value (0 = all assemblages)
+                        my $pairname = $testAssemblage . " * " . $endAssemblage;
+                        my $diff     = $assemblageComparison{$pairname};
+                        $DEBUG and print "\t\t\tFor $pairname the max frequency difference is $diff.\n";
+                        if ($diff eq undef) {
+                           print "\n\rError: pairname: $pairname not found in hash lookup!\n\r";
+                           print "Probably a problem with the names of the assemblages. Check for weird characters. Exiting.\n\r";
+                           exit();
+                        }
+                        ## go through process only if threshold is 0 or difference value is below threshold
+                        ## this should mean that network will not grow unless the above conditions are met.
+                        my $error = 0;
+                        if (  ($threshold>0 ) and ($diff > $threshold ))  {
+                           $DEBUG and print "\t\t\tThreshold = $threshold and Diff = $diff. Since $diff < $threshold, continue.\n";
+                           $error++; # this should ensure future failure....
+                           last;
+                        }
+                        
                         @newassemblage = @{ $assemblageFrequencies{ $testAssemblage } };
                         @oldassemblage = @{ $assemblageFrequencies{ $endAssemblage } };
                         my @edge = $nnetwork->edges_at($endAssemblage);
@@ -653,22 +673,6 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                         $DEBUG and print "\t\t\t Inner edge is $innerEdge\n";
                         $DEBUG and print "\t\t\t Comparison is $g or -- ", $nnetwork->get_edge_weight($outerEdge,$innerEdge), "\n";
                
-                        #first determine if the pairs are within the threshold value (0 = all assemblages)
-                        my $pairname = $testAssemblage . " * " . $endAssemblage;
-                        my $diff     = $assemblageComparison{$pairname};
-                        $DEBUG and print "\t\t\tFor $pairname the max frequency difference is $diff.\n";
-                        if ($diff eq undef) {
-                           print "\n\rError: pairname: $pairname not found in hash lookup!\n\r";
-                           print "Probably a problem with the names of the assemblages. Check for weird characters. Exiting.\n\r";
-                           exit();
-                        }
-                        ## go through process only if threshold is 0 or difference value is below threshold
-                        ## this should mean that network will not grow unless the above conditions are met.
-                        my $error = 0;
-                        if (  ($threshold>0 ) and ($diff > $threshold ))  {
-                           $DEBUG and print "\t\t\tThreshold = $threshold and Diff = $diff. Since $diff < $threshold, continue.\n";
-                           $error++; # this should ensure future failure....
-                        }
                         my @comparison = split //, $g;
                         my $cols = scalar(@newassemblage);
                         my $comparisonMap;
@@ -756,6 +760,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                     }
                                     if ( $xerror ) {
                                         $error++;
+                                        last;
                                     } else {
                                         $comparisonMap .= "U";
                                         $DEBUG and print "\t\t\t\t Type $i: For this type, OK to add $testAssemblage to vertices $endAssemblage \n";
@@ -769,6 +774,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                   ( ( $difscore == 1 ) &  ( $comparison[$i] =~ "D" ) ) {                                                  ## 1 D
                                     #print "mismatch!\n";
                                     $error++;
+                                    last;
                                     $DEBUG and print "\t\t\t\tType $i: Value 1:  ", $newassemblage[$i], " value 2: ", $oldassemblage[$i], "\n";
                                     $DEBUG and print "\t\t\t\tType $i: Comparison is:  ", $comparison[$i], " a score of: ", $difscore, "\n";
                                     $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage \n";
@@ -809,6 +815,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                     }
                                     if ($xerror > 0) {
                                         $error += 1;
+                                        last;
                                         $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage) because there was an X \n";
                                         $DEBUG and print "\t\t\t\t\t  This would make it multimodal - so error.\n";
                                     } else {
@@ -906,6 +913,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                 {
                                     ## new score is up but comparison is X.. no cant work because past peak
                                     $error++;
+                                    last;
                                     $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage]. We can't go up \n";
                                     $DEBUG and print " \t\t\t\tafter a peak. so error. Error now $error\n";
                                 } elsif # newscore is down but comparison is X. This means that there was already a peak
@@ -921,6 +929,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                     print "\t\t\t\tHere is the score of the differences in  for Type $i: $difscore\n\r";
                                     print "\t\t\t\tHere is the comparison value: ", $comparison[$i], "\n\r";
                                     $error++;
+                                    last;
                                     exit();
                                 }
                                 $DEBUG
