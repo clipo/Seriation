@@ -510,7 +510,7 @@ while ( my @permu = $permutations->next_combination ) {
 
     if ( $error == 0 ) {
         undef $net;
-        $net = Graph::Directed->new();
+        $net = Graph::Undirected->new();
         $net->set_graph_attribute("GraphID", $numberOfTriplets);
         $net->add_vertex( $labels[ $permu[0] ] );
         $net->set_vertex_attribute($labels[ $permu[0] ] ,"End",1);
@@ -520,12 +520,12 @@ while ( my @permu = $permutations->next_combination ) {
         $net->set_vertex_attribute($labels[ $permu[0] ] ,"End",1);
         
         $net->add_weighted_edge(
-            $labels[ $permu[0] ],
             $labels[ $permu[1] ],
+            $labels[ $permu[0] ],
             $comparison12
         );
-        $net->set_edge_attribute($labels[ $permu[0]], $labels[ $permu[1] ] , "GraphID", $numberOfTriplets);
-        $net->set_edge_attribute($labels[ $permu[0]], $labels[ $permu[1] ] , "End", 1);
+        $net->set_edge_attribute($labels[ $permu[1]], $labels[ $permu[0] ] , "GraphID", $numberOfTriplets);
+        $net->set_edge_attribute($labels[ $permu[1]], $labels[ $permu[0] ] , "End", 1);
         $net->add_weighted_edge(
             $labels[ $permu[1] ],
             $labels[ $permu[2] ],
@@ -533,6 +533,9 @@ while ( my @permu = $permutations->next_combination ) {
         );
         $net->set_edge_attribute($labels[ $permu[1]], $labels[ $permu[2] ] , "GraphID", $numberOfTriplets);
         $net->set_edge_attribute($labels[ $permu[1]], $labels[ $permu[2] ]  , "End", 1);
+        ## set the names to the end...
+        $net->set_graph_attribute("End_1",$labels[ $permu[0]]);
+        $net->set_graph_attribute("End_2",$labels[ $permu[2]]);
         $DEBUG and print "VALID SOLUTION: " . $labels[ $permu[0] ] . " * " . $labels[ $permu[1] ] . " * " . $labels[ $permu[2] ] . "\n";
         $DEBUG and print "VALID SOLUTION: \t  $comparison12\t  ---   $comparison23\n";
         push @triples, $net;
@@ -614,76 +617,64 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
             #my $vTest= $nnetwork->has_vertex($testAssemblage);
             if ( (! grep { $_ eq $testAssemblage} @vertices) ) {   ## if the assemblage is NOT in the list of existing vertices.
                 # get the exterior vertices (should be 2)
-                my @V = $nnetwork->vertices;    ## list of all the vertices
                 $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices \n";
                 $DEBUG  and print " \t\tand looking for the ones with only 1 connection. There should be just 2 here.\n";
                 ## loop through all of the edges to see if they can be stuck on the ends of the networks.
-                foreach my $endAssemblage (@V) {
-                    $DEBUG and print "\t\tChecking vertice: ", $endAssemblage, "\n";
-                    my @Edges = $nnetwork->edges_at($endAssemblage);
-                    my $edges = scalar(@Edges);
-                    $DEBUG and print "\t\t\tThis vertice: $endAssemblage has this number of edges:  ", $edges, "\n";
+                my $whichEnd=0;
+                
+                foreach my $endAssemblage ($nnetwork->get_graph_attribute("End_1"), $nnetwork->get_graph_attribute("End_2")) {
+                    $whichEnd++;
                     my @newassemblage = ();
                     my @oldassemblage = ();
                     my $comparisonMap;
-                    ## only if it has one edge. We only want to consider the ends of the netowrk -- so skip the others.
-                    ## skip if it already exists
-                    ## Just the ends.
-                    if ( ($edges == 1) &&
-                        (!$nnetwork->has_edge($testAssemblage, $endAssemblage)) &&
-                        (!$nnetwork->has_edge($endAssemblage, $testAssemblage)) )  {
-                        
-                        $DEBUG and print "\t\t", $endAssemblage, " is on the edge since it only has one vertice.\n";
-                        
-                        #first determine if the pairs are within the threshold value (0 = all assemblages)
-                        my $pairname = $testAssemblage . " * " . $endAssemblage;
-                        my $diff     = $assemblageComparison{$pairname};
-                        $DEBUG and print "\t\t\tFor $pairname the max frequency difference is $diff.\n";
-                        if ($diff eq undef) {
+
+                    $DEBUG and print "\t\t", $endAssemblage, " is on the edge since it only has one vertice.\n";
+                    
+                    #################### THRESHOLDING STUFF #################################### 
+                    #first determine if the pairs are within the threshold value (0 = all assemblages)
+                    my $pairname = $endAssemblage. " * " . $testAssemblage;
+                    my $diff     = $assemblageComparison{$pairname};
+                    $DEBUG and print "\t\t\tFor $pairname the max frequency difference is $diff.\n";
+                    if ($diff eq undef) {
                            print "\n\rError: pairname: $pairname not found in hash lookup!\n\r";
                            print "Probably a problem with the names of the assemblages. Check for weird characters. Exiting.\n\r";
                            exit();
-                        }
-                        ## go through process only if threshold is 0 or difference value is below threshold
-                        ## this should mean that network will not grow unless the above conditions are met.
-                        my $error = 0;
-                        if (  ($threshold>0 ) and ($diff > $threshold ))  {
-                           $DEBUG and print "\t\t\tThreshold = $threshold and Diff = $diff. Since $diff < $threshold, continue.\n";
-                           $error++; # this should ensure future failure....
-                           last;
-                        }
-                        
-                        @newassemblage = @{ $assemblageFrequencies{ $testAssemblage } };
-                        @oldassemblage = @{ $assemblageFrequencies{ $endAssemblage } };
-                        my @edge = $nnetwork->edges_at($endAssemblage);
-                        $DEBUG and print "\t\t\t The number of edges at $endAssemblage:  ", scalar(@edge), " (should be just one).\n";
-                        my $connectedAssemblage = $edge[0][1];
-                        my $g = $nnetwork->get_edge_weight( $edge[0][0], $edge[0][1] );
+                    }
+                    ## go through process only if threshold is 0 or difference value is below threshold
+                    ## this should mean that network will not grow unless the above conditions are met.
+                    my $error = 0;
+                    if (  ($threshold>0 ) and ($diff > $threshold ))  {
+                       $DEBUG and print "\t\t\tThreshold = $threshold and Diff = $diff. Since $diff < $threshold, continue.\n";
+                       $error++; # this should ensure future failure....
+                        next;
+                    }
+                    ############################################################################
+                    
+                    @newassemblage = @{ $assemblageFrequencies{ $testAssemblage } };
+                    @oldassemblage = @{ $assemblageFrequencies{ $endAssemblage } };
+                    
+                    #### FIND INNER EDGE RELATIVE TO THE EXISTING END ASSEMBLAGE ##############
+                    my @neighbors = $nnetwork->neighbors($endAssemblage);
+                    if (scalar(@neighbors) > 1 || scalar(@neighbors)==0){
+                        print "\r\n\r\n\r\nThere are too many or two few neighbors (should only be 1!). Error!\n\r";
+                        print "\r\nWe are testing $endAssemblage and got ", Dumper(\@neighbors);
+                        exit();
+                    }
+                    $DEBUG and print "\t\t\t The number of neighbors at $endAssemblage is ", scalar(@neighbors), " (should be just one).\n";
+                    my $g = $nnetwork->get_edge_weight( $neighbors[0], $endAssemblage );
+                    $DEBUG and print "\t\t\tThere should be just 1 neighbor to $endAssemblage and that is: $neighbors[0]\n";
+                    $DEBUG and print "\t\t\t\t it has a relation of $g\n";
+                    my $outerEdge= $endAssemblage;
+                    my $innerEdge= $neighbors[0];
+                    ##########################################################################
+                    
+                    
+                    my @comparison = split //, $g;
+                    my $cols = scalar(@newassemblage);
+                    $comparisonMap ="";
 
-                        #print Dumper $g;
-                        $DEBUG and print "\t\t\tThere should be just 2 vertices here 0: $edge[0][0] and 1: $edge[0][1]\n";
-                        $DEBUG and print "\t\t\t\t with a relation of $g\n";
-                        my $numedges1 = $nnetwork->edges_at($edge[0][0]);
-                        my $numedges2 = $nnetwork->edges_at($edge[0][1]);
-                        my ($innerEdge, $outerEdge);
-                        $DEBUG and print "\t\t\t\tNUMBER OF EDGES - $edge[0][0] - $numedges1  - $edge[0][1] - $numedges2\n";
-                        if ( $numedges1 == 1 ) {
-                           $outerEdge= $edge[0][0];
-                           $innerEdge= $edge[0][1];
-                        } else {
-                           $outerEdge= $edge[0][1];
-                           $innerEdge= $edge[0][0];                          
-                        }
-                        $DEBUG and print "\t\t\t Outer edge is $outerEdge\n";
-                        $DEBUG and print "\t\t\t Inner edge is $innerEdge\n";
-                        $DEBUG and print "\t\t\t Comparison is $g or -- ", $nnetwork->get_edge_weight($outerEdge,$innerEdge), "\n";
-               
-                        my @comparison = split //, $g;
-                        my $cols = scalar(@newassemblage);
-                        my $comparisonMap;
-
-                           # go through the columns
-                        if (!$error) {
+                    # go through the columns
+                    if (!$error) {
                            for ( my $i = 0 ; $i < $cols ; $i++ ) {
                                 my ( $difscore, $difscore2 );
                                 my $val1 = $newassemblage[$i];
@@ -765,7 +756,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                     }
                                     if ( $xerror ) {
                                         $error++;
-                                        last;
+                                        next;
                                     } else {
                                         $comparisonMap .= "U";
                                         $DEBUG and print "\t\t\t\t Type $i: For this type, OK to add $testAssemblage to vertices $endAssemblage \n";
@@ -779,7 +770,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                   ( ( $difscore == 1 ) &  ( $comparison[$i] =~ "D" ) ) {                                                  ## 1 D
                                     #print "mismatch!\n";
                                     $error++;
-                                    last;
+                                    next;
                                     $DEBUG and print "\t\t\t\tType $i: Value 1:  ", $newassemblage[$i], " value 2: ", $oldassemblage[$i], "\n";
                                     $DEBUG and print "\t\t\t\tType $i: Comparison is:  ", $comparison[$i], " a score of: ", $difscore, "\n";
                                     $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage \n";
@@ -820,7 +811,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                     }
                                     if ($xerror > 0) {
                                         $error += 1;
-                                        last;
+                                        next;
                                         $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage) because there was an X \n";
                                         $DEBUG and print "\t\t\t\t\t  This would make it multimodal - so error.\n";
                                     } else {
@@ -882,7 +873,6 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                        $DEBUG and print "\t\t\t\t\t Now going to get the next pair of assembalges to examine in the chain\n";
                                        
                                        $ccount++;
-
                                     }
                                     ## in this case I dont think there are any errors possible. types can always go down from any other value
                                     $comparisonMap = $comparisonMap . $change;      ## use the value from above.         
@@ -918,7 +908,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                 {
                                     ## new score is up but comparison is X.. no cant work because past peak
                                     $error++;
-                                    last;
+                                    next;
                                     $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage]. We can't go up \n";
                                     $DEBUG and print " \t\t\t\tafter a peak. so error. Error now $error\n";
                                 } elsif # newscore is down but comparison is X. This means that there was already a peak
@@ -934,7 +924,6 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                     print "\t\t\t\tHere is the score of the differences in  for Type $i: $difscore\n\r";
                                     print "\t\t\t\tHere is the comparison value: ", $comparison[$i], "\n\r";
                                     $error++;
-                                    last;
                                     exit();
                                 }
                                 $DEBUG
@@ -945,6 +934,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                             $DEBUG and print "--------------------------------------------------\n\r\n\r";
                             $DEBUG and print "Original network: ", $nnetwork, "\n\r";
                             $DEBUG and print "New comparison map is: $comparisonMap\n\r";
+                            
                             ## no errors so add vertice added to the new network
                             #my $oldedgenum = $nnetwork->edges;
                             my @vertices = $nnetwork->vertices;
@@ -961,24 +951,29 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                 $new_network->set_vertex_attribute($testAssemblage,"End", "1" );
                                 ## mark the interior vertice as not and "END"
                                 $new_network->set_vertex_attribute($endAssemblage,"End", "0" );
-                                $new_network->add_weighted_edge( $testAssemblage, $endAssemblage, $comparisonMap );
-                                ## mark this as the end edge
-                                $new_network->set_edge_attribute($endAssemblage, $testAssemblage, "End", "1");
-                                $new_network->set_edge_attribute($testAssemblage, $endAssemblage , "End", "1");
-                                $new_network->set_edge_attribute($testAssemblage, $endAssemblage , "GraphID", $solutionCount);
-                                ## mark the previous edge as no longer the end
+                                #### This adds the comparison to the new edge that has been added.
+                                $new_network->add_weighted_edge( $endAssemblage, $testAssemblage,  $comparisonMap );
+                                ## Mark this edge and a new end edge
+                                $new_network->set_edge_attribute($endAssemblage , $testAssemblage, "End", "1");
+                                $new_network->set_edge_attribute($endAssemblage , $testAssemblage, "GraphID", $solutionCount);
+                                ## mark the previous edge as no longer the end 
                                 my @n = $new_network->neighbours($endAssemblage);  ## assume 0 is the only neighbor (should be only one!)
                                 $new_network->set_edge_attribute($n[0], $endAssemblage , "End", "0");
-                                $new_network->set_edge_attribute( $endAssemblage, $n[0], "End", "0");
+                                
+                                if ($whichEnd==1) {
+                                    $new_network->set_graph_attribute("End_1",$testAssemblage);
+                                } else {
+                                    $new_network->set_graph_attribute("End_2",$testAssemblage);
+                                }
+                                 ## increment the ends (we start with 0, then 1)
+                                
                                 $DEBUG and print "New network (with addition): ", $new_network, "\n\r";
                                 ## copy this solution to the new array of networks
                                 #print Dumper($new_network);
                                 #print $new_network, "\n";
-                                if ($new_network ne undef) {
-                                    push @newnets, $new_network;   ## contains solutions for just this step - add to list
-                                    if ($nosum ==0 ) {
-                                        push @solutions, $new_network; ## this is a list of all the solutions (shallow a)
-                                    }
+                                push @newnets, $new_network;   ## contains solutions for just this step - add to list
+                                if ($nosum ==0 ) {
+                                    push @solutions, $new_network; ## this is a list of all the solutions (shallow a)
                                 }
                                 #print Dumper(\@newnets);
                                 my $currentTotal =  scalar(@newnets);
@@ -992,10 +987,6 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                 $DEBUG and print "-------------------------------------------------\n\r";
                             }
                         }
-                    }
-                    else {
-                        $DEBUG and print "\t\t$endAssemblage has too many edges ( $edges is more than 1) so skipping\n\r";
-                    }    # end of if check for the end edges
                 }    # end of iterate through the existing network link
             }    # end of if assemblage not already in netowrk check
         }    #end of assemblage loop
@@ -1044,7 +1035,7 @@ if ( $filterflag == 1 ) {
       foreach my $tnetwork (@filteredarray) {
         #print "tnetwork: ", $stepSeriationList{ $tnetwork} , "\n\r";
         my @fnetworkArray = $solutions[$i]->vertices;
-        my @tnetworkArray = $$tnetwork->vertices;
+        my @tnetworkArray = $tnetwork->vertices;
             my @minus = array_minus( @fnetworkArray, @tnetworkArray );
             if (scalar(@minus)== 0) {
                   $exists++;
@@ -1060,7 +1051,8 @@ if ( $filterflag == 1 ) {
     $screen and $scr->at(11,1)->puts("End with $filterCount solutions.\n");
 } else {
     #print "\n\rNow going to print just the largest network out of a pool of ", scalar(@networks), "\n\r";
-    @filteredarray = @{\@networks}; ; ## just the largest one
+    #@filteredarray = @{\@networks}; ; ## just the largest one
+    @filteredarray = @networks ; ## just the largest one
     }
 
 if ($allSolutions>0) {
