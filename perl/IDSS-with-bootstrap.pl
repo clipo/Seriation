@@ -16,6 +16,7 @@ use Statistics::PointEstimation;
 require Term::Screen;
 use List::MoreUtils qw/ uniq /;
 use GD::Graph::histogram;
+use Devel::Size qw(size total_size);
 
 
 my $debug                   = 0;
@@ -36,7 +37,7 @@ my $pairwiseFile            = "";
 my $stats                   = 0; ## output stats, histograms of counts, etc
 my $nosum                   = 0;
 my $allSolutions            = 0;
-
+my $memusage                = 0; ## memory usage flag
 ## find the largest valuein a hash
 sub largest_value_mem (\%) {
     my $hash   = shift;
@@ -73,6 +74,7 @@ GetOptions(
     'stats'                     => \$stats,
     'nosum'                     => \$nosum,
     'allsolutions'              => \$allSolutions,
+    'memusage'                  => \$memusage,
     man                         => \$man
 ) or pod2usage(2);
 
@@ -91,6 +93,7 @@ if ($DEBUG) {
     print "noscreen: ", $noscreen, "\n";
     print "excel:  ", $excel, "\n";
     print "xyfile: ", $xyfile,"\n";
+    print "memory usage: ", $memusage, "\n";
     print "pairwise:", $pairwiseFile,"\n";
     print "mst:  ", $mst, "\n";
     print "stats: ", $stats, "\n";
@@ -391,6 +394,23 @@ if ($bootstrapCI) {
     }    
 }
 
+############## pre calcuate the valid pairs of assemblages and stuff into hash ############################
+my %validComparisonsArray;
+my @validComparisonAssemblages;
+
+foreach my $label ( @labels ) {
+    my @cAssemblages;
+    foreach my $comparativeLabel (@labels ) {
+        if ($assemblageComparison{ $label . " * " . $comparativeLabel }  <= $threshold && $comparativeLabel ne $label) {
+            push @cAssemblages, $comparativeLabel;
+        }
+    }
+    $validComparisonsArray{ $label } = [@cAssemblages];
+}    
+
+#print Dumper(\%validComparisonAssemblages);
+#print Dumper([keys %validComparisonAssemblages]);
+    
 
 ########################################### FIND ALL THE VALID TRIPLES  ####################################
 my $directionstate;
@@ -559,33 +579,25 @@ $screen and $scr->at(1,40)->puts("STEP: Main seriation sorting... ");
 #my $currentMaxSeriations = 3;
 my $currentMaxSeriationSize = 4;
 
-#print "Number of Triplets:  ",$numberOfTriplets, "\n";
 my $maxEdges  = 2;      ## keeps track of the current largest size of solution
 my $stepcount = 0;     ## keeps track of the current step (from 0, adds one each step)
 my $match     = 0;      ## keeps track of whether a solution is found for each step. Once no new solution is found, the search is over!
 
 my @networks;  ## array of solutions from previous step (starts out with the 3s) (directed and deep graphs)
 my @newnets;   ## array of new solutions (directed and deep graphs)
-my %stepSeriationList;  ## array of solutions at this step (undirected and shallow copies of graphs)
 my @solutions;  ## Array of all solutions (undirected and shallow copies of graphs)
-my $solutionCount=0;   ## an index of the current number of solutions
+my $solutionCount=scalar(@triples);   ## an index of the current number of solutions
 
 ### This is just preparing the intial set of threes into the array that will be used as the seed for all future
 ### seriation sets.
-foreach my $n (@triples) {
-     if ($n ne undef) {
-        push @networks, $n;        ## this is the array of the current successful set
-        push @solutions, $n;      ## This is an array of ALL solutions to date
-        $stepSeriationList{ $solutionCount } = $n;     ## this is an ordered list of all solutions (order in which found for each step)
-        $solutionCount++;          ## counts the current set of solutions
-     }
-}
-my $solutionSum = scalar(@networks);  ## number of solutions to this point (which is equal to all 3s);
-my %seriationStep={};        ## hash of the array of solutions for this step
-
 
 while ( $currentMaxSeriationSize <= $maxSeriations ) {
     #my $index    = 0;
+    ### first time through copy the triples...
+    if ($currentMaxSeriationSize==4) {
+        @solutions = @{ \@triples };
+        @networks = @{ \@triples };
+    }
     $stepcount++;
     $DEBUG and print "__________________________________________________________________________________________\n";
     $DEBUG and print "Step number:  $currentMaxSeriationSize\n";
@@ -599,31 +611,31 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
     $match = 0;      ## set the current match to zero for this step (sees if there are any new solutions for step)
     ## look through the set of existing valid networks.
     foreach my $nnetwork (@networks) {
-        if (ref($nnetwork) eq "REF") {
-            $nnetwork = $$nnetwork;
-        } elsif ($nnetwork eq undef ) {
-            next;
-        }
         $DEBUG and print "-----------------------------------------------------------------------------------\n";
         $DEBUG and print "Network: ", $nnetwork, "\n";
         $DEBUG and print "-----------------------------------------------------------------------------------\n";
         ## find the ends
         ## given the ends, find the valid set of assemblages that can be potentially added
         ## this list is all assemblages meet the threshold requirements
-        foreach my $testAssemblage (@labels) {
-            $DEBUG  and print "\t\tChecking assemblage: ", $testAssemblage, " to see if it fits on the end of the current solution.\n";
-            $DEBUG  and print "\t\tFirst check to see if it is included already. If it has, move on.\n";
-            my @vertices = $nnetwork->vertices;
-            #my $vTest= $nnetwork->has_vertex($testAssemblage);
-            if ( (! grep { $_ eq $testAssemblage} @vertices) ) {   ## if the assemblage is NOT in the list of existing vertices.
-                # get the exterior vertices (should be 2)
-                $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices \n";
-                $DEBUG  and print " \t\tand looking for the ones with only 1 connection. There should be just 2 here.\n";
-                ## loop through all of the edges to see if they can be stuck on the ends of the networks.
-                my $whichEnd=0;
+        #print Dumper($nnetwork);
+        my $whichEnd=0;
+
+        foreach my $endAssemblage ($nnetwork->get_graph_attribute("End_1"), $nnetwork->get_graph_attribute("End_2")) {
+            $whichEnd++; ## either a 1 or a 2
+            ##print "The end of assemblages of $nnetwork are: ". $nnetwork->get_graph_attribute("End_1") . "  and ". $nnetwork->get_graph_attribute("End_2"), "\n";
+            foreach my $testAssemblage ( @ { $validComparisonsArray{ $endAssemblage } }) {
                 
-                foreach my $endAssemblage ($nnetwork->get_graph_attribute("End_1"), $nnetwork->get_graph_attribute("End_2")) {
-                    $whichEnd++;
+                $DEBUG  and print "\t\tChecking assemblage: ", $testAssemblage, " to see if it fits on the end of the current solution.\n";
+                $DEBUG  and print "\t\tFirst check to see if it is included already. If it has, move on.\n";
+                my @vertices = $nnetwork->vertices;
+                
+                if ( (! grep { $_ eq $testAssemblage} @vertices) ) {   ## if the assemblage is NOT in the list of existing vertices.
+                
+                    # get the exterior vertices (should be 2)
+                    $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices \n";
+                    $DEBUG  and print " \t\tand looking for the ones with only 1 connection. There should be just 2 here.\n";
+                    ## loop through all of the edges to see if they can be stuck on the ends of the networks.
+                    
                     my @newassemblage = ();
                     my @oldassemblage = ();
                     my $comparisonMap;
@@ -632,22 +644,22 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                     
                     #################### THRESHOLDING STUFF #################################### 
                     #first determine if the pairs are within the threshold value (0 = all assemblages)
-                    my $pairname = $endAssemblage. " * " . $testAssemblage;
-                    my $diff     = $assemblageComparison{$pairname};
-                    $DEBUG and print "\t\t\tFor $pairname the max frequency difference is $diff.\n";
-                    if ($diff eq undef) {
-                           print "\n\rError: pairname: $pairname not found in hash lookup!\n\r";
-                           print "Probably a problem with the names of the assemblages. Check for weird characters. Exiting.\n\r";
-                           exit();
-                    }
+                    #my $pairname = $endAssemblage. " * " . $testAssemblage;
+                    #my $diff     = $assemblageComparison{$pairname};
+                    #$DEBUG and print "\t\t\tFor $pairname the max frequency difference is $diff.\n";
+                    #if ($diff eq undef) {
+                    #       print "\n\rError: pairname: $pairname not found in hash lookup!\n\r";
+                    #       print "Probably a problem with the names of the assemblages. Check for weird characters. Exiting.\n\r";
+                    #       exit();
+                    #}
                     ## go through process only if threshold is 0 or difference value is below threshold
                     ## this should mean that network will not grow unless the above conditions are met.
                     my $error = 0;
-                    if (  ($threshold>0 ) and ($diff > $threshold ))  {
-                       $DEBUG and print "\t\t\tThreshold = $threshold and Diff = $diff. Since $diff < $threshold, continue.\n";
-                       $error++; # this should ensure future failure....
-                        next;
-                    }
+                    ##if (  ($threshold>0 ) and ($diff > $threshold ) )  {
+                    ##   $DEBUG and print "\t\t\tThreshold = $threshold and Diff = $diff. Since $diff < $threshold, continue.\n";
+                    ##   $error++; # this should ensure future failure....
+                    ##    next;
+                    ##}
                     ############################################################################
                     
                     @newassemblage = @{ $assemblageFrequencies{ $testAssemblage } };
@@ -658,6 +670,8 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                     if (scalar(@neighbors) > 1 || scalar(@neighbors)==0){
                         print "\r\n\r\n\r\nThere are too many or two few neighbors (should only be 1!). Error!\n\r";
                         print "\r\nWe are testing $endAssemblage and got ", Dumper(\@neighbors);
+                        print Dumper($nnetwork);
+                        print $nnetwork;
                         exit();
                     }
                     $DEBUG and print "\t\t\t The number of neighbors at $endAssemblage is ", scalar(@neighbors), " (should be just one).\n";
@@ -756,7 +770,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                     }
                                     if ( $xerror ) {
                                         $error++;
-                                        next;
+                                        last;
                                     } else {
                                         $comparisonMap .= "U";
                                         $DEBUG and print "\t\t\t\t Type $i: For this type, OK to add $testAssemblage to vertices $endAssemblage \n";
@@ -811,7 +825,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                     }
                                     if ($xerror > 0) {
                                         $error += 1;
-                                        next;
+                                        last;
                                         $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage) because there was an X \n";
                                         $DEBUG and print "\t\t\t\t\t  This would make it multimodal - so error.\n";
                                     } else {
@@ -908,7 +922,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                 {
                                     ## new score is up but comparison is X.. no cant work because past peak
                                     $error++;
-                                    next;
+                                    last;
                                     $DEBUG and print "\t\t\t\tType $i: Rejecting $testAssemblage from $endAssemblage]. We can't go up \n";
                                     $DEBUG and print " \t\t\t\tafter a peak. so error. Error now $error\n";
                                 } elsif # newscore is down but comparison is X. This means that there was already a peak
@@ -938,12 +952,12 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                             ## no errors so add vertice added to the new network
                             #my $oldedgenum = $nnetwork->edges;
                             my @vertices = $nnetwork->vertices;
-                            if ( ! grep { $_ eq $testAssemblage} @vertices) {
+                            #if ( ! grep { $_ eq $testAssemblage} @vertices) {
                                 #first make a copy
                                 #print Dumper($nnetwork);
                                 my $new_network = $nnetwork->deep_copy_graph;
                                 #print Dumper($new_network);
-                                $solutionCount++;
+                                $solutionCount++;    ## increment the # of solutions
                                 $new_network->set_graph_attribute("GraphID", $solutionCount);
                                 ## now add to this *new one*
                                 $new_network->add_vertex($testAssemblage);
@@ -960,10 +974,11 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                 my @n = $new_network->neighbours($endAssemblage);  ## assume 0 is the only neighbor (should be only one!)
                                 $new_network->set_edge_attribute($n[0], $endAssemblage , "End", "0");
                                 
+                                #print "Which end: ", $whichEnd, "\n";
                                 if ($whichEnd==1) {
-                                    $new_network->set_graph_attribute("End_1",$testAssemblage);
+                                    $new_network->set_graph_attribute("End_1", $testAssemblage);
                                 } else {
-                                    $new_network->set_graph_attribute("End_2",$testAssemblage);
+                                    $new_network->set_graph_attribute("End_2", $testAssemblage);
                                 }
                                  ## increment the ends (we start with 0, then 1)
                                 
@@ -972,20 +987,26 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                 #print Dumper($new_network);
                                 #print $new_network, "\n";
                                 push @newnets, $new_network;   ## contains solutions for just this step - add to list
-                                if ($nosum ==0 ) {
+                                #push @networks, $new_network;
+                                if ($nosum==0 ) {
                                     push @solutions, $new_network; ## this is a list of all the solutions (shallow a)
-                                }
-                                #print Dumper(\@newnets);
+                                } 
+                                
                                 my $currentTotal =  scalar(@newnets);
                                 if (($new_network->unique_edges) > $maxEdges) {
                                     $maxEdges = $new_network->unique_edges;
                                     $screen and $scr->at(6,1)->puts("Current Max Edges: $maxEdges   ");
                                 }
-                                $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionSum");
+                                $screen and $scr->at(7,1)->puts("Sum of all solutions up to this step: $solutionCount");
                                 $screen and $scr->at(8,43)->puts("                                           ");
                                 $screen and $scr->at(8,1)->puts("Current number of seriation linkages at this step: $currentTotal");
+                                if ($memusage) {
+                                my $text = "Memory used for array @ newnets: ". total_size(\@newnets);
+                                    $screen and $scr->at(9,1)->puts($text);
+                                }
                                 $DEBUG and print "-------------------------------------------------\n\r";
-                            }
+                            ##}
+                            
                         }
                 }    # end of iterate through the existing network link
             }    # end of if assemblage not already in netowrk check
@@ -996,19 +1017,21 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
     $DEBUG and print "Number of current solutions now: ", scalar(@newnets), "\n\r";
 
     ## now push the current step solutions to the list that serves as the basis of the next step. 
-    $solutionSum  =  scalar(@solutions);
     #print Dumper(\@solutions);
     #print "num of new nets: ", scalar(@newnets),"\n";
     ## no match at this point so no point in going forward.
     if ( scalar(@newnets) == 0 ) {
-        my $text = "Max seriation size reached - Largest solution set: ". scalar(@networks). " out of ". scalar(@solutions); 
+        my $text = "Max seriation size reached - Largest solution set: ". scalar(@networks). " out of ". $solutionCount; 
         $screen and $scr->at(9,1)->puts( $text );
         $screen and $scr->at(10,1)->puts("Maximum # edges in largest solution is: $maxEdges (note # of edges = # of assemblages - 1)");
         $DEBUG and print "Maximum # edges in largest solution is: $maxEdges (note # of edges = # assemblages -1) \n\r\n";
         $currentMaxSeriationSize = $maxSeriations+1;
     } else {
         ## copy the array of new solutions back to the working set to continue. over time this should get smaller and smaller...
+        ### release the memory
+        undef @networks;
         @networks= @{\@newnets};
+        undef @newnets;
         @newnets=();  ## clear the array for the next new set of assemblages.
         $currentMaxSeriationSize++;
     }    #end of network loop
