@@ -487,6 +487,7 @@ while ( my @permu = $permutations->next_combination ) {
         
         if ( ( $difscore == 1 ) && ( $difscore2 == 1 ) ) {      ## F1 > F2 < F3 ## criteria not met
             $error++;
+            next;
         }
         elsif ( ( $difscore == 1 ) && ( $difscore2 == -1 ) ) {   ## F1 > F2 > F3 OK
             $comparison12 .= "U";
@@ -599,9 +600,9 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
         @networks = @{ \@triples };
     }
     $stepcount++;
-    $DEBUG and print "__________________________________________________________________________________________\n";
+    $DEBUG and print "__________________________________________________________________________________________\r\n";
     $DEBUG and print "Step number:  $currentMaxSeriationSize\n";
-    $DEBUG and print "__________________________________________________________________________________________\n";
+    $DEBUG and print "__________________________________________________________________________________________\r\n";
     $screen and $scr->at(4,1)->puts("Step number:                     ");
     $screen and $scr->at(4,1)->puts("Step number:  $currentMaxSeriationSize ");
     my $netnum=scalar(@networks);
@@ -611,9 +612,9 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
     $match = 0;      ## set the current match to zero for this step (sees if there are any new solutions for step)
     ## look through the set of existing valid networks.
     foreach my $nnetwork (@networks) {
-        $DEBUG and print "-----------------------------------------------------------------------------------\n";
+        $DEBUG and print "-----------------------------------------------------------------------------------\r\n";
         $DEBUG and print "Network: ", $nnetwork, "\n";
-        $DEBUG and print "-----------------------------------------------------------------------------------\n";
+        $DEBUG and print "-----------------------------------------------------------------------------------\r\n";
         ## find the ends
         ## given the ends, find the valid set of assemblages that can be potentially added
         ## this list is all assemblages meet the threshold requirements
@@ -632,15 +633,13 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                 if ( (! grep { $_ eq $testAssemblage} @vertices) ) {   ## if the assemblage is NOT in the list of existing vertices.
                 
                     # get the exterior vertices (should be 2)
-                    $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices \n";
-                    $DEBUG  and print " \t\tand looking for the ones with only 1 connection. There should be just 2 here.\n";
+                    $DEBUG  and print "\t\tFind the ends of the network. Do this by getting all the vertices \r\n";
+                    $DEBUG  and print " \t\tand looking for the ones with only 1 connection. There should be just 2 here.\r\n";
                     ## loop through all of the edges to see if they can be stuck on the ends of the networks.
                     
-                    my @newassemblage = ();
-                    my @oldassemblage = ();
                     my $comparisonMap;
 
-                    $DEBUG and print "\t\t", $endAssemblage, " is on the edge since it only has one vertice.\n";
+                    $DEBUG and print "\t\t", $endAssemblage, " is on the edge since it only has one vertice.\r\n";
                     
                     #################### THRESHOLDING STUFF #################################### 
                     #first determine if the pairs are within the threshold value (0 = all assemblages)
@@ -662,8 +661,8 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                     ##}
                     ############################################################################
                     
-                    @newassemblage = @{ $assemblageFrequencies{ $testAssemblage } };
-                    @oldassemblage = @{ $assemblageFrequencies{ $endAssemblage } };
+                    my @newassemblage = @{ $assemblageFrequencies{ $testAssemblage } };
+                    my @oldassemblage = @{ $assemblageFrequencies{ $endAssemblage } };
                     
                     #### FIND INNER EDGE RELATIVE TO THE EXISTING END ASSEMBLAGE ##############
                     my @neighbors = $nnetwork->neighbors($endAssemblage);
@@ -676,8 +675,8 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                     }
                     $DEBUG and print "\t\t\t The number of neighbors at $endAssemblage is ", scalar(@neighbors), " (should be just one).\n";
                     my $g = $nnetwork->get_edge_weight( $neighbors[0], $endAssemblage );
-                    $DEBUG and print "\t\t\tThere should be just 1 neighbor to $endAssemblage and that is: $neighbors[0]\n";
-                    $DEBUG and print "\t\t\t\t it has a relation of $g\n";
+                    $DEBUG and print "\t\t\tThere should be just 1 neighbor to $endAssemblage and that is: $neighbors[0]\r\n";
+                    $DEBUG and print "\t\t\t\t it has a relation of $g\r\n";
                     my $outerEdge= $endAssemblage;
                     my $innerEdge= $neighbors[0];
                     ##########################################################################
@@ -940,8 +939,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                     $error++;
                                     exit();
                                 }
-                                $DEBUG
-                                  and print "\t\t\t\tType $i:  Error so far $error\n\r\n\r";
+                                $DEBUG and print "\t\t\t\tType $i:  Error so far $error\n\r\n\r";
                             }
                         }
                         if ( $error==0 )  {
@@ -952,7 +950,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                             ## no errors so add vertice added to the new network
                             #my $oldedgenum = $nnetwork->edges;
                             my @vertices = $nnetwork->vertices;
-                            #if ( ! grep { $_ eq $testAssemblage} @vertices) {
+                            if ( ! grep { $_ eq $testAssemblage} @vertices) {
                                 #first make a copy
                                 #print Dumper($nnetwork);
                                 my $new_network = $nnetwork->deep_copy_graph;
@@ -1005,7 +1003,7 @@ while ( $currentMaxSeriationSize <= $maxSeriations ) {
                                     $screen and $scr->at(9,1)->puts($text);
                                 }
                                 $DEBUG and print "-------------------------------------------------\n\r";
-                            ##}
+                            }
                             
                         }
                 }    # end of iterate through the existing network link
