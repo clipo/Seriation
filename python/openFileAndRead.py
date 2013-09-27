@@ -420,7 +420,7 @@ def checkForValidAdditionsToNetwork(nnetwork):
         whichEnd += 1 ## either a 1 or a 2
         ##print "The end of assemblages of nnetwork are: ". nnetwork->get_graph_attribute("End_1") . "  and ". nnetwork->get_graph_attribute("End_2"), "\n"
 
-        if (endAssemblage[])
+        if (len(nnetwork.neighbors(endAssemblage))==1):
 
         foreach testAssemblage ( @ { validComparisonsArray{ endAssemblage } }) {
 
