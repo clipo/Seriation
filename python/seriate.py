@@ -17,8 +17,9 @@ import Dumper
 
 import matplotlib.pyplot as pltc
 
-# screen
-scr = curses.initscr()
+
+src=""
+screenFlag=0
 
 ## Logging
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -308,107 +309,107 @@ def findAllValidTriples(bootstrapCI):
     permutations =all_tuples(assemblageNumber)
 
     for permu in permutations:
-    tripletname = labels[ permu[0] ] + " * "+ labels[ permu[1] ] + " * "+ labels[ permu[2] ]
-    comparison12 = ""
-    comparison23 = ""
-    error = 0
+        tripletname = labels[ permu[0] ] + " * "+ labels[ permu[1] ] + " * "+ labels[ permu[2] ]
+        comparison12 = ""
+        comparison23 = ""
+        error = 0
 
-    for i in range(0,columns):
-        ass1 = assemblages[ permu[0] ][i]
-        ass2 = assemblages[ permu[1] ][i]
-        ass3 = assemblages[ permu[2] ][i]
+        for i in range(0,columns):
+            ass1 = assemblages[ permu[0] ][i]
+            ass2 = assemblages[ permu[1] ][i]
+            ass3 = assemblages[ permu[2] ][i]
 
-        ## first compare assemblages 1 and 2
-        if bootstrapCI:
-            upperCI_1 = typeFrequencyUpperCI[ labels[ permu[0] ] ][i]
-            lowerCI_1 = typeFrequencyUpperCI[ labels[ permu[0] ] ][i]
-            upperCI_2 = typeFrequencyUpperCI[ labels[ permu[1] ] ][i]
-            lowerCI_2 = typeFrequencyUpperCI[ labels[ permu[1] ] ][i]
-            dif1 = ass1 - ass2
-            if upperCI_1 < lowerCI_2:
-                difscore = -1
-            elif lowerCI_1 > upperCI_2:
-                difscore = 1
+            ## first compare assemblages 1 and 2
+            if bootstrapCI:
+                upperCI_1 = typeFrequencyUpperCI[ labels[ permu[0] ] ][i]
+                lowerCI_1 = typeFrequencyUpperCI[ labels[ permu[0] ] ][i]
+                upperCI_2 = typeFrequencyUpperCI[ labels[ permu[1] ] ][i]
+                lowerCI_2 = typeFrequencyUpperCI[ labels[ permu[1] ] ][i]
+                dif1 = ass1 - ass2
+                if upperCI_1 < lowerCI_2:
+                    difscore = -1
+                elif lowerCI_1 > upperCI_2:
+                    difscore = 1
+                else:
+                    difscore = 0
+            else:   ### if the bootstrapCI is not being used
+                dif1 = ass1 - ass2
+                if dif1 < 0:
+                    difscore = -1
+                if dif1 > 0:
+                    difscore = 1
+                if dif1 == 0:
+                    difscore = 0
+
+            ## now compare assemblages 2 and 3
+            if bootstrapCI:  ## boostrap confidence intervals
+                upperCI_2 = typeFrequencyUpperCI[ labels[ permu[1] ] ][i]
+                lowerCI_2 = typeFrequencyUpperCI[ labels[ permu[1] ] ][i]
+                upperCI_3 = typeFrequencyUpperCI[ labels[ permu[2] ] ][i]
+                lowerCI_3 = typeFrequencyUpperCI[ labels[ permu[2] ] ][i]
+                if upperCI_2 < lowerCI_3:
+                    difscore = -1
+                elif lowerCI_2 > upperCI_3:
+                    difscore = 1
+                else:
+                    difscore = 0
+            else:         ### if the bootstrapCI is not being used
+                dif2 = ass3 - ass2
+                if dif2 < 0:
+                    difscore2 = -1
+                if dif2 > 0:
+                    difscore2 = 1
+                if dif2 == 0:
+                    difscore2 = 0
+
+            if ( ( difscore == 1 ) and ( difscore2 == 1 ) ):     ## F1 > F2 < F3 ## criteria not met
+                error += 1
+                continue
+            elif ( ( difscore == 1 ) and ( difscore2 == -1 ) ) :   ## F1 > F2 > F3 OK
+                comparison12 += "U"
+                comparison23 += "D"
+            elif ( ( difscore == -1 ) and ( difscore2 == -1 ) ) :  #  F1 < F2 >F3 OK
+                comparison12 += "X"
+                comparison23 += "X"
+            elif ( ( difscore == -1 ) and ( difscore2 == 1 ) ):   # F1 < F2 < F3
+                comparison12 += "D"
+                comparison23 += "U"
+            elif ( ( difscore == 0 ) and ( difscore2 == 1 ) ):
+                comparison12 += "M"
+                comparison23 += "U"
+            elif ( ( difscore2 == 0 ) and ( difscore == 1 ) ):
+                comparison12 += "U"
+                comparison23 += "M"
+            elif ( ( difscore == 0 ) and ( difscore2 == -1 ) ):
+                comparison12 += "M"
+                comparison23 += "D"
+            elif ( ( difscore == -1 ) and ( difscore2 == 0 ) ):
+                comparison12 += "D"
+                comparison23 += "M"
+            elif ( ( difscore == 0 ) and ( difscore2 == 0 ) ):
+                comparison12 += "M"
+                comparison23 += "M"
             else:
-                difscore = 0
-        else:   ### if the bootstrapCI is not being used
-            dif1 = ass1 - ass2
-            if dif1 < 0:
-                difscore = -1
-            if dif1 > 0:
-                difscore = 1
-            if dif1 == 0:
-                difscore = 0
+                error += 1
+                print "\n\rNo match to our possibility of combinations. Difscore 1: difscore Difscore 2: difscore2 \n\r"
+                print "I must quit. Debugging required.\n\r"
+                exit()
 
-        ## now compare assemblages 2 and 3
-        if bootstrapCI:  ## boostrap confidence intervals
-            upperCI_2 = typeFrequencyUpperCI[ labels[ permu[1] ] ][i]
-            lowerCI_2 = typeFrequencyUpperCI[ labels[ permu[1] ] ][i]
-            upperCI_3 = typeFrequencyUpperCI[ labels[ permu[2] ] ][i]
-            lowerCI_3 = typeFrequencyUpperCI[ labels[ permu[2] ] ][i]
-            if upperCI_2 < lowerCI_3:
-                difscore = -1
-            elif lowerCI_2 > upperCI_3:
-                difscore = 1
-            else:
-                difscore = 0
-        else:         ### if the bootstrapCI is not being used
-            dif2 = ass3 - ass2
-            if dif2 < 0:
-                difscore2 = -1
-            if dif2 > 0:
-                difscore2 = 1
-            if dif2 == 0:
-                difscore2 = 0
+        if error == 0:
 
-        if ( ( difscore == 1 ) and ( difscore2 == 1 ) ):     ## F1 > F2 < F3 ## criteria not met
-            error += 1
-            continue
-        elif ( ( difscore == 1 ) and ( difscore2 == -1 ) ) :   ## F1 > F2 > F3 OK
-            comparison12 += "U"
-            comparison23 += "D"
-        elif ( ( difscore == -1 ) and ( difscore2 == -1 ) ) :  #  F1 < F2 >F3 OK
-            comparison12 += "X"
-            comparison23 += "X"
-        elif ( ( difscore == -1 ) and ( difscore2 == 1 ) ):   # F1 < F2 < F3
-            comparison12 += "D"
-            comparison23 += "U"
-        elif ( ( difscore == 0 ) and ( difscore2 == 1 ) ):
-            comparison12 += "M"
-            comparison23 += "U"
-        elif ( ( difscore2 == 0 ) and ( difscore == 1 ) ):
-            comparison12 += "U"
-            comparison23 += "M"
-        elif ( ( difscore == 0 ) and ( difscore2 == -1 ) ):
-            comparison12 += "M"
-            comparison23 += "D"
-        elif ( ( difscore == -1 ) and ( difscore2 == 0 ) ):
-            comparison12 += "D"
-            comparison23 += "M"
-        elif ( ( difscore == 0 ) and ( difscore2 == 0 ) ):
-            comparison12 += "M"
-            comparison23 += "M"
-        else:
-            error += 1
-            print "\n\rNo match to our possibility of combinations. Difscore 1: difscore Difscore 2: difscore2 \n\r"
-            print "I must quit. Debugging required.\n\r"
-            exit()
+            # uses NetworkX
+            net = nx.Graph(GraphID=numberOfTriplets,End1=labels[permu[0]],End2=labels[permu[2]])
 
-    if error == 0:
-
-        # uses NetworkX
-        net = nx.Graph(GraphID=numberOfTriplets,End1=labels[permu[0]],End2=labels[permu[2]])
-
-        net.add_node( name=labels[ permu[0] ],site="end",end=1 )
-        net.add_node( name=labels[ permu[1] ],site="middle",end=0)
-        net.add_node( name=labels[ permu[2] ], site="end",end=1)
-        net.add_edge( labels[ permu[1] ],labels[ permu[0] ],weight=comparison12, GraphID=numberOfTriplets,end=1)
-        net.add_edge( labels[ permu[1] ],labels[ permu[2] ],weight=comparison23, GraphID=numberOfTriplets,end=1)
-        logging.debug("VALID SOLUTION: %s * %s * %s " , (labels[ permu[0] ],labels[ permu[1] ], labels[ permu[2] ]))
-        logging.debug("VALID SOLUTION: \t  %st  ---   comparison23\n",  (comparison12, comparison23))
-        triples.append(net)
-        numberOfTriplets+=1
-    error = 0
+            net.add_node( name=labels[ permu[0] ],site="end",end=1 )
+            net.add_node( name=labels[ permu[1] ],site="middle",end=0)
+            net.add_node( name=labels[ permu[2] ], site="end",end=1)
+            net.add_edge( labels[ permu[1] ],labels[ permu[0] ],weight=comparison12, GraphID=numberOfTriplets,end=1)
+            net.add_edge( labels[ permu[1] ],labels[ permu[2] ],weight=comparison23, GraphID=numberOfTriplets,end=1)
+            logging.debug("VALID SOLUTION: %s * %s * %s " , (labels[ permu[0] ],labels[ permu[1] ], labels[ permu[2] ]))
+            logging.debug("VALID SOLUTION: \t  %st  ---   comparison23\n",  (comparison12, comparison23))
+            triples.append(net)
+            numberOfTriplets+=1
+        error = 0
 
 def checkForValidAdditionsToNetwork(nnetwork):
 
@@ -785,23 +786,32 @@ def main():
     parser.add_argument('--allSolutions')
     parser.add_argument('--memusage')
     parser.add_argument('--inputfile')
-    args = vars(parser.parse_args())
-
+    try:
+        args = vars(parser.parse_args())
+    except IOError, msg:
+        parser.error(str(msg))
+        sys.exit()
+    screenFlag=0
     filename=args['inputfile']
     if filename is "":
         print "You must enter a filename to continue."
         exit()
     #file = filename[0,-4]
     print "Trying to open: ", filename
-    maxSeriations = openFile(filename)
-
+    try:
+        maxSeriations = openFile(filename)
+    except:
+        print("Cannot open %s. Error. " % filename)
+        sys.exit()
     print pp.pprint(assemblageFrequencies)
     print pp.pprint(assemblageSize)
     print pp.pprint(assemblages)
 
     if args['screen']:
-        ## Set up the screen display (default).
         screenFlag = 1
+        scr = curses.initscr()
+        ## Set up the screen display (default).
+
         ## the debug option should not use this since it gets messy
         scr.refresh()  # clear the screen
 
@@ -814,7 +824,7 @@ def main():
     if args['threshhold']:
         threshholdDetermination(args['threshhold'])
 
-    if args['boostrapCI']:
+    if args['bootstrapCI']:
         bootstrapCI(1000,args['bootstrapSignificance'])
 
     findAllValidTriples(args['bootstrapCI'])
@@ -830,6 +840,7 @@ def main():
         logging.debug("_______________________________________________________________________________________")
         logging.debug("Step number:  currentMaxSeriationSize")
         logging.debug("_______________________________________________________________________________________")
+
         if screenFlag>0:
             scr.addstr(4,1,"Step number:                     ")
             scr.addstr(4,1,"Step number:  currentMaxSeriationSize ")
