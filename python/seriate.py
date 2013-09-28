@@ -870,6 +870,8 @@ def main():
     stepcount = 0
     currentMaxSeriationSize = 4
     newNetworks=[]
+    print pp.pprint(triples)
+
     while currentMaxSeriationSize <= maxSeriationSize:
         ### first time through copy the triples...
         if currentMaxSeriationSize==4:
