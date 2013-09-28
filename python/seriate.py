@@ -189,12 +189,13 @@ def threshholdDetermination(threshhold):
     for label in labels:
         cAssemblages=[]
         for comparativeLabel in labels:
-            test = label+"*"+comparativeLabel
-            if (assemblageComparison[ test ]  <= threshhold) and (comparativeLabel != label):
-                cAssemblages.append( comparativeLabel )
+            if comparativeLabel != label:
+                test = label+"*"+comparativeLabel
+                if assemblageComparison[ test ]  <= threshhold:
+                    cAssemblages.append( comparativeLabel)
 
-        validComparisonsArray[ label ] = cAssemblages
-
+                validComparisonsArray[ label ] = cAssemblages
+    return validComparisonsArray
 
 def confidence_interval(data, confidence=0.95):
     a = 1.0*np.array(data)
