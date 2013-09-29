@@ -26,17 +26,13 @@ logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 # start the clock to track how long this run takes
 start = datetime.now().time()
-print start
+logging.debug("Start time:  %s ", start)
 
 # start prettyprint (python Dumper)
 pp = pprint.PrettyPrinter(indent=4)
 
 ## the numerous global arrays and values
-assemblageNumber={}
-assemblageValues={}
-assemblageSize={}
-assemblageFrequencies={}
-assemblages={}
+
 pairwise={}
 pairwiseError={}
 xAssemblage={}
@@ -47,17 +43,8 @@ largestX = 0.0
 largestY = 0.0
 labels={}
 assemblageComparison={}
-columns=0
-validComparisonsArray=[]
-validComparisonAssemblages=()
 screenFlag = 0
-numrows = len(assemblages)
-triples =[]
-triplettype =[]
-tripletNames = []
-tripletArray = []
-typeFrequencyLowerCI={}
-typeFrequencyUpperCI={}
+
 solutions=[]
 networks=[]
 
@@ -68,7 +55,7 @@ networks=[]
 #        yield zip(i,i)
 
 def all_pairs(lst):
-    return(list(itertools.combinations(lst, 2)))
+    return list((itertools.permutations(lst, 2)))
 
 
 def all_tuples(lst):
@@ -79,6 +66,13 @@ def all_tuples(lst):
     return useable_tuples
 
 def openFile(filename):
+    assemblageNumber={}
+    assemblageValues={}
+    assemblageSize={}
+    assemblageFrequencies={}
+    assemblages={}
+    countOfAssemblages=0
+
     if screenFlag:
         msg1 = "Filename: %s " % filename
         scr.addstr(1,1,msg1)
@@ -97,13 +91,13 @@ def openFile(filename):
         sys.exit('file %s does not open: %s') %( filename, e)
 
     reader = csv.reader(file, delimiter='\t', quotechar='|')
-    countOfAssemblages=0
+
     values=[]
     for row in reader:
         label=row[0]
         labels[ label ] = label
         row.pop(0)
-        columns = len(row)
+        numberOfClasses = len(row)
         row = map(float, row)
         rowtotal = sum(row)
         freq=[]
@@ -117,7 +111,7 @@ def openFile(filename):
         assemblageSize[ label ]= rowtotal
         countOfAssemblages +=1
 
-    return countOfAssemblages, assemblages, assemblageFrequencies,assemblageValues,assemblageSize
+    return countOfAssemblages, assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses
 
 def openPairwiseFile( filename ):
     logging.debug("Opening pairwise file %", filename)
@@ -125,6 +119,7 @@ def openPairwiseFile( filename ):
         pw = open(filename,'r' )
     except csv.Error as e:
         sys.exit('pairwise file %s does not open: %s') %( filename, e)
+
     reader = csv.reader(pw, delimiter='\t', quotechar='|')
     for row in reader:
         pair = row[0]+"#"+row[1]
@@ -159,7 +154,7 @@ def openXYFile( filename ):
 
 #############################################  THRESHOLD DETERMINATION ####################################
 ## first compare each assemblage and see if the threshold is exceeded.
-## By this I mean the maximum difference between frequencies of any type is greater than what is specified.
+## By this I mean the maximum difference between frequencies of any Type %ds greater than what is specified.
 ## When threshold = 0, all combinations are used. Later the "ends" of solutions are not evaluated if the
 ## difference between the last assemblage and any other free assemblage is > the threshold.
 ## This arbitrary setting is to keep from arbitrary solutions being stuck on that come from the "ends"
@@ -167,10 +162,11 @@ def openXYFile( filename ):
 ##
 ## Precalculate all of the max differences between types in assembalge pairs.
 
-def threshholdDetermination(threshhold, assemblages, labelArray):
+def thresholdDetermination(threshold, assemblages, assemblageFrequencies, labelArray):
     validComparisonsArray={}
     ##  get all the combinations of 2
     pairs = all_pairs(assemblages)
+
     ## Go through all of the combinations
     for combo in pairs:
         logging.debug("comparing combination of %s and %s ", combo[0] , combo[1] )
@@ -179,30 +175,35 @@ def threshholdDetermination(threshhold, assemblages, labelArray):
         maxDifference = 0
         assemblage1 = assemblageFrequencies[combo[0]]
         assemblage2 = assemblageFrequencies[combo[1]]
-        i=0
-
+        i=-1
+        columns= len(assemblageFrequencies[combo[0]])
+        logging.debug("Number of columns: %d", columns)
         ## calculate the maximum differences between the pairs of assemblages (across all types)
-        while i < columns:
+        for i in (0, columns-1):
+            logging.debug("i: %d ",i)
             ass1 = float(assemblage1[i])
             ass2 = float(assemblage2[i])
             diff = abs( ass1 - ass2 )
+            logging.debug("assemblage1: %f assemblage2: %f diff: %f",ass1,ass2,diff)
             if diff > maxDifference :
                 maxDifference = diff
 
         assemblageComparison[ pairname ] = maxDifference
 
     ############## pre calculate the valid pairs of assemblages and stuff into hash ############################
-    pairsOfAssemblages = all_pairs(labelArray)
 
-    for pair in pairsOfAssemblages:
+    for assemblage1 in labels:
         cAssemblages=[]
-        testpair = pair[0]+"*"+pair[1]
-        if assemblageComparison[ testpair ]  <= threshhold:
-            cAssemblages.append( pair[1] )
+        for assemblage2 in labels:
+            if not assemblage1 == assemblage2:
+                testpair = assemblage1 + "*" + assemblage2
+                logging.debug("Pairs: %s and %s", assemblage1,assemblage2)
+                logging.debug("Comp value:  %f and threshold is: %f",assemblageComparison[testpair],threshold)
+                if assemblageComparison[ testpair ] <= threshold:
+                    logging.debug("Appending %s to the list of valid comparisons for %s ", assemblage1, assemblage2)
+                    cAssemblages.append( assemblage2 )
 
-        validComparisonsArray[ pair[0] ] = cAssemblages
-
-    print pp.pprint(validComparisonsArray)
+        validComparisonsArray[ assemblage1]  = cAssemblages
     return validComparisonsArray
 
 def confidence_interval(data, confidence=0.95):
@@ -213,7 +214,7 @@ def confidence_interval(data, confidence=0.95):
     return m, m-h, m+h
 
 ########################################### BOOTSTRAP CI SECTION ####################################
-def bootstrapCI(assemblages,bootsize=1000, confidenceInterval=0.95):
+def bootstrapCICalculation(assemblages,assemblageFrequencies, assemblageSize, bootsize=1000, confidenceInterval=0.95):
     random.seed(start)
     perror ={}
     pvalue={}
@@ -236,6 +237,7 @@ def bootstrapCI(assemblages,bootsize=1000, confidenceInterval=0.95):
     for currentLabel in sorted( assemblageFrequencies.iterkeys()):
         label = labels[countup]
         a =  assemblageFrequencies[ currentLabel ]
+        columns=len(assemblageFrequencies[ currentLabel ])
         currentAssemblageSize = assemblageSize[ currentLabel ]
 
         ## create an array of arrays - one for each type
@@ -313,8 +315,8 @@ def bootstrapCI(assemblages,bootsize=1000, confidenceInterval=0.95):
 
 ########################################### FIND ALL THE VALID TRIPLES  ####################################
 ########################################### #################################### ###########################
-def findAllValidTriples(assemblages,bootstrapCI,typeFrequencyLowerCI, typeFrequencyUpperCI):
-
+def findAllValidTriples(assemblages,validAssemblagesForComparisons,bootstrapCI,typeFrequencyLowerCI, typeFrequencyUpperCI):
+    triples=[]
     error = 0
     numberOfTriplets = 0
 
@@ -324,7 +326,8 @@ def findAllValidTriples(assemblages,bootstrapCI,typeFrequencyLowerCI, typeFreque
     permutations =all_tuples(assemblages)
 
     for permu in permutations:
-        tripletname = permu[0] + " * "+ permu[1]  + " * "+ permu[2]
+        logging.debug("Triple test: %s * %s * %s", permu[0],permu[1],permu[2])
+
         comparison12 = ""
         comparison23 = ""
         error = 0
@@ -358,7 +361,7 @@ def findAllValidTriples(assemblages,bootstrapCI,typeFrequencyLowerCI, typeFreque
                     difscore = 1
                 if dif1 == 0:
                     difscore = 0
-            logging.debug("Difscore (between ass1 and ass2:  %d", difscore)
+            logging.debug("Difscore between ass1 and ass2:  %d", difscore)
             ## now compare assemblages 2 and 3
             if bootstrapCI:  ## boostrap confidence intervals
                 upperCI_2 = typeFrequencyUpperCI[ permu[1] ][i]
@@ -421,59 +424,62 @@ def findAllValidTriples(assemblages,bootstrapCI,typeFrequencyLowerCI, typeFreque
             net.add_node(permu[0], name=permu[0],site="end",end=1 )
             net.add_node(permu[1], name=permu[1],site="middle",end=0)
             net.add_node(permu[2], name=permu[2], site="end",end=1)
-            net.add_edge(permu[1], permu[0],weight=comparison12, GraphID=numberOfTriplets,end=1)
+            net.add_edge(permu[0], permu[1],weight=comparison12, GraphID=numberOfTriplets,end=1)
             net.add_edge(permu[1], permu[2],weight=comparison23, GraphID=numberOfTriplets,end=1)
             logging.debug("VALID SOLUTION: %s * %s * %s " , permu[0],permu[1], permu[2])
-            logging.debug("VALID SOLUTION: \t  %s  ---   %s\n",  comparison12, comparison23)
-            triples.append(net)
-            numberOfTriplets +=1
+            logging.debug("VALID SOLUTION: \t  %s  <--->   %s\n",  comparison12, comparison23)
+            logging.debug("VALID SOLUTION: %s ",  net.adjacency_list())
+            triples.append( net )
+            numberOfTriplets += 1
             logging.debug("Current number of triplets: %d", numberOfTriplets)
         error = 0
+
     return triples
 
-def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,assemblages,typeFrequencyLowerCI, typeFrequencyUpperCI, bootstrapCI):
+def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,assemblages,typeFrequencyLowerCI, typeFrequencyUpperCI, bootstrapCI,solutionCount):
     whichEnd = 0
     logging.debug("The end of assemblages of nnetwork are: %s and %s", nnetwork.graph["End1"] , nnetwork.graph["End2"])
-
+    new_network=nx.Graph()
     for endAssemblage in (nnetwork.graph["End1"],nnetwork.graph['End2']):
         whichEnd += 1 ## either a 1 or a 2
 
         for testAssemblage in validAssemblagesForComparisons[ endAssemblage ]:
-
-            # We dont want to include the assemblage twice
-            if testAssemblage ==  endAssemblage:
+            # We dont want to include the assemblage twice or anything already in network
+            if testAssemblage ==  endAssemblage or testAssemblage in nnetwork.nodes():
                 continue
 
             ## now see if the test assemblages fits on the end.
             logging.debug("\t\tChecking assemblage %s to see if it fits on the end of the current solution.", testAssemblage )
 
-            newassemblage = assemblageFrequencies[testAssemblage]
-            oldassemblage = assemblageFrequencies[endAssemblage ]
+            newassemblage = assemblages[testAssemblage]
+            oldassemblage = assemblages[endAssemblage ]
 
             #### FIND INNER EDGE RELATIVE TO THE EXISTING END ASSEMBLAGE ##############
             neighbors = nnetwork.neighbors(endAssemblage)
 
             if len(neighbors) > 1 or len(neighbors)==0:
                 print "\r\n\r\n\r\nThere are too many or two few neighbors (should only be 1!). Error!\n\r"
-                print "\r\nWe are testing endAssemblage and got ", Dumper(neighbors)
-                print Dumper(nnetwork)
+                print "\r\nWe are testing endAssemblage and got ", pp.pprint(neighbors)
+                print pp.pprint(nnetwork)
                 print nx.write_adjlist(nnetwork,sys.stdout) # write adjacency list to screen
-                exit()
+                sys.exit("Quitting due to errors.")
 
             logging.debug( "\t\t\t The number of neighbors at endAssemblage is %d (should be just one).", len(neighbors))
             logging.debug( "\t\t\tThere should be just 1 neighbor to endAssemblage and that is: %s", neighbors[0])
             g = nnetwork.get_edge_data( neighbors[0], endAssemblage )
             comparison=g['weight']
-            logging.debug( "\t\t\t\t it has a relation of %s", comparison)
+            logging.debug( "\t\t\t\t ***** it has a relation of %s with length of %d", comparison, len(comparison))
 
             outerEdge= endAssemblage
             innerEdge= neighbors[0]
             ##########################################################################
 
             comparisonMap =""
+            oneToColumns=range(len(assemblages[testAssemblage]))
+            logging.debug("One to Columns: %s", oneToColumns)
             error = 0  ## set the error check to 0
-
-            for i in (0, len(comparison)):
+            for i in oneToColumns:
+                logging.debug("INFORMATION: TYPE: %d TOTALCODE: %s",i,comparison)
                 val1 = newassemblage[i]
                 val2 = oldassemblage[i]
                 logging.debug( "\t\tComparing Assemblage: %s  and    Assemblage: %s  ########",testAssemblage,endAssemblage)
@@ -494,7 +500,7 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                            #   -1	D	      okay	D
                            #   -1	X	      okay	D
 
-                if bootstrapCI>0:
+                if bootstrapCI > 0:
                     upperCI = typeFrequencyUpperCI[testAssemblage]
                     upperCI_test = upperCI[i]
                     lowerCI = typeFrequencyLowerCI[testAssemblage]
@@ -520,7 +526,7 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                     if dif1 == 0:
                         difscore = 0
 
-                logging.debug( "\t\t\t\tType %d: - comparison is: %d  a score of: %d",i, comparison[i],difscore)
+                logging.debug( "\t\t\t\tType %d: - comparison is: %s  a score of: %d",i, comparison[i], difscore)
                 #################################################################################       #### 1 U
                 if difscore == 1  and comparison[i] is "U":
                     comparisonMap += "U"
@@ -541,38 +547,35 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                     inwardEdge=""
                     old_inner= outerEdge
                     logging.debug( "\t\t\t\t\t %s", nnetwork.adjacency_list())
-
+                    previousComparison=comparison
                     ccount=0
-                    for checkEdge in nnetwork.edges:     ### no need to go in order -- jsut look at all the other edges to see if there is an X
-                        logging.debug( "\t\t\t\t\ Now on %s %s",checkEdge[0],checkEdge[1])
-                        inwardEdge= checkEdge[0]
-                        outwardEdge =checkEdge[1]
-                        comparisonEdge = nnetwork.get_edge(outwardEdge, inwardEdge) or nnetwork.get_edge( inwardEdge, outwardEdge )
-                        compArray = comparisonEdge['weight']
+                    for e in nnetwork.edges_iter(data=True):
+                    #for checkEdge in nnetwork.edges:     ### no need to go in order -- jsut look at all the other edges to see if there is an X
+                        logging.debug( "\t\t\t\t\ Now on %s => weight: %s",e,e['weight'])
+                        newComparison = e['weight']
 
-                        if compArray[i]=="":
+                        if newComparison[i]=="":
                             print "Comparison is empty. Error! Stopping.\n\r\n\r"
-                            sys.exit()
+                            sys.exit("Quitting due to errors.")
 
-                        logging.debug( "\t\t\t\tType %d: Here is what we get for comparison # %d ",(i, ccount))  ## note that i is the current type
-                        logging.debug( " \t\t\t\t\t inwardEdge - outwardEdge: %s ->  %s", comparison,compArray[i])
-                        if compArray[i] is "X" or compArray[i] is "U":
-                            xerror = 1  ### BLARGH a previous X or an UP ! This will not be tolerated!
-                            stopFlag = 1 ## We can stop
+                        logging.debug( "\t\t\t\tType %d: Here is what we get for comparison # %d ",i, ccount)  ## note that i is the current type
+                        logging.debug( " \t\t\t\t\t inwardEdge - outwardEdge: %s ->  %s", comparison[i],newComparison[i])
+                        if newComparison[i] is "X" or newComparison[i] is "U":
+                            xerror += 1  ### BLARGH a previous X or an UP ! This will not be tolerated!
 
-                            logging.debug( "\t\t\t\t\t Since I got compArray[i] my potential new value is still X.",i)
+                            logging.debug( "\t\t\t\t\t Since I got %s my potential new value is still X.",newComparison[i])
                             logging.debug( "\t\t\t\t\t Now going to get the continue pair of assemblages to examine in the chain")
                             ccount +=1
 
-                        if xerror > 0:
-                            error +=1
-                            break
-                        else:
-                            comparisonMap += "U"
-                            logging.debug( "\t\t\t\t Type %d: For this type, OK to add %s to vertices %s ",i,testAssemblage,endAssemblage)
-                            logging.debug( "\t\t\t\t\t No previous X values anywhere. ")
-                            logging.debug( "\t\t\t\t Type %d: Adding an U to the comparisons for type i.", i)
-                            logging.debug( "\t\t\t\t\t Comparison map is now comparisonMap")
+                    if xerror > 0:
+                        error +=1
+                        break
+                    else:
+                        comparisonMap += "U"
+                        logging.debug( "\t\t\t\t Type %d: For this type, OK to add %s to vertices %s ",i,testAssemblage,endAssemblage)
+                        logging.debug( "\t\t\t\t\t No previous X values anywhere. ")
+                        logging.debug( "\t\t\t\t Type %d: Adding an U to the comparisons for Type %d.", i)
+                        logging.debug( "\t\t\t\t\t Comparison map is now comparisonMap")
                 #################################################################################    ## 1 D
                 elif difscore == 1 and comparison[i] is  "D" :
                     ## error the new value is greater but should be less. Error!
@@ -592,54 +595,52 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
 
                     ## first check to see if there is already and X in this column somewhere else.
                     xerror   = 0
-                    logging.debug( "\t\t\t\tType i:  Case B (-1, U). Potentially can add %s and vert %s",testAssemblage,endAssemblage)
-                    logging.debug( "\t\t\t\tType i:  But need to check the rest of the chain for X's (can't already be an X).")
+                    logging.debug( "\t\t\t\tType %d:  Case B (-1, U). Potentially can add %s and vert %s",i,testAssemblage,endAssemblage)
+                    logging.debug( "\t\t\t\tType %d:  But need to check the rest of the chain for X's (can't already be an X).",i)
                     stopFlag      =   0   ## use this flag to determine if one needs to keep checking through the pairs.
                     outwardEdge=""
                     inwardEdge=""
                     currentEdges = nnetwork.edges()
                     ccount=""
-                    for checkEdge in currentEdges:     ### no need to go in order -- just look at all the other edges to see if there is an X
-                        logging.debug( "\t\t\t\t\ Now on %s - %s ", (checkEdge[0], checkEdge[1]))
-                        inwardEdge= checkEdge[0]
-                        outwardEdge = checkEdge[1]
-                        comparison = nnetwork.get_edge( outwardEdge, inwardEdge) or nnetwork.get_edge( inwardEdge, outwardEdge )
-
-                        compArray = comparison['weight']
-                        if compArray[i] == 0:
+                    for e in nnetwork.edges_iter(data=True):
+                    #for checkEdge in currentEdges:     ### no need to go in order -- just look at all the other edges to see if there is an X
+                        #logging.debug( "\t\t\t\t\ Now on %s => weight: %s",e,e['weight'])
+                        #d =nnetwork.get_edge_data(e)
+                        newComparison = 1 #e[0]['weight']
+                        if newComparison[i] == 0:
                             print "Comparison is empty. Error! Stopping.\n\r\n\r"
-                            sys.exit()
+                            sys.exit("Quitting due to errors.")
 
-                        logging.debug( "\t\t\t\tType %d: Here is what we get for comparison # %d ", i, ccount) ## note that i is the current type
-                        logging.debug( " \t\t\t\t\t inwardEdge - outwardEdge: %s -> %s ", comparison,compArray[i])
+                        logging.debug( "\t\t\t\tType %d: Here is what we get for comparison # %s ", i, ccount) ## note that i is the current type
+                        logging.debug( " \t\t\t\t\t inwardEdge - outwardEdge: %s -> %s ", comparison[i],newComparison[i])
                         if compArray[i] is  "X":
                             xerror += 1  ### BLARGH a previous X! This will not be tolerated!
                             stopFlag = 1 ## We can stop
-                        if xerror > 0:
-                            error += 1
-                            break
-                            logging.debug( "\t\t\t\tType i: Rejecting %s from %s) because there was an X ", i, testAssemblage, endAssemblage)
-                            logging.debug( "\t\t\t\t\t  This would make it multimodal - so error.")
-                        else:
-                            comparisonMap += "X"   ## this is an X unless there is an error....
-                            logging.debug( "\t\t\t\tType i:Definitely OK to add %s to vertices %s because score", i,testAssemblage,endAssemblage)
-                            logging.debug( "\t\t\t\t\tis -1 and the comparison is U but no other Xs in the previous linkages.")
-                            logging.debug( "\t\t\t\tType i: Adding an X to the comparisons for type i. ",i)
-                            logging.debug( "\t\t\t\t\tComparison map is now %s", comparisonMap)
-                             #end if if check error (xerror)
+                    if xerror > 0:
+                        error += 1
+                        continue
+                        logging.debug( "\t\t\t\tType %d: Rejecting %s from %s) because there was an X ", i, testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\t\t  This would make it multimodal - so error.")
+                    else:
+                        comparisonMap += "X"   ## this is an X unless there is an error....
+                        logging.debug( "\t\t\t\tType %d:Definitely OK to add %s to vertices %s because score", i,testAssemblage,endAssemblage)
+                        logging.debug( "\t\t\t\t\tis -1 and the comparison is U but no other Xs in the previous linkages.")
+                        logging.debug( "\t\t\t\tType %d: Adding an X to the comparisons for type %d. ",i,i)
+                        logging.debug( "\t\t\t\t\tComparison map is now %s", comparisonMap)
+                         #end if if check error (xerror)
 
                 #################################################################################  ## -1   D
                 elif difscore == -1 and comparison[i] is  "D":
                     ## new score is less and the comparison is down .. Yes!
                     comparisonMap += "D"
-                    logging.debug( "\t\t\t\tType i: Adding a D to the comparisons for type i. Comparison map is now ", i, i, comparisonMap)
+                    logging.debug( "\t\t\t\tType %d: Adding a D to the comparisons for type %d. Comparison map is now ", i, i, comparisonMap)
 
                 #################################################################################  ## ## -1 M
                 elif difscore == -1 and  comparison[i] is  "M":
                     # new score is less but comparison is Match. Okay
                     #vHere    = endAssemblage
                     xerror   = 0  ## count for errors
-                    logging.debug( "\t\t\t\t #### For type i we have a matching Case C (-1, M)", i)
+                    logging.debug( "\t\t\t\t #### For type %d we have a matching Case C (-1, M)", i)
                     logging.debug( "\t\t\t\t\t We can potentially add %s and vert %s but need to check further", testAssemblage, endAssemblage)
                     logging.debug( "\t\t\t\t\t because score is -1 and the comparison is M.")
                     logging.debug(" \t\t\t\t\t Could be X or U or M or D")
@@ -647,7 +648,7 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                     stopFlag      =   0   ## use this flag to determine if one needs to keep checking through the pairs.
                     ## now get the continue set of comparisons
                     logging.debug( "\t\t\t\t ", nnetwork.adjacency_list())
-                    currentEdges  = nnetwork.edges()
+                    currentEdges  = list(nnetwork.edges())
                     ccount=""
                     outwardEdge=""
                     inwardEdge=""
@@ -655,13 +656,13 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                         logging.debug( "\t\t\t\t\ Now on %s <-> %s ",checkEdge[0],checkEdge[1])
                         inwardEdge= checkEdge[0]
                         outwardEdge = checkEdge[1]
-                        comparison = nnetwork.get_edge( outwardEdge, inwardEdge) or nnetwork.get_edge( inwardEdge, outwardEdge )
+                        comparison = nnetwork.get_edge_data( outwardEdge, inwardEdge) #or nnetwork.get_edge_data( inwardEdge, outwardEdge )
                         compArray = comparison['weight']
                         if compArray[i]=="":
                             print "Comparison is empty. Error! Stopping.\n\r\n\r"
-                            sys.exit()
+                            sys.exit("Quitting due to errors.")
 
-                        logging.debug( "\t\t\t\tType i: Here is what we get for comparison #: ", i, ccount)  ## note that i is the current type
+                        logging.debug( "\t\t\t\tType %d: Here is what we get for comparison #: ", i, ccount)  ## note that i is the current type
                         logging.debug( " \t\t\t\t\t inwardEdge - outwardEdge: ", comparison, compArray[i])
                         if compArray[i] is  "U":
                             change = "X"
@@ -676,43 +677,44 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                              ## in this case we have to keep going
                         else:
                             print "ERROR: missing value -- comparison is compArray[i]. Must have a value.\n\r\n\r" % compArray[i]
-                            sys.exit()
-                            logging.debug( "\t\t\t\t\t Since I got %s my potential new value is change.", compArray[i])
-                            logging.debug( "\t\t\t\t\t Now going to get the continue pair of assemblages to examine in the chain")
-                            ccount += 1
+                            sys.exit("Quitting due to errors.")
+
+                        logging.debug( "\t\t\t\t\t Since I got %s my potential new value is change.", compArray[i])
+                        logging.debug( "\t\t\t\t\t Now going to get the continue pair of assemblages to examine in the chain")
+                        ccount += 1
 
                     ## in this case I dont think there are any errors possible. types can always go down from any other value
                     comparisonMap = comparisonMap + change      ## use the value from above.
-                    logging.debug( "\t\t\t\tType i: OK to add %s to vertices %s because ", testAssemblage, endAssemblage)
+                    logging.debug( "\t\t\t\tType %d: OK to add %s to vertices %s because ", testAssemblage, endAssemblage)
                     logging.debug( "\t\t\t\t score is -1 and the comparison is D. ComparisonMap is now %s ", comparisonMap)
                     if comparisonMap=="":
                         print "\n\rERROR: comparisonMap can't be empty. Bug here. \n\r\n\r"
-                        sys.exit()
+                        sys.exit("Quitting due to errors.")
 
                 #################################################################################     ## 0  U
                     elif difscore == 0  and comparison[i] is  "U":
                         # new score is match but comparison is Match. Okay
                         comparisonMap += "U"
-                        logging.debug( "\t\t\t\tType i:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
-                        logging.debug( "\t\t\t\tType i: ComparisonMap is now: ", comparisonMap)
+                        logging.debug( "\t\t\t\tType %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\tType %d: ComparisonMap is now: ", comparisonMap)
 
                 #################################################################################  ## 0 D
                     elif difscore == 0 and comparison[i] is  "D":
                           # new score is match but comparison is Match. Okay
                         comparisonMap += "D"
-                        logging.debug( "\t\t\t\tType i:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
-                        logging.debug( "\t\t\t\tType i: ComparisonMap is now: ", comparisonMap)
+                        logging.debug( "\t\t\t\tType %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\tType %d: ComparisonMap is now: ", comparisonMap)
                 #################################################################################     ## 0 M
                     elif  difscore == 0 and comparison[i] is  "M":
                         # new score is match but comparison is Match. Okay
                         comparisonMap += "M"
-                        logging.debug( "\t\t\t\tType i:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
-                        logging.debug( "\t\t\t\tType i: ComparisonMap is now: ", comparisonMap)
+                        logging.debug( "\t\t\t\tType %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\tType %d: ComparisonMap is now: ", comparisonMap)
                 #################################################################################  ## -1 X
                     elif difscore == -1  and comparison[i] is  "X":
                         # newscore is down but comparison is X. This means that there was already a peak
                         ## this is okay since it is down from a mode peak
-                        logging.debug( "\t\t\t\tType i:  Ok to add  %s to vertices %s because ", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\tType %d:  Ok to add  %s to vertices %s because ", testAssemblage, endAssemblage)
                         logging.debug( " \t\t\t\tscore is -1 and the comparison is D. ComparisonMap is now %s ", comparisonMap)
                         comparisonMap += "D"
                 #################################################################################    ## 1  X
@@ -720,14 +722,14 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                         ## new score is up but comparison is X.. no cant work because past peak
                         error += 1
                         break
-                        logging.debug( "\t\t\t\tType i: Rejecting %s from %s]. We can't go up ", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\tType %d: Rejecting %s from %s]. We can't go up ", testAssemblage, endAssemblage)
                         logging.debug( " \t\t\t\t after a peak. so error. Error now error")
                 ################################################################################# ## 0  X
                     elif difscore == 0 and comparison[i] is  "X":
                        # newscore is down but comparison is X. This means that there was already a peak
                         ## this is okay since it is down from a mode peak
                         comparisonMap += "X"
-                        logging.debug( "\t\t\t\tType i:  Ok to add  %s to vertices %s because ", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\tType %d:  Ok to add  %s to vertices %s because ", testAssemblage, endAssemblage)
                         logging.debug( "\t\t\t\t is 0 and the comparison is X. ComparisonMap is now %s ", comparisonMap)
                     else:
                         print "\n\r\t\t\t\tERROR!!!! Not found match combination! MUST FIX! Some combination\n\r "
@@ -735,61 +737,45 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                         print "\t\t\t\tHere is the score of the differences in  for Type:" % i,difscore
                         print "\t\t\t\tHere is the comparison value: %s " % comparison[i]
                         error += 1
-                        sys.exit()
+                        sys.exit("Quitting due to errors.")
 
-                    logging.debug( "\t\t\t\tType i:  Error so far error")
-
-
-                if error == 0:
-                    logging.debug( "--------------------------------------------------")
-                    logging.debug( "Original network: %s ",  nnetwork.adjacency_list())
-                    logging.debug( "New comparison map is: %s ", comparisonMap)
+                    logging.debug( "\t\t\t\tType %d:  Error so far error")
+            logging.debug("Checked out %s. Found %d errors.", testAssemblage, error)
+            if error == 0:
+                logging.debug( "--------------------------------------------------")
+                logging.debug( "Original network: %s ",  nnetwork.adjacency_list())
+                logging.debug( "New comparison map is: %s ", comparisonMap)
 
                 ## no errors so add vertice added to the new network
 
-                vertices = nnetwork.nodes()
-                if not testAssemblage in vertices:
-                    #first make a copy
-                    #print Dumper(nnetwork)
-                    new_network = nnetwork.copy()
-                    #print Dumper(new_network)
-                    solutionCount += 1   ## increment the # of solutions
-                    new_network["GraphID"]= solutionCount
-                    ## now add to this *new one*
-                    new_network.add_node(testAssemblage, name=testAssemblage,end=1,site="end")
-                    ## mark this vertice as the new "END"
 
-                    ## mark the interior vertice as not and "END"
-                    new_newtwork.add_node(endAssemblage,name=endAssemblage['name'],site="middle", end=0)
-                    #### This adds the comparison to the new edge that has been added.
-                    new_network.add_edge( endAssemblage, testAssemblage,  weight=comparisonMap, end=1, site="end", GraphID=solutionCount )
-                    if whichEnd==1:
-                        new_network.graph["End1"]=testAssemblage
-                        whichEnd += 1
-                    else:
-                        new_network.graph["End2"]=testAssemblage
-                        whichEnd = 1
+                #first make a copy
+                new_network = nnetwork.copy()
+                new_network.graph["GraphID"]= solutionCount+1
+                ## now add to this *new one*
+                new_network.add_node(testAssemblage, name=testAssemblage,end=1,site="end")
+                ## mark this vertice as the new "END"
+                ## mark the interior vertice as not "END"
+                new_network.add_node(endAssemblage, name=endAssemblage,site="middle", end=0)
+                #### This adds the comparison to the new edge that has been added.
+                new_network.add_edge( endAssemblage, testAssemblage,  weight=comparisonMap, end=1, site="end", GraphID=solutionCount )
+                if whichEnd==1:
+                    new_network.graph["End1"]=testAssemblage
+                    whichEnd += 1
+                else:
+                    new_network.graph["End2"]=testAssemblage
+                    whichEnd = 1
 
 
-                    logging.debug( "New network (with addition): ", new_network.adjacency_list())
-                    ## copy this solution to the new array of networks
-
-                    newnets.append(new_network)   ## contains solutions for just this step - add to list
-
-                    if nosum==0:
-                        solutions.append(new_network) ## this is a list of all the solutions (shallow a)
-
-                    currentTotal =  len(newnets)
-                    if len(new_network.edge()) > maxEdges:
-                        maxEdges = len(new_network.edges())
-                    if screenFlag>0:
-                        scr.addstr(6,1,"Current Max Edges:  %d",maxEdges)
-                        scr.addstr(7,1,"Sum of all solutions up to this step: %d", solutionCount)
-                        scr.addstr(8,43,"                                           ")
-                        scr.addstr(8,1,"Current number of seriation linkages at this step: %d",currentTotal)
+                logging.debug( "Here's the new network (with addition): %s", new_network.adjacency_list())
+                ## copy this solution to the new array of networks
 
                 logging.debug( "-------------------------------------------------" )
 
+    if len(new_network.nodes())>0:
+        return new_network
+    else:
+        return False
 
 def main():
     parser = argparse.ArgumentParser(description='Conduct seriation analysis')
@@ -800,7 +786,7 @@ def main():
     parser.add_argument('--largestonly')
     parser.add_argument('--individualfileoutput')
     parser.add_argument('--excel')
-    parser.add_argument('--threshhold')
+    parser.add_argument('--threshold')
     parser.add_argument('--noscreen')
     parser.add_argument('--xyfile')
     parser.add_argument('--pairwiseFile')
@@ -819,60 +805,64 @@ def main():
 
     logging.debug("Arguments: %s", args)
     screenFlag=0
+    bootstrapCI=0
     filename=args['inputfile']
     if filename is "":
         logging.error("You must enter a filename to continue.")
         print "You must enter a filename to continue."
-        exit()
-    #file = filename[0,-4]
-    print "Trying to open: ", filename
+        sys.exit("Quitting due to errors.")
+
     try:
         logging.debug("Going to try to open and load: %s", filename)
-        maxSeriationSize, assemblages, assemblageFrequencies,assemblageValues,assemblageSize = openFile(filename)
+        maxSeriationSize, assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses = openFile(filename)
     except IOError, msg:
         logging.error("Cannot open %s. Error: %s", filename, msg)
         print("Cannot open %s. Error. %s " % filename, msg)
-        sys.exit()
-
-    ##print pp.pprint(assemblageFrequencies)
-    ##print pp.pprint(assemblageSize)
-    ##print pp.pprint(assemblages)
+        sys.exit("Quitting due to errors.")
 
     if args['screen'] is not None:
         screenFlag = 1
         scr = curses.initscr()
         ## Set up the screen display (default).
-
         ## the debug option should not use this since it gets messy
         scr.refresh()  # clear the screen
 
+    logging.debug("Going to open pairwise file it is exists.")
     if args['pairwiseFile'] is not None:
         openPairwiseFile(args['pairwiseFile'])
 
+    logging.debug("Going to open XY file if it exists.")
     if args['xyfile'] is not None:
         openXYFile(args['xyfile'])
 
-    threshold=1
-    if args['threshhold'] is not None:
+    logging.debug("Assume threshold is 1.0 unless its specified in arguments.")
+    threshold=1.0
+    if args['threshold'] is not None:
         threshold=args[threshold]
 
+    logging.debug("Going to create list of valid pairs for comparisons.")
     validAssemblagesForComparisons={}
-
-    validAssemblagesForComparisons = threshholdDetermination(threshold, assemblages, labels)
+    validAssemblagesForComparisons = thresholdDetermination(threshold, assemblages, assemblageFrequencies, labels)
     typeFrequencyLowerCI={}
     typeFrequencyUpperCI={}
 
+    logging.debug("Now calculate the bootstrap comparisons based on specified confidence interval, if in the arguments.")
     if args['bootstrapCI'] is not None:
-        typeFrequencyLowerCI, typeFrequencyUpperCI = bootstrapCI(assemblages,1000,args['bootstrapSignificance'])
+        bootstrapCI=1
+        typeFrequencyLowerCI, typeFrequencyUpperCI = bootstrapCICalculation(assemblages,assemblageFrequencies, assemblageSize,1000,args['bootstrapSignificance'])
 
-    assemblages={}
-    triples=findAllValidTriples(assemblages,args['bootstrapCI'],typeFrequencyLowerCI, typeFrequencyUpperCI)
+    logging.debug("Calculate all the valid triples.")
+    triples=[]
+    triples = findAllValidTriples(assemblages,validAssemblagesForComparisons,bootstrapCI,typeFrequencyLowerCI, typeFrequencyUpperCI)
+
     stepcount = 0
     currentMaxSeriationSize = 4
     newNetworks=[]
-    print pp.pprint(triples)
-
+    solutionCount=len(triples)
+    maxEdges=2
+    currentTotal = len(triples)
     while currentMaxSeriationSize <= maxSeriationSize:
+
         ### first time through copy the triples...
         if currentMaxSeriationSize==4:
             networks = triples
@@ -899,8 +889,20 @@ def main():
             ## find the ends
             ## given the ends, find the valid set of assemblages that can be potentially added
             ## this list is all assemblages meet the threshold requirements
-            validNewNetwork = checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons, assemblages, typeFrequencyLowerCI, typeFrequencyUpperCI,bootstrapCI)
-            newNetworks.append(validNewNetwork)
+            validNewNetwork = checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons, assemblages, typeFrequencyLowerCI, typeFrequencyUpperCI,bootstrapCI,solutionCount)
+            if not validNewNetwork is False:
+                newNetworks.append(validNewNetwork)
+                solutionCount +=1
+                logging.debug("Solution count is now:  %d", solutionCount)
+                if len(validNewNetwork.edge()) > maxEdges:
+                        maxEdges = len(validNewNetwork.edges())
+                currentTotal = len(newNetworks)
+
+            if screenFlag>0:
+                scr.addstr(6,1,"Current Max Edges:  %d",maxEdges)
+                scr.addstr(7,1,"Sum of all solutions up to this step: %d", solutionCount)
+                scr.addstr(8,43,"                                           ")
+                scr.addstr(8,1,"Current number of seriation linkages at this step: %d",currentTotal)
 
 if __name__ == "__main__":
     main()
