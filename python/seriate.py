@@ -522,11 +522,11 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                     if dif1 == 0:
                         difscore = 0
 
-                logging.debug( "\t\t\t\tType %d: - comparison is: %s  a score of: %d",i, comparison[i], difscore)
+                logging.debug( "\t\t\t\t#### Type %d: - comparison is: %s  a score of: %d",i, comparison[i], difscore)
                 #################################################################################       #### 1 U  #############
                 if difscore == 1  and comparison[i] is "U":
                     comparisonMap += "U"
-                    logging.debug(  "\t\t\t\tType %d: Got a difscore of 1 and a comparison of a U. This works.",i)
+                    logging.debug(  "\t\t\t\t#### Type %d: Got a difscore of 1 and a comparison of a U. This works.",i)
                     logging.debug( " \t\t\t\tAdding %s to vertices %s", testAssemblage,endAssemblage)
 
                 #################################################################################           ### 1 M   #############
@@ -534,12 +534,11 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                     # this is okay - its a match and the new value is greater. New value shoudl be U
                     # need to find what was happening on the previous comparison to know whether this needs
                     # to be up or down.
-                    logging.debug( "\t\t\t\tType %d: Got a difscore of 1 and a comparison of a M. This could be okay.", i)
-                    xerror =0
+                    logging.debug( "\t\t\t\t#### Type %d: Got a difscore of 1 and a comparison of a M. This could be okay.", i)
                     logging.debug( "\t\t\t\tType %d:   Matching case A (1, M)", i)
                     logging.debug( "\t\t\t\t\ This will only work if there no Xs anywhere previously OR if the opposite end doesnt ALSO go up!")
                     logging.debug( "\t\t\t\t\t %s", nnetwork.adjacency_list())
-
+                    xerror =0
                     ccount=0
                     for e in nnetwork.edges_iter(): ### no need to go in order -- jsut look at all the other edges to see if there is an X
                         ccount+=1
@@ -550,7 +549,7 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                             print "Comparison is empty. Error! Stopping.\n\r\n\r"
                             sys.exit("Quitting due to errors.")
 
-                        logging.debug( "\t\t\t\tType %d: Here is what we get for comparison # %d ",i, ccount)  ## note that i is the current type
+                        logging.debug( "\t\t\t\t#### Type %d: Here is what we get for comparison # %d ",i, ccount)  ## note that i is the current type
                         logging.debug( " \t\t\t\t\t inwardEdge - outwardEdge: %s ->  %s", comparison[i],newComparison[i])
                         if newComparison[i] is "X" or newComparison[i] is "U":
                             xerror += 1  ### BLARGH a previous X or an UP ! This will not be tolerated!
@@ -563,7 +562,7 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                         break
                     else:
                         comparisonMap += "U"
-                        logging.debug( "\t\t\t\t Type %d: For this type, OK to add %s to vertices %s ",i,testAssemblage,endAssemblage)
+                        logging.debug( "\t\t\t\t ####Type %d: For this type, OK to add %s to vertices %s ",i,testAssemblage,endAssemblage)
                         logging.debug( "\t\t\t\t\t No previous X values anywhere. ")
                         logging.debug( "\t\t\t\t Type %d: Adding an U to the comparisons for Type %d.", i)
                         logging.debug( "\t\t\t\t\t Comparison map is now comparisonMap")
@@ -572,7 +571,7 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                     ## error the new value is greater but should be less. Error!
                     error += 1
                     continue
-                    logging.debug( "\t\t\t\tType %d: Value 1:  %d value 2: %d", i,newassemblage[i],oldassemblage[i])
+                    logging.debug( "\t\t\t\t####Type %d: Value 1:  %d value 2: %d", i,newassemblage[i],oldassemblage[i])
                     logging.debug( "\t\t\t\tType %d: Comparison is: %s a score of: %d  ", i, comparison[i], difscore)
                     logging.debug( "\t\t\t\tType %d: Rejecting %s from %s", testAssemblage,endAssemblage)
                     logging.debug( "\t\t\t\t\t because value is 1 and comparison is D.")
@@ -584,7 +583,7 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                     ## do this by logging all modes in the original triplet -- keep track of modes per type
                     ## first check to see if there is already and X in this column somewhere else.
                     xerror= 0
-                    logging.debug( "\t\t\t\tType %d:  Case B (-1, U). Potentially can add %s and vert %s",i,testAssemblage,endAssemblage)
+                    logging.debug( "\t\t\t\t####Type %d:  Case B (-1, U). Potentially can add %s and vert %s",i,testAssemblage,endAssemblage)
                     logging.debug( "\t\t\t\tType %d:  But need to check the rest of the chain for X's (can't already be an X).",i)
                     ccount=0
                     for e in nnetwork.edges_iter():   ### no need to go in order -- just look at all the other edges to see if there is an X
@@ -594,7 +593,7 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                         if newComparison[i] is None:
                             print "Comparison is empty. Error! Stopping.\n\r\n\r"
                             sys.exit("Quitting due to errors.")
-                        logging.debug( "\t\t\t\tType %d: Here is what we get for comparison # %s ", i, ccount) ## note that i is the current type
+                        logging.debug( "\t\t\t\t####Type %d: Here is what we get for comparison # %s ", i, ccount) ## note that i is the current type
                         logging.debug( " \t\t\t\t\t inwardEdge - outwardEdge: %s -> %s ", comparison[i],newComparison[i])
                         if newComparison[i] is  "X":
                             xerror += 1  ### BLARGH a previous X! This will not be tolerated!
@@ -606,7 +605,7 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                         break
                     else:
                         comparisonMap += "X"   ## this is an X unless there is an error....
-                        logging.debug( "\t\t\t\tType %d:Definitely OK to add %s to vertices %s because score", i,testAssemblage,endAssemblage)
+                        logging.debug( "\t\t\t\t#### Type %d:Definitely OK to add %s to vertices %s because score", i,testAssemblage,endAssemblage)
                         logging.debug( "\t\t\t\t\tis -1 and the comparison is U but no other Xs in the previous linkages.")
                         logging.debug( "\t\t\t\tType %d: Adding an X to the comparisons for type %d. ",i,i)
                         logging.debug( "\t\t\t\t\tComparison map is now %s", comparisonMap)
@@ -616,17 +615,17 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                 elif difscore == -1 and comparison[i] is  "D":
                     ## new score is less and the comparison is down .. Yes!
                     comparisonMap += "D"
-                    logging.debug( "\t\t\t\tType %d: Adding a D to the comparisons for type %d. Comparison map is now ", i, i, comparisonMap)
+                    logging.debug( "\t\t\t\t#### Type %d: Adding a D to the comparisons for type %d. Comparison map is now ", i, i, comparisonMap)
 
                 #################################################################################  ## ## -1 M #############
                 elif difscore == -1 and  comparison[i] is  "M":
                     # new score is less but comparison is Match. Okay
                     #vHere    = endAssemblage
                     xerror   = 0  ## count for errors
-                    logging.debug( "\t\t\t\t #### For type %d we have a matching Case C (-1, M)", i)
-                    logging.debug( "\t\t\t\t\t We can potentially add %s and vert %s but need to check further", testAssemblage, endAssemblage)
-                    logging.debug( "\t\t\t\t\t because score is -1 and the comparison is M.")
-                    logging.debug(" \t\t\t\t\t Could be X or U or M or D")
+                    logging.debug( "\t\t\t\t#### For type %d we have a matching Case C (-1, M)", i)
+                    logging.debug( "\t\t\t\t\tWe can potentially add %s and vert %s but need to check further", testAssemblage, endAssemblage)
+                    logging.debug( "\t\t\t\t\tbecause score is -1 and the comparison is M.")
+                    logging.debug(" \t\t\t\t\tCould be X or U or M or D")
                     change        =   "M"  ## the new comparison variable to use
                     stopFlag      =   0   ## use this flag to determine if one needs to keep checking through the pairs.
                     ## now get the continue set of comparisons
@@ -658,13 +657,13 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
 
                     ## now decide what the change should be. Here are cases:
                     ## X exists, then it must be an X, Otherwise, D
-                    if "X" in potential_Change:
+                    if "X" in potential_change:
                         change = "X"
                     else:
                         change = "D"
                     ## in this case I dont think there are any errors possible. types can always go down from any other value
-                    comparisonMap = comparisonMap + change      ## use the value from above.
-                    logging.debug( "\t\t\t\tType %d: OK to add %s to vertices %s because ", i, testAssemblage, endAssemblage)
+                    comparisonMap +=  change      ## use the value from above.
+                    logging.debug( "\t\t\t\t#### Type %d: OK to add %s to vertices %s because ", i, testAssemblage, endAssemblage)
                     logging.debug( "\t\t\t\t score is -1 and the comparison is D. ComparisonMap is now %s ", comparisonMap)
                     if comparisonMap=="":
                         print "\n\rERROR: comparisonMap can't be empty. Bug here. \n\r\n\r"
@@ -674,26 +673,26 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                     elif difscore == 0  and comparison[i] is  "U":
                         # new score is match but comparison is Match. Okay
                         comparisonMap += "U"
-                        logging.debug( "\t\t\t\tType %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\#### tType %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
                         logging.debug( "\t\t\t\tType %d: ComparisonMap is now: ", comparisonMap)
 
                 #################################################################################  ## 0 D  #############
                     elif difscore == 0 and comparison[i] is  "D":
                           # new score is match but comparison is Match. Okay
                         comparisonMap += "D"
-                        logging.debug( "\t\t\t\tType %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
                         logging.debug( "\t\t\t\tType %d: ComparisonMap is now: ", comparisonMap)
                 #################################################################################     ## 0 M #############
                     elif  difscore == 0 and comparison[i] is  "M":
                         # new score is match but comparison is Match. Okay
                         comparisonMap += "M"
-                        logging.debug( "\t\t\t\tType %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\t##### Type %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
                         logging.debug( "\t\t\t\tType %d: ComparisonMap is now: ", comparisonMap)
                 #################################################################################  ## -1 X #############
                     elif difscore == -1  and comparison[i] is  "X":
                         # newscore is down but comparison is X. This means that there was already a peak
                         ## this is okay since it is down from a mode peak
-                        logging.debug( "\t\t\t\tType %d:  Ok to add  %s to vertices %s because ", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because ", testAssemblage, endAssemblage)
                         logging.debug( " \t\t\t\tscore is -1 and the comparison is D. ComparisonMap is now %s ", comparisonMap)
                         comparisonMap += "D"
                 #################################################################################    ## 1  X #############
@@ -701,22 +700,22 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
                         ## new score is up but comparison is X.. no cant work because past peak
                         error += 1
                         break
-                        logging.debug( "\t\t\t\tType %d: Rejecting %s from %s]. We can't go up ", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\t#### Type %d: Rejecting %s from %s]. We can't go up ", testAssemblage, endAssemblage)
                         logging.debug( " \t\t\t\t after a peak. so error. Error now error")
                 ################################################################################# ## 0  X #############
                     elif difscore == 0 and comparison[i] is  "X":
                        # newscore is down but comparison is X. This means that there was already a peak
                         ## this is okay since it is down from a mode peak
                         comparisonMap += "X"
-                        logging.debug( "\t\t\t\tType %d:  Ok to add  %s to vertices %s because ", testAssemblage, endAssemblage)
+                        logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because ", testAssemblage, endAssemblage)
                         logging.debug( "\t\t\t\t is 0 and the comparison is X. ComparisonMap is now %s ", comparisonMap)
                     else:
-                        print "\n\r\t\t\t\tERROR!!!! Not found match combination! MUST FIX! Some combination\n\r "
-                        print "\t\t\t\t is not being caught correctly... Exiting.\n\r"
+                        print "\n\r\t\t\t\tERROR!!!! Not found match combination! MUST FIX! Some combination"
+                        print "\t\t\t\t is not being caught correctly... Exiting."
                         print "\t\t\t\tHere is the score of the differences in  for Type: %d %s:" % (i,difscore)
                         print "\t\t\t\tHere is the comparison value: %s " % comparison[i]
                         sys.exit("Quitting due to errors.")
-                    logging.debug( "\t\t\t\tType %d:  Error so far error")
+                    logging.debug( "\t\t\t\t#### Type %d:  Error so far error")
             logging.debug("Checked out %s. Found %d errors.", testAssemblage, error)
             if error == 0:
                 logging.debug( "--------------------------------------------------")
