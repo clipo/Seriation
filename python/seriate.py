@@ -658,7 +658,7 @@ def checkForValidAdditionsToNetwork(nnetwork,validAssemblagesForComparisons,asse
 
                     ## now decide what the change should be. Here are cases:
                     ## X exists, then it must be an X, Otherwise, D
-                    if "X" in potential_Change
+                    if "X" in potential_Change:
                         change = "X"
                     else:
                         change = "D"
