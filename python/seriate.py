@@ -21,12 +21,6 @@ import matplotlib.pyplot as pltc
 src=""
 screenFlag=0
 
-## Logging
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-
-# start the clock to track how long this run takes
-start = datetime.now().time()
-logging.debug("Start time:  %s ", start)
 
 # start prettyprint (python Dumper)
 pp = pprint.PrettyPrinter(indent=4)
@@ -734,26 +728,26 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                 elif difscore == 0  and comparison[i] is  "U":
                     # new score is match but comparison is Match. Okay
                     comparisonMap += "U"
-                    logging.debug( "\t\t\t\#### tType %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
+                    logging.debug( "\t\t\t\#### tType %d:  Ok to add  %s to vertices %s because its a match.",i, testAssemblage, endAssemblage)
                     logging.debug( "\t\t\t\tType %d: ComparisonMap is now: %s ", i, comparisonMap)
 
                 #################################################################################  ## 0 D  #############
                 elif difscore == 0 and comparison[i] is  "D":
                       # new score is match but comparison is Match. Okay
                     comparisonMap += "D"
-                    logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
-                    logging.debug( "\t\t\t\tType %d: ComparisonMap is now: ", comparisonMap)
+                    logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because its a match.", i,testAssemblage, endAssemblage)
+                    logging.debug( "\t\t\t\tType %d: ComparisonMap is now: %s ", i, comparisonMap)
                 #################################################################################     ## 0 M #############
                 elif  difscore == 0 and comparison[i] is  "M":
                     # new score is match but comparison is Match. Okay
                     comparisonMap += "M"
-                    logging.debug( "\t\t\t\t##### Type %d:  Ok to add  %s to vertices %s because its a match.", testAssemblage, endAssemblage)
-                    logging.debug( "\t\t\t\tType %d: ComparisonMap is now: ", comparisonMap)
+                    logging.debug( "\t\t\t\t##### Type %d:  Ok to add  %s to vertices %s because its a match.",i,  testAssemblage, endAssemblage)
+                    logging.debug( "\t\t\t\tType %d: ComparisonMap is now: %s", i, comparisonMap)
                 #################################################################################  ## -1 X #############
                 elif difscore == -1  and comparison[i] is  "X":
                     # newscore is down but comparison is X. This means that there was already a peak
                     ## this is okay since it is down from a mode peak
-                    logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because ", testAssemblage, endAssemblage)
+                    logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because ", i, testAssemblage, endAssemblage)
                     logging.debug( " \t\t\t\tscore is -1 and the comparison is D. ComparisonMap is now %s ", comparisonMap)
                     comparisonMap += "D"
                 #################################################################################    ## 1  X #############
@@ -768,7 +762,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                    # newscore is down but comparison is X. This means that there was already a peak
                     ## this is okay since it is down from a mode peak
                     comparisonMap += "X"
-                    logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because ", testAssemblage, endAssemblage)
+                    logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because ", i, testAssemblage, endAssemblage)
                     logging.debug( "\t\t\t\t is 0 and the comparison is X. ComparisonMap is now %s ", comparisonMap)
                 else:
                     print "\t\t\t\tERROR!!!! Not found match combination! MUST FIX! Some combination is not being caught correctly... Exiting."
@@ -782,7 +776,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
             if error == 0:
 
                 logging.debug("Found no errors!  Going to add %s to end of existing network at %s", testAssemblage, endAssemblage)
-                logging.debug( "Original network: %s ",  nnetwork.adjacency_list())
+                logging.debug( "Original network: %s ", nnetwork.adjacency_list())
                 logging.debug( "New comparison map is: %s ", comparisonMap)
                 #first make a copy
                 new_network = nnetwork.copy()
@@ -837,6 +831,23 @@ def main():
         parser.error(str(msg))
         sys.exit()
 
+    if args['screen'] is not None:
+        screenFlag = 1
+        scr = curses.initscr()
+        ## Set up the screen display (default).
+        ## the debug option should not use this since it gets messy
+        scr.refresh()  # clear the screen
+
+    if args['debug'] is not None:
+        ## Logging
+        logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+    else:
+        logging.basicConfig(stream=sys.stderr, level=None)
+
+    # start the clock to track how long this run takes
+    start = datetime.now().time()
+    logging.debug("Start time:  %s ", start)
+
     logging.debug("Arguments: %s", args)
     screenFlag=0
     bootstrapCI=0
@@ -854,12 +865,7 @@ def main():
         print("Cannot open %s. Error. %s " % filename, msg)
         sys.exit("Quitting due to errors.")
 
-    if args['screen'] is not None:
-        screenFlag = 1
-        scr = curses.initscr()
-        ## Set up the screen display (default).
-        ## the debug option should not use this since it gets messy
-        scr.refresh()  # clear the screen
+
 
     logging.debug("Going to open pairwise file it is exists.")
     if args['pairwiseFile'] is not None:
