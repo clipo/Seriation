@@ -13,14 +13,8 @@ import curses
 import numpy as np
 import scipy as sp
 import networkx as nx
-import Dumper
-
+import traceback
 import matplotlib.pyplot as pltc
-
-
-src=""
-screenFlag=0
-
 
 # start prettyprint (python Dumper)
 pp = pprint.PrettyPrinter(indent=4)
@@ -35,9 +29,6 @@ xyAssemblages=[]
 distanceBetweenAssemblages={}
 largestX = 0.0
 largestY = 0.0
-labels={}
-assemblageComparison={}
-screenFlag = 0
 
 solutions=[]
 networks=[]
@@ -60,7 +51,6 @@ def all_tuples(lst):
     return useable_tuples
 
 def openFile(filename):
-    assemblageNumber={}
     assemblageValues={}
     assemblageSize={}
     assemblageFrequencies={}
@@ -70,12 +60,14 @@ def openFile(filename):
     if screenFlag:
         msg1 = "Filename: %s " % filename
         scr.addstr(1,1,msg1)
+        scr.refresh
 
     ## Read in the data
     # the input of the classes -- note these are absolute counts, not frequencies
     # might want to change that...\
     if screenFlag:
         scr.addstr(1,40,"STEP: Read in data...")
+        scr.refresh
 
     try:
         logging.debug("trying to open: %s ", filename)
@@ -95,7 +87,6 @@ def openFile(filename):
         row = map(float, row)
         rowtotal = sum(row)
         freq=[]
-        rowtotals=[]
         for r in row:
             freq.append(float(float(r)/float(rowtotal)))
             values.append(float(r))
@@ -214,7 +205,8 @@ def openXYFile( filename ):
 ##
 ## Precalculate all of the max differences between types in assembalge pairs.
 
-def thresholdDetermination(threshold, assemblages, assemblageFrequencies, labelArray):
+def thresholdDetermination(threshold, assemblages):
+    assemblageComparison={}
     validComparisonsArray={}
     ##  get all the combinations of 2
     pairs = all_pairs(assemblages)
@@ -225,10 +217,10 @@ def thresholdDetermination(threshold, assemblages, assemblageFrequencies, labelA
         pairname  = combo[0] + "*" + combo[1]
 
         maxDifference = 0
-        assemblage1 = assemblageFrequencies[combo[0]]
-        assemblage2 = assemblageFrequencies[combo[1]]
+        assemblage1 = assemblages[combo[0]]
+        assemblage2 = assemblages[combo[1]]
         i=-1
-        columns= len(assemblageFrequencies[combo[0]])
+        columns= len(assemblages[combo[0]])
         logging.debug("Number of columns: %d", columns)
         ## calculate the maximum differences between the pairs of assemblages (across all types)
         for i in (0, columns-1):
@@ -243,10 +235,9 @@ def thresholdDetermination(threshold, assemblages, assemblageFrequencies, labelA
         assemblageComparison[ pairname ] = maxDifference
 
     ############## pre calculate the valid pairs of assemblages and stuff into hash ############################
-
-    for assemblage1 in labels:
+    for assemblage1 in assemblages:
         cAssemblages=[]
-        for assemblage2 in labels:
+        for assemblage2 in assemblages:
             if not assemblage1 == assemblage2:
                 testpair = assemblage1 + "*" + assemblage2
                 logging.debug("Pairs: %s and %s", assemblage1,assemblage2)
@@ -266,7 +257,7 @@ def confidence_interval(data, confidence=0.95):
     return m, m-h, m+h
 
 ########################################### BOOTSTRAP CI SECTION ####################################
-def bootstrapCICalculation(assemblages,assemblageFrequencies, assemblageSize, bootsize=1000, confidenceInterval=0.95):
+def bootstrapCICalculation(assemblages, assemblageSize, bootsize=1000, confidenceInterval=0.95):
     random.seed(start)
     perror ={}
     pvalue={}
@@ -281,20 +272,21 @@ def bootstrapCICalculation(assemblages,assemblageFrequencies, assemblageSize, bo
 
     if screenFlag:
         scr.addstr(1,40, "STEP: Bootstrap CIs...        ")
+        scr.refresh
     countup=0
     ## for each assemblage
     logging.debug("Calculating bootstrap confidence intervals")
     # for each assemblage
 
-    for currentLabel in sorted( assemblageFrequencies.iterkeys()):
-        label = labels[countup]
-        a =  assemblageFrequencies[ currentLabel ]
-        columns=len(assemblageFrequencies[ currentLabel ])
+    for currentLabel in sorted( assemblages.iterkeys()):
+        #label = assemblages[countup]
+        a =  assemblages[ currentLabel ]
+        columns=len(assemblages[ currentLabel ])
         currentAssemblageSize = assemblageSize[ currentLabel ]
 
         ## create an array of arrays - one for each type
         arrayOfStats = []
-        for c in assemblageFrequencies:
+        for c in assemblages:
             array=[]
             arrayOfStats.append([])
 
@@ -303,7 +295,6 @@ def bootstrapCICalculation(assemblages,assemblageFrequencies, assemblageSize, bo
 
         while loop:
             assemsize = currentAssemblageSize
-
             cumulate=[]
             classes = columns
             index = 0
@@ -318,7 +309,7 @@ def bootstrapCICalculation(assemblages,assemblageFrequencies, assemblageSize, bo
 
             new_assemblage=[]
             while assemsize>0:
-                rand  = random()              ## random number from 0-1
+                rand = random()              ## random number from 0-1
                 classVar = 0
                 while (classVar < index) and (rand > cumulate[classVar] ):
                     rand -= cumulate[classVar]
@@ -357,8 +348,8 @@ def bootstrapCICalculation(assemblages,assemblageFrequencies, assemblageSize, bo
             lowerCI.append( lower)
             upperCI.append( upper )
 
-        typeFrequencyLowerCI[ label ] = lowerCI
-        typeFrequencyUpperCI[ label ] = upperCI
+        typeFrequencyLowerCI[ currentLabel ] = lowerCI
+        typeFrequencyUpperCI[ currentLabel ] = upperCI
         results = 0
         countup += 1
 
@@ -374,7 +365,7 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
 
     if screenFlag > 0:
         scr.addstr(1,40, "STEP: Find valid triples....      ")
-
+        scr.refresh
     permutations =all_tuples(assemblages)
 
     for permu in permutations:
@@ -398,10 +389,10 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
             logging.debug( "ass1: %f ass2: %f ass3: %f",ass1,ass2,ass3)
             ## first compare assemblages 1 and 2
             if bootstrapCI:
-                upperCI_1 = typeFrequencyUpperCI[ labels[ permu[0] ] ][i]
-                lowerCI_1 = typeFrequencyUpperCI[ labels[ permu[0] ] ][i]
-                upperCI_2 = typeFrequencyUpperCI[ labels[ permu[1] ] ][i]
-                lowerCI_2 = typeFrequencyUpperCI[ labels[ permu[1] ] ][i]
+                upperCI_1 = typeFrequencyUpperCI[ assemblages[ permu[0] ] ][i]
+                lowerCI_1 = typeFrequencyUpperCI[ assemblages[ permu[0] ] ][i]
+                upperCI_2 = typeFrequencyUpperCI[ assemblages[ permu[1] ] ][i]
+                lowerCI_2 = typeFrequencyUpperCI[ assemblages[ permu[1] ] ][i]
                 dif1 = ass1 - ass2
                 if upperCI_1 < lowerCI_2:
                     difscore = -1
@@ -830,21 +821,48 @@ def main():
     except IOError, msg:
         parser.error(str(msg))
         sys.exit()
-
+    global scr
+    global screenFlag
     if args['screen'] is not None:
-        screenFlag = 1
-        scr = curses.initscr()
+        screenFlag=1
         ## Set up the screen display (default).
         ## the debug option should not use this since it gets messy
-        scr.refresh()  # clear the screen
+        try:
+             # Initialize curses
+            scr=curses.initscr()
+            # Turn off echoing of keys, and enter cbreak mode,
+            # where no buffering is performed on keyboard input
+            curses.noecho()
+            curses.cbreak()
+
+            # In keypad mode, escape sequences for special keys
+            # (like the cursor keys) will be interpreted and
+            # a special value like curses.KEY_LEFT will be returned
+            scr.keypad(1)
+            # Set everything back to normal
+            scr.keypad(0)
+            curses.echo()
+            curses.nocbreak()
+            curses.endwin()                 # Terminate curses
+        except:
+            # In event of error, restore terminal to sane state.
+            scr.keypad(0)
+            curses.echo()
+            curses.nocbreak()
+            curses.endwin()
+            traceback.print_exc()           # Print the exception
+
+        # Frame the interface area at fixed VT100 size
+
 
     if args['debug'] is not None:
         ## Logging
         logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
     else:
-        logging.basicConfig(stream=sys.stderr, level=None)
+        logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
     # start the clock to track how long this run takes
+    global start
     start = datetime.now().time()
     logging.debug("Start time:  %s ", start)
 
@@ -865,8 +883,6 @@ def main():
         print("Cannot open %s. Error. %s " % filename, msg)
         sys.exit("Quitting due to errors.")
 
-
-
     logging.debug("Going to open pairwise file it is exists.")
     if args['pairwiseFile'] is not None:
         openPairwiseFile(args['pairwiseFile'])
@@ -882,14 +898,14 @@ def main():
 
     logging.debug("Going to create list of valid pairs for comparisons.")
     validAssemblagesForComparisons={}
-    validAssemblagesForComparisons = thresholdDetermination(threshold, assemblages, assemblageFrequencies, labels)
+    validAssemblagesForComparisons = thresholdDetermination(threshold, assemblages)
     typeFrequencyLowerCI={}
     typeFrequencyUpperCI={}
 
     logging.debug("Now calculate the bootstrap comparisons based on specified confidence interval, if in the arguments.")
     if args['bootstrapCI'] is not None:
         bootstrapCI=1
-        typeFrequencyLowerCI, typeFrequencyUpperCI = bootstrapCICalculation(assemblages,assemblageFrequencies, assemblageSize,1000,args['bootstrapSignificance'])
+        typeFrequencyLowerCI, typeFrequencyUpperCI = bootstrapCICalculation(assemblages, assemblageSize,1000,args['bootstrapSignificance'])
 
     logging.debug("Now precalculating all the combinations between pairs of assemblages. This returns a graph with all pairs and the comparisons as weights.")
     pairGraph = preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFrequencyLowerCI)
@@ -921,6 +937,7 @@ def main():
             scr.addstr(4,1,"Step number:   %d", currentMaxSeriationSize)
             scr.addstr(5,1,"Number of solutions from previous step:         ")
             scr.addstr(5,1,"Number of solutions from previous step: %d", netnum)
+            scr.refresh()
         netnum=len(networks)
         logging.debug("Number of solutions from previous step: %d", netnum)
         match = 0      ## set the current match to zero for this step (sees if there are any new solutions for step)
@@ -946,6 +963,6 @@ def main():
                 scr.addstr(7,1,"Sum of all solutions up to this step: %d", solutionCount)
                 scr.addstr(8,43,"                                           ")
                 scr.addstr(8,1,"Current number of seriation linkages at this step: %d",currentTotal)
-
+                scr.refresh
 if __name__ == "__main__":
-    main()
+  main()
