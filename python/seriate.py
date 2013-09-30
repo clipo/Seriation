@@ -926,13 +926,15 @@ def main():
         typeFrequencyLowerCI, typeFrequencyUpperCI = bootstrapCICalculation(assemblages, assemblageSize,1000,args['bootstrapSignificance'])
 
     ###############################################################################
-    logging.debug("Now precalculating all the combinations between pairs of assemblages. This returns a graph with all pairs and the comparisons as weights.")
-    pairGraph = preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFrequencyLowerCI)
+    logging.debug(
+        "Now precalculating all the combinations between pairs of assemblages. This returns a graph with all pairs and the comparisons as weights.")
+    pairGraph = preCalculateComparisons(assemblages, bootstrapCI, typeFrequencyUpperCI, typeFrequencyLowerCI)
 
     ###############################################################################
     logging.debug("Calculate all the valid triples.")
-    triples=[]
-    triples = findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,bootstrapCI,typeFrequencyLowerCI, typeFrequencyUpperCI)
+    triples = []
+    triples = findAllValidTriples(assemblages, pairGraph, validAssemblagesForComparisons, bootstrapCI,
+                                  typeFrequencyLowerCI, typeFrequencyUpperCI)
 
     ###############################################################################
     stepcount = 0
@@ -969,34 +971,36 @@ def main():
         match = 0      ## set the current match to zero for this step (sees if there are any new solutions for step)
         ## look through the set of existing valid networks.
         for nnetwork in networks:
-            logging.debug( "-----------------------------------------------------------------------------------")
-            logging.debug( "Network: %s", nnetwork.adjacency_list())
-            logging.debug( "-----------------------------------------------------------------------------------")
+            logging.debug("-----------------------------------------------------------------------------------")
+            logging.debug("Network: %s", nnetwork.adjacency_list())
+            logging.debug("-----------------------------------------------------------------------------------")
             ## find the ends
             ## given the ends, find the valid set of assemblages that can be potentially added
             ## this list is all assemblages meet the threshold requirements
-            validNewNetwork = checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForComparisons, assemblages, typeFrequencyLowerCI, typeFrequencyUpperCI,bootstrapCI,solutionCount)
+            validNewNetwork = checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComparisons,
+                                                              assemblages, typeFrequencyLowerCI, typeFrequencyUpperCI,
+                                                              bootstrapCI, solutionCount)
             if not validNewNetwork is False:
                 newNetworks.append(validNewNetwork)
                 solutions.append(validNewNetwork)
-                solutionCount +=1
+                solutionCount += 1
                 logging.debug("Solution count is now:  %d", solutionCount)
                 if len(validNewNetwork.edges()) > maxEdges:
                     maxEdges = len(validNewNetwork.edges())
                 currentTotal = len(newNetworks)
 
-            if screenFlag>0:
-                msg="Current Max Edges:  %d"% maxEdges
-                scr.addstr(6,0,msg)
-                msg="Sum of all solutions up to this step: %d" % solutionCount
-                scr.addstr(7,0,msg)
-                scr.addstr(8,43,"                                           ")
-                msg="Current number of seriation linkages at this step: %d"% currentTotal
-                scr.addstr(8,0,msg)
-                scr.refresh()
+        if screenFlag > 0:
+            msg = "Current Max Edges:  %d" % maxEdges
+            scr.addstr(6, 0, msg)
+            msg = "Sum of all solutions up to this step: %d" % solutionCount
+            scr.addstr(7, 0, msg)
+            scr.addstr(8, 43, "                                           ")
+            msg = "Current number of seriation linkages at this step: %d" % currentTotal
+            scr.addstr(8, 0, msg)
+            scr.refresh()
+
 
 if __name__ == "__main__":
-
     main()
     print "\n\rDone!\n\r"
     scr.nodelay(0)
