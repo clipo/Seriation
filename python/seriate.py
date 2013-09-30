@@ -14,8 +14,10 @@ import numpy as np
 import scipy as sp
 import networkx as nx
 import traceback
+import memory
 import matplotlib.pyplot as pltc
 import time
+import os
 
 # start prettyprint (python Dumper)
 pp = pprint.PrettyPrinter(indent=4)
@@ -818,6 +820,8 @@ class CursesWindow(object):
         curses.endwin()
 
 def main():
+
+    mem=memory.Memory()
     parser = argparse.ArgumentParser(description='Conduct seriation analysis')
     parser.add_argument('--debug')
     parser.add_argument('--bootstrapCI')
@@ -944,17 +948,20 @@ def main():
     currentMaxSeriationSize = 3
     newNetworks=[]
     solutionCount=len(triples)
-    maxEdges=2
+    maxNodes=3
     currentTotal = len(triples)
     solutions=[]
+
     while currentMaxSeriationSize <= maxSeriationSize:
         currentMaxSeriationSize += 1
-        ### first time through copy the triples...
+        ### first time through copy the triples, else get the previous new ones.
         if currentMaxSeriationSize==4:
             networks = triples
-            solutions = triples
+            solutions = triples     # clear the
         else:
-            networks = newNetworks
+            networks = newNetworks  # copy the array of previous new ones for this round
+            newNetworks=[]          # clear the array of new solutions
+            solutions += newNetworks  # append the new list to the previous one
 
         stepcount += 1
         logging.debug("_______________________________________________________________________________________")
@@ -988,22 +995,31 @@ def main():
                 solutions.append(validNewNetwork)
                 solutionCount += 1
                 logging.debug("Solution count is now:  %d", solutionCount)
-                if len(validNewNetwork.edges()) > maxEdges:
-                    maxEdges = len(validNewNetwork.edges())
+                if len(validNewNetwork.edges()) > maxNodes:
+                    maxNodes = len(validNewNetwork.nodes())
                 currentTotal = len(newNetworks)
 
+
         if screenFlag > 0:
-            msg = "Current Max Edges:  %d" % maxEdges
+            msg = "Current Max Nodes:  %d " % maxNodes
             scr.addstr(6, 0, msg)
-            msg = "Sum of all solutions up to this step: %d" % solutionCount
+            msg = "Total number of seriation solutions and sub-solutions: %d" % solutionCount
             scr.addstr(7, 0, msg)
             scr.addstr(8, 43, "                                           ")
-            msg = "Current number of seriation linkages at this step: %d" % currentTotal
+            msg = "Number of seriation solutions at this step: %d" % currentTotal
             scr.addstr(8, 0, msg)
+            msg = "Memory used: %d         ", mem.memory()
+            scr.addstr(9, 0, msg)
             scr.refresh()
 
+    if screenFlag >0:
+        curses.endWin()
+
+    print ("\n\rSeriation complete.\n\r")
+    print ("Maximum size of seriation: %d \n\r", maxNodes)
+    print ("Number of solutions at last step: %d \n\r",currentTotal)
 
 if __name__ == "__main__":
     main()
-    print "\n\rDone!\n\r"
-    time.sleep(5)
+
+
