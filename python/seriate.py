@@ -15,6 +15,7 @@ import scipy as sp
 import networkx as nx
 import traceback
 import matplotlib.pyplot as pltc
+import time
 
 # start prettyprint (python Dumper)
 pp = pprint.PrettyPrinter(indent=4)
@@ -493,6 +494,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
     whichEnd = 0
     logging.debug("The end of assemblages of network are: %s and %s", nnetwork.graph["End1"] , nnetwork.graph["End2"])
     logging.debug("Network:  %s", nnetwork.adjacency_list())
+
     new_network=nx.Graph()
     for endAssemblage in (nnetwork.graph["End1"],nnetwork.graph['End2']):
         whichEnd += 1 ## either a 1 or a 2
@@ -781,12 +783,13 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                 logging.debug( "Original network: %s ", nnetwork.adjacency_list())
                 logging.debug( "New comparison map is: %s ", comparisonMap)
                 #first make a copy
+
                 new_network = nnetwork.to_directed()
-                new_network.graph["GraphID"]= solutionCount+1
+                new_network.graph["GraphID"]= solutionCount + 1
                 ## now add to this *new one*
                 new_network.add_node(testAssemblage, name=testAssemblage,end=1,site="end")
                 ## mark this vertice as the new "END"
-                ## mark the interior vertice as not "END"
+                ## mark the interior vertice as not "END
                 new_network.add_node(endAssemblage, name=endAssemblage,site="middle", end=0)
                 #### This adds the comparison to the new edge that has been added.
                 new_network.add_path( [testAssemblage, endAssemblage], weight=comparisonMap, end=1, site="end", GraphID=solutionCount )
@@ -795,7 +798,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     whichEnd += 1
                 else:
                     new_network.graph["End2"]=testAssemblage
-                    whichEnd = 1
+                    whichEnd = 0
 
                 logging.debug( "Here's the new network (with addition): %s", new_network.adjacency_list())
                 ## copy this solution to the new array of networks
@@ -1003,6 +1006,4 @@ def main():
 if __name__ == "__main__":
     main()
     print "\n\rDone!\n\r"
-    scr.nodelay(0)
-    scr.getch()
-    curses.endwin()
+    time.sleep(5)
