@@ -997,4 +997,8 @@ def main():
 
 if __name__ == "__main__":
 
-  main()
+    main()
+    print "\n\rDone!\n\r"
+    scr.nodelay(0)
+    scr.getch()
+    curses.endwin()
