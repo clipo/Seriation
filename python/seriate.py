@@ -15,7 +15,7 @@ import scipy as sp
 import networkx as nx
 import traceback
 import memory
-import matplotlib.pyplot as pltc
+import matplotlib.pyplot as plt
 import time
 import os
 
@@ -185,7 +185,7 @@ def openXYFile( filename ):
 
     largestX = max(xAssemblage.iterkeys(), key=(lambda key: xAssemblage[key]))
     largestY= max(yAssemblage.iterkeys(), key=(lambda key: yAssemblage[key]))
-    return largestX,largestY,distanceBetweenAssemblages
+    return largestX,largestY,distanceBetweenAssemblages,xAssemblage,yAssemblage
 
 
 #############################################  THRESHOLD DETERMINATION ####################################
@@ -347,7 +347,6 @@ def bootstrapCICalculation(assemblages, assemblageSize, bootsize=1000, confidenc
         countup += 1
 
     return typeFrequencyLowerCI, typeFrequencyUpperCI
-
 
 ########################################### FIND ALL THE VALID TRIPLES  ####################################
 ########################################### #################################### ###########################
@@ -812,12 +811,345 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
     else:
         return False
 
-class CursesWindow(object):
-    def __enter__(self):
-        curses.initscr()
+def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,filename):
+    try:
+        from networkx import graphviz_layout
+    except ImportError:
+        raise ImportError("This function needs Graphviz and either PyGraphviz or Pydot")
 
-    def __exit__(self):
-        curses.endwin()
+    graphs=[]
+    megaGraph = nx.Graph()
+    number=0
+    graphCount=0
+    for net in networks:
+        graphCount += 1
+        number = net['GraphID']
+        for node in net.nodes():
+            xCoordinate = 0
+            yCoordinate = 0
+            name = node['name']
+            xCoordinate = xAssemblage[name]
+            yCoordinate = yAssemblage[name]
+            megaGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
+                               size=assemblageSize[name])
+            graphs[graphCount].add_node(fromAssemblage, label=fromAssemblage, x=xCoordinate, y=yCoordinate,
+                                        name=fromAssemblage, size=assemblageSize[name])
+            graphs[graphCount].add_node(toAssemblage, label=toAssemblage, x=xCoordinate, y=yCoordinate,
+                                        name=toAssemblage, size=assemblageSize[name])
+
+        for e in net.edges_iter():   ### no need to go in order -- just look at all the other edges to see if there is an X
+            d = net.get_edge_data(*e)
+            fromAssemblage = e[0]
+            toAssemblage = e[1]
+            weight = d['weight']
+            distance = distanceBetweenAssemblages[fromAssemblage + "*" + toAssemblage]
+            count = megaGraph[fromAssemblage][toAssemblage]['weight']
+            count += 1
+            megaGraph.add_path([fromAssemblage], [toAssemblage], weight=count,
+                               distance=distance, color=number,
+                               size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
+
+            graphs[graphCount].add_path([fromAssemblage], [toAssemblage],
+                                        xy1=(xAssemblage[fromAssemblage], yAssemblage[fromAssemblage]),
+                                        xy2=(xAssemblage[toAssemblage], yAssemblage[toAssemblage]),
+                                        weight=weight,
+                                        meanDistance=distance,
+                                        size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
+
+    plt.rcParams['text.usetex'] = False
+    plt.figure(0,figsize=(8,8))
+    mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
+    pos=nx.graphviz_layout(mst,prog="neato")
+    #pos=nx.spring_layout(mst,iterations=500)
+    edgewidth=[]
+    weights = nx.get_edge_attributes(mst, 'weight')
+    for w in weights:
+        edgewidth.append(weights[w]*10)
+
+    maxValue = max(edgewidth)
+    widths=[]
+    for w in edgewidth:
+        widths.append(((maxValue-w)+1)*5)
+
+    color = nx.get_edge_attributes(mst, 'color')
+    colorList = []
+    for c in color:
+        colorList.append(color[c])
+    colors=[]
+    colorMax = max(colorList)
+    for c in colorList:
+        colors.append(c/colorMax)
+    assemblageSizes=[]
+    sizes = nx.get_node_attributes(mst, 'size')
+    #print sizes
+    for s in sizes:
+        #print sizes[s]
+        assemblageSizes.append(sizes[s])
+    nx.draw_networkx_edges(mst,pos,alpha=0.3,width=widths, edge_color=colorList)
+    sizes = nx.get_node_attributes(mst,'size')
+    nx.draw_networkx_nodes(mst,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
+    nx.draw_networkx_edges(mst,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
+    nx.draw_networkx_labels(mst,pos,fontsize=10)
+    font = {'fontname'   : 'Helvetica',
+        'color'      : 'k',
+        'fontweight' : 'bold',
+        'fontsize'   : 14}
+    edgelist = list(mst) # make a list of the edges
+    #print edgelist
+    #nx.draw(mst)
+    #plt.savefig("path.png")
+    plt.axis('off')
+    newfilename=filename[:4]+"-mst.png"
+    pngfile=newfilename+"-mst.png"
+    plt.savefig(pngfile,dpi=75)
+    print(pngfile)
+
+    plt.figure(1,figsize=(30,20))
+    # layout graphs with positions using graphviz neato
+
+    UU=nx.Graph()
+    # do quick isomorphic-like check, not a true isomorphism checker
+    nlist=[] # list of nonisomorphic graphs
+    for G in graphs:
+        # check against all nonisomorphic graphs so far
+        if not nx.iso(G, nlist):
+            nlist.append(G)
+    UU=nx.union_all(graphs) # union the nonisomorphic graphs
+    #UU=nx.disjoint_union_all(nlist) # union the nonisomorphic graphs
+    #pos=nx.spring_layout(UU,iterations=50)
+
+    ##pos=nx.graphviz_layout(UU,prog="neato")
+    pos=nx.graphviz_layout(UU,prog="twopi",root=0)
+    ##labels=nx.draw_networkx_labels(UU,pos)
+    # color nodes the same in each connected subgraph
+    C=nx.connected_component_subgraphs(UU)
+    for g in C:
+        c = [random.random()] * nx.number_of_nodes(g) # random color...
+        nx.draw(g,
+            pos,
+            node_size=40,
+            node_color=c,
+            vmin=0.0,
+            vmax=1.0,
+            alpha=.2,
+            font_size=7,
+        )
+    plt.savefig("atlas.png",dpi=250)
+    plt.show() # display
+
+
+def finalGoodbye(start,maxNodes,currentTotal):
+    if screenFlag >0:
+        curses.endWin()
+
+    ## determine time elapsed
+    timeNow = datetime.now()
+    timeElapsed = (timeNow-start).seconds
+
+    print ("\n\rSeriation complete.\n\r")
+    print ("Maximum size of seriation: %d \n\r", maxNodes)
+    print ("Number of solutions at last step: %d \n\r",currentTotal)
+    print ("Time elapsed for calculation: %d\n\r", timeElapsed)
+
+
+def output(filteredArray):
+    ########################################### OUTPUT SECTION ####################################
+$screen and $scr->at(13,1)->puts( "Now printing output file... ");
+    $screen and $scr->at(1,40)->puts("STEP: Output files...         ");
+print OUTFILE "*Node data\n";
+print OUTFILE "ID AssemblageSize X Y Easting Northing\n";
+print OUTPAIRSFILE "*Node data\n";
+print OUTPAIRSFILE "ID AssemblageSize X Y Easting Northing\n";
+print OUTDOTFILE "graph seriation \n{\n";
+print OUTDOTFILE "\n/* list of nodes */\n";
+if ($mst) {
+    print OUTBOOTSTRAPFILE "*Node data\nID AssemblageSize X Y Easting Northing\n";
+    print OUTDISTANCEFILE "*Node data\nID AssemblageSize X Y Easting Northing\n";
+}
+$count = 0;
+$screen and $scr->at(1,40)->puts("STEP: Printing list of nodes....     ");
+## note this assumes the use of UTM coordinates (northing and easting)
+foreach my $l (@labels) {
+    #print OUTFILE $l, "\n";
+    my $x = $xAssemblage{ $l }/1000000 || 0;
+    my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
+    my $easting = $xAssemblage{ $l } || 0;
+    my $northing = $yAssemblage{ $l } || 0;
+    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+    print OUTDOTFILE "\"".$l."\";\n";
+    if ($mst){
+        print OUTBOOTSTRAPFILE  $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+        print OUTDISTANCEFILE  $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+    }
+}
+print OUTFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
+print OUTPAIRSFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
+if ($mst) {
+    print OUTBOOTSTRAPFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
+    print OUTDISTANCEFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
+}
+$screen and $scr->at(1,40)->puts("STEP: Printing list of nodes attributes... ");
+foreach my $l (@labels) {
+   my $x = $xAssemblage{ $l }/1000000 || 0;
+    my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
+    my $easting = $xAssemblage{ $l } || 0;
+    my $northing = $yAssemblage{ $l } || 0;
+    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+    print OUTDOTFILE "\"".$l."\";\n";
+    if ($mst) {
+        print OUTBOOTSTRAPFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+        print OUTDISTANCEFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
+    }
+}
+
+## This prints out counts of the edges as they appear in ALL of the solutions
+$screen and $scr->at(1,40)->puts("STEP: Going through and counting pairs...     ");
+print OUTPAIRSFILE "*Tie data\nFrom To Edge Count\n";
+if ($mst) {
+    print OUTBOOTSTRAPFILE "*Tie data\nFrom To Edge End Weight ID\n";
+    print OUTDISTANCEFILE "*Tie data\nFrom To Edge End Weight ID\n";
+}
+## first count up all of the edges by going through the solutions and each edge
+## put the edge count in a hash of edges
+my %edgeHash=();
+
+foreach my $network (@filteredarray) {
+    #print "\n\r netowrk type ", ref($network),"\n\r";
+    my @Edges;
+    if (ref($network) eq 'REF') {
+        @Edges = $$network->unique_edges;
+    } elsif ($network eq undef ) {
+        next;
+    } else {
+        @Edges = $network->unique_edges
+    }
+    my $eCount=0;
+    foreach my $e (@Edges) {
+        my $edge0 = @$e[0];
+        my $edge1 = @$e[1];
+        my $pairname= $edge0." ".$edge1;
+        $edgeHash{ $pairname }++;
+    }
+}
+## now go through the edgeHash and print out the edges
+## do this is sorted order of the counts. For fun.
+$screen and $scr->at(1,40)->puts("STEP: Doing the pair output...                ");
+foreach (sort { ($edgeHash{$b} cmp $edgeHash{$a}) || ($b cmp $a) } keys %edgeHash)  {
+    print OUTPAIRSFILE $_, " 1 ", $edgeHash{$_}, "\n";
+}
+
+print OUTFILE "*Tie data\nFrom To Edge Weight Network End pValue pError meanSolutionDistance\n";
+$screen and $scr->at(1,40)->puts("STEP: Eliminating duplicates...     ");
+my @uniqueArray = uniq @filteredarray;
+
+$screen and $scr->at(1,40)->puts("STEP: Printing edges...     ");
+print OUTDOTFILE "\n/* list of edges */\n";
+
+my %distanceHash=();
+my %seriationHash;
+## only print unique ones...
+
+foreach my $network (@uniqueArray) {
+    if (ref($network) eq 'REF') {
+        $network = $$network;
+    } elsif ($network eq undef ) {
+        next;
+    }
+    $screen and $scr->at(14,1)->puts( "Now on solution: ");
+    $screen and $scr->at(14,18)->puts($network->get_graph_attribute("GraphID") );
+    my $eCount;
+
+    if ($largestonly>0) {
+        if ($network->unique_edges == $maxEdges) {
+
+            my $groupDistance=0;
+            my @Edges = $network->unique_edges;
+            my $meanDistance=0.0;
+            my $eCount=0;
+            if ($xyfile) {
+               foreach my $e (@Edges) {
+                  my $edge0 = @$e[0];
+                  my $edge1 = @$e[1];
+                  my $pairname= $edge0."*".$edge1;
+                  $groupDistance += $distanceBetweenAssemblages{ $pairname };
+                  $eCount++;
+               }
+               $meanDistance = $groupDistance/$eCount;      ## use the average for the group for now
+               #print "\n\rMean distance for this group is: ", $meanDistance, "\n\r";
+               $network->set_graph_attribute("meanDistance", $meanDistance);
+            } else {
+                $meanDistance="0";
+                $network->set_graph_attribute("meanDistance", "0");
+            }
+            my $text;
+            foreach my $e (@Edges) {
+               my $edge0 = @$e[0];
+               my $edge1 = @$e[1];
+               my ($pVal, $pErr);
+                if ( $pairwiseFile ) {
+                    my $pairname= $edge0."#".$edge1;
+                    $pVal = $pairwise{ $pairname };
+                    $pErr = $pairwiseError{ $pairname };
+                } else {
+                    $pVal = 0.0;
+                    $pErr = 0.0;
+                }
+                print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
+                $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
+                print OUTFILE $text, " ", $meanDistance, "\n";
+            }
+            $network->set_graph_attribute("meanDistance", $meanDistance);
+            $distanceHash{ $network->get_graph_attribute("GraphID") }= $meanDistance;
+            $seriationHash{ $network->get_graph_attribute("GraphID") }->{'meanDistance'}= $meanDistance;
+            $seriationHash{ $network->get_graph_attribute("GraphID") }->{'ID'}=$network->get_graph_attribute("GraphID");
+            $seriationHash{ $network->get_graph_attribute("GraphID") }->{'size'}=scalar(@Edges);
+        }
+    } else {  ## not just the largest, but ALL seriation solutions
+
+        my @Edges = $network->unique_edges;
+        my $groupDistance=0;
+        my $meanDistance=0.0;
+        my $eCount=0;
+        my $text;
+        if ($xyfile) {
+           foreach my $e (@Edges) {
+              my $edge0 = @$e[0];
+              my $edge1 = @$e[1];
+              my $pairname= $edge0."*".$edge1;
+              $groupDistance += $distanceBetweenAssemblages{ $pairname };
+              $eCount++;
+           }
+           $meanDistance = $groupDistance/$eCount;         ##use the average distance as the metric
+        } else {
+           $meanDistance = "0";
+        }
+        foreach my $e (@Edges) {
+           my $edge0 = @$e[0];
+           my $edge1 = @$e[1];
+           my ($pVal, $pErr);
+            if ( $pairwiseFile ) {
+                my $pairname= $edge0."#".$edge1;
+                $pVal = $pairwise{ $pairname };
+                $pErr = $pairwiseError{ $pairname };
+            } else {
+                $pVal = 0.0;
+                $pErr = 0.0;
+            }
+            print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
+            $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
+            print OUTFILE $text, " ", $meanDistance, "\n";
+        }
+
+        $network->set_graph_attribute("meanDistance", $meanDistance);
+        $distanceHash{ $text }= $meanDistance;
+        $seriationHash{ $network->get_graph_attribute("GraphID") }->{'meanDistance'}= $meanDistance;
+        $seriationHash{ $network->get_graph_attribute("GraphID") }->{'ID'}=$network->get_graph_attribute("GraphID");
+        $seriationHash{ $network->get_graph_attribute("GraphID") }->{'size'}=scalar(@Edges);
+
+
+
 
 def main():
 
@@ -841,6 +1173,7 @@ def main():
     parser.add_argument('--allSolutions')
     parser.add_argument('--memusage')
     parser.add_argument('--inputfile')
+    parser.add_argument('--mst')
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
@@ -902,20 +1235,20 @@ def main():
         print("Cannot open %s. Error. %s " % filename, msg)
         sys.exit("Quitting due to errors.")
 
-    ###############################################################################
+    ############################################################################################################
     logging.debug("Going to open pairwise file it is exists.")
     if args['pairwiseFile'] is not None:
         openPairwiseFile(args['pairwiseFile'])
 
-    ###############################################################################
+    ############################################################################################################
     logging.debug("Going to open XY file if it exists.")
     largestX=0
     largestY=0
     distanceBetweenAssemblages={}
     if args['xyfile'] is not None:
-        largestX,largestY,distanceBetweenAssemblages=openXYFile(args['xyfile'])
+        largestX,largestY,distanceBetweenAssemblages,xAssemblage,yAssemblage=openXYFile(args['xyfile'])
 
-    ###############################################################################
+    ############################################################################################################
     logging.debug("Assume threshold is 1.0 unless its specified in arguments.")
     threshold=1.0
     if args['threshold'] is not None:
@@ -926,24 +1259,26 @@ def main():
     typeFrequencyLowerCI={}
     typeFrequencyUpperCI={}
 
-    ###############################################################################
-    logging.debug("Now calculate the bootstrap comparisons based on specified confidence interval, if in the arguments.")
+    ###########################################################################################################
+    logging.debug("Now calculate the bootstrap comparisons based ")
+    logging.debug("on specified confidence interval, if in the arguments.")
     if args['bootstrapCI'] is not None:
-        bootstrapCI=1
-        typeFrequencyLowerCI, typeFrequencyUpperCI = bootstrapCICalculation(assemblages, assemblageSize,1000,args['bootstrapSignificance'])
+        bootstrapCI = 1
+        typeFrequencyLowerCI, typeFrequencyUpperCI = bootstrapCICalculation(assemblages, assemblageSize, 1000,
+                                                                            args['bootstrapSignificance'])
 
-    ###############################################################################
-    logging.debug(
-        "Now precalculating all the combinations between pairs of assemblages. This returns a graph with all pairs and the comparisons as weights.")
+    ###########################################################################################################
+    logging.debug("Now precalculating all the combinations between pairs of assemblages. ")
+    logging.debug("This returns a graph with all pairs and the comparisons as weights.")
     pairGraph = preCalculateComparisons(assemblages, bootstrapCI, typeFrequencyUpperCI, typeFrequencyLowerCI)
 
-    ###############################################################################
+    ###########################################################################################################
     logging.debug("Calculate all the valid triples.")
     triples = []
     triples = findAllValidTriples(assemblages, pairGraph, validAssemblagesForComparisons, bootstrapCI,
                                   typeFrequencyLowerCI, typeFrequencyUpperCI)
 
-    ###############################################################################
+    ###########################################################################################################
     stepcount = 0
     currentMaxSeriationSize = 3
     newNetworks=[]
@@ -999,7 +1334,6 @@ def main():
                     maxNodes = len(validNewNetwork.nodes())
                 currentTotal = len(newNetworks)
 
-
         if screenFlag > 0:
             msg = "Current Max Nodes:  %d " % maxNodes
             scr.addstr(6, 0, msg)
@@ -1012,12 +1346,53 @@ def main():
             scr.addstr(9, 0, msg)
             scr.refresh()
 
-    if screenFlag >0:
-        curses.endWin()
+    ###########################################################################################################
+    if len(networks):
+        print "\n\r\n\r\n\r\n\r\n\rNo solutions Found!!\n\r";
+        finalGoodbye(start,maxNodes,currentTotal)
 
-    print ("\n\rSeriation complete.\n\r")
-    print ("Maximum size of seriation: %d \n\r", maxNodes)
-    print ("Number of solutions at last step: %d \n\r",currentTotal)
+    ###########################################################################################################
+    if args['mst'] is not None:
+        minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,filename)
+
+    ################################################# FILTERING  ####################################
+    # now do some weeding. Basically start with the first network that is the largest, and work backwards. Ignore any
+    # network that is already represented in the smaller ones since these are trivial (e.g., A->B->C->D already covers
+    # A->C->D.) That should then leave all the unique maximum solutions (or so it seems)
+    ################################################# FILTERING  ####################################
+    ## first need to sort the networks by size
+    filteredarray = []
+    if args['filtered'] is not None:  ## only get the largest set that includes ALL
+        if screenFlag:
+            scr.addstr(1,40,"STEP: Filter to get uniques... ")
+        logging.debug("---Filtering solutions so we only end up with the unique ones.")
+        logging.debug("----Start with % solutions.", len(solutions))
+        for i in range(0,len(solutions),-1):
+            exists=0
+            for tnetwork in filteredarray:
+                fnetworkArray = solutions[i].nodes()
+                tnetworkArray = tnetwork.nodes()
+                minus = fnetworkArray - tnetworkArray
+                if len(minus)== 0:
+                    exists += 1
+        if exists >0:
+             ##print "pushing $fnetwork to list\n\r";
+             filteredarray.append(solutions[i])
+
+        logging.debug("End with %d solutions.", len(filteredarray))
+        filterCount= len(filteredarray)
+        scr.addstr(11,1,"End with $filterCount solutions.")
+    elif args['allsolutions'] is not None:
+        filteredarray = solutions  ## all possible networks
+    else:
+        filteredarray = networks ## just the largest ones (from the last round)
+
+
+
+
+
+    ## say goodbye
+    finalGoodbye(start,maxNodes,currentTotal)
 
 if __name__ == "__main__":
     main()
