@@ -460,14 +460,14 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
 
         if error == 0:
             # uses NetworkX
-            net = nx.DiGraph(name=numberOfTriplets, GraphID=numberOfTriplets,End1=permu[0],End2=permu[2])
+            net = nx.Graph(name=numberOfTriplets, GraphID=numberOfTriplets,End1=permu[0],End2=permu[2])
 
-            net.add_node(permu[0], name=permu[0], site="end", end=1 )
-            net.add_node(permu[1], name=permu[1], site="middle", end=0)
-            net.add_node(permu[2], name=permu[2], site="end", end=1)
+            net.add_node(permu[0], name=permu[0], site="end", end=1, connectedTo=permu[1] )
+            net.add_node(permu[1], name=permu[1], site="middle", end=0, connectedTo="middle")
+            net.add_node(permu[2], name=permu[2], site="end", end=1, connectedTo=permu[1])
 
-            net.add_edge(permu[0], permu[1],weight=comparison12, GraphID=numberOfTriplets,end=1)
-            net.add_edge(permu[1], permu[2],weight=comparison23, GraphID=numberOfTriplets,end=1)
+            net.add_path([permu[0], permu[1]],weight=comparison12, GraphID=numberOfTriplets,end=1)
+            net.add_path([permu[2], permu[1]],weight=comparison23, GraphID=numberOfTriplets,end=1)
 
             logging.debug("VALID SOLUTION: %s * %s * %s " , permu[0],permu[1], permu[2])
             logging.debug("VALID SOLUTION: %s  <--->   %s", comparison12, comparison23)
@@ -517,9 +517,9 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
             logging.debug("\t\tChecking assemblage %s to see if it fits on the end of the current solution.", testAssemblage )
 
             #### FIND INNER EDGE RELATIVE TO THE EXISTING END ASSEMBLAGE ##############
-            neighbors = nnetwork.predecessors(endAssemblage)
+            neighbors = nnetwork.neighbors(endAssemblage)
             if len(neighbors) > 1 or len(neighbors)==0:
-                print "\r\n\r\n\r\nThere are too many or too few predecessors (should only be 1!). Error!\n\r"
+                print "\r\n\r\n\r\nThere are too many or too few neighbors (should only be 1!). Error!\n\r"
                 print "\r\nWe are testing endAssemblage: %s "% endAssemblage
                 print "\r\n with neighbors:", neighbors
                 print "For this network:  ", nnetwork.adjacency_list()
@@ -529,7 +529,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
             logging.debug( "\t\t\t The number of neighbors at endAssemblage is %d (should be just one).", len(neighbors))
             logging.debug( "\t\t\tThere should be just 1 neighbor to endAssemblage and that is: %s", neighbors[0])
             c = pairGraph.get_edge_data(neighbors[0],endAssemblage )
-            previousComparison=c['weight']
+            comparison=c['weight']
             n = pairGraph.get_edge_data(endAssemblage, testAssemblage )
             newComparison=n['weight']
 
@@ -537,11 +537,10 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
             comparisonMap =""
             oneToColumns=range(len(assemblages[testAssemblage]))
             logging.debug("One to Columns: %s", oneToColumns)
+            newassemblage=assemblages[testAssemblage]
+            oldassemblage=assemblages[endAssemblage]
             error = 0  ## set the error check to 0
             for i in oneToColumns:
-                logging.debug("INFORMATION: TYPE: %d TOTALCODE: %s",i,comparison)
-                val1 = newassemblage[i]
-                val2 = oldassemblage[i]
                 logging.debug( "\t\tComparing Assemblage: %s  and    Assemblage: %s  ########",testAssemblage,endAssemblage)
                 logging.debug( "\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,i,i,i,i,i,i)
                 logging.debug( "\t\t\t\tType %d:  testAssemblage 1: %d  endAssemblage 2: %d ", i, newassemblage[i],oldassemblage[i])
@@ -596,7 +595,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     # to be up or down.
                     logging.debug( "\t\t\t\t#### Type %d: Got a difscore of 1 and a comparison of a M. This could be okay.", i)
                     logging.debug( "\t\t\t\tType %d:   Matching case A (1, M)", i)
-                    logging.debug( "\t\t\t\t\ This will only work if there no Xs anywhere previously OR if the opposite end doesnt ALSO go up!")
+                    logging.debug( "\t\t\t\tThis will only work if there no Xs anywhere previously OR if the opposite end doesnt ALSO go up!")
                     logging.debug( "\t\t\t\t\t %s", nnetwork.adjacency_list())
                     xerror =0
                     ccount=0
@@ -790,7 +789,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                 ## mark the interior vertice as not "END"
                 new_network.add_node(endAssemblage, name=endAssemblage,site="middle", end=0)
                 #### This adds the comparison to the new edge that has been added.
-                new_network.add_edge( endAssemblage, testAssemblage,  weight=comparisonMap, end=1, site="end", GraphID=solutionCount )
+                new_network.add_path( [testAssemblage, endAssemblage], weight=comparisonMap, end=1, site="end", GraphID=solutionCount )
                 if whichEnd==1:
                     new_network.graph["End1"]=testAssemblage
                     whichEnd += 1
