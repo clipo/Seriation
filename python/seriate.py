@@ -984,7 +984,7 @@ def setupOutput(filename, pairFlag,mstFlag):
     return OUTFILE, OUTPAIRSFILE, OUTMSTFILE,OUTMSTDISTANCEFILE
 
 
-    ########################################### OUTPUT SECTION ####################################################
+#################################################### OUTPUT SECTION ####################################################
 def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredArray,
              OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,mstFlag,largestonlyFlag,maxEdges,xyfileFlag,pairwiseFileFlag ):
 
@@ -1068,8 +1068,6 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
     for network in uniqueArray:
         scr.addstr(14,1, "Now on solution: ")
         scr.addstr(14,18,network["GraphID"] )
-
-
         if largestonlyFlag>0:
             if len(network.edges()) == maxEdges:
                 groupDistance=0
@@ -1097,10 +1095,8 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
                         pairname= e[0]+"#"+e[1]
                         pVal = pairwise[ pairname ]
                         pErr = pairwiseError[pairname]
-
                     text = e[0]+" "+e[1]+" 1 "+str(edgeCount)+ " "+network["GraphID"]+ " "+e[0]+ " End "+pVal+" "+ pErr + " " +meanDistance
                     OUTFILE.writerow(text)
-
                 network['meanDistance'] = meanDistance
                 distanceHash[ network["GraphID"] ]= meanDistance
                 seriationHash[ network["GraphID"] ]['meanDistance']= meanDistance
@@ -1116,11 +1112,9 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
                   pairname= e[0]+"*"+e[1]
                   groupDistance += distanceBetweenAssemblages[ pairname ]
                   eCount += 1
-
                 meanDistance = groupDistance/eCount         ##use the average distance as the metric
             else:
                 meanDistance = "0"
-
             for e in network.edges_iter():
                 pVal=0.0
                 pErr=0.0
