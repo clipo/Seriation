@@ -15,11 +15,12 @@ import scipy as sp
 import networkx as nx
 import traceback
 import memory
-import matplotlib.pyplot as plt
 import operator
 import time
 from datetime import datetime
 import os
+from pylab import *
+import matplotlib.pyplot as plt
 
 # start prettyprint (python Dumper)
 pp = pprint.PrettyPrinter(indent=4)
@@ -864,47 +865,49 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
         raise ImportError("This function needs Graphviz and either PyGraphviz or Pydot")
 
     graphs=[]
-    megaGraph = nx.Graph()
+    megaGraph = nx.Graph(name="MST")
     number=0
     graphCount=0
     for net in networks:
         graphCount += 1
-        number = net['GraphID']
-        for node in net.nodes():
+        number = net.graph['GraphID']
+        for nodey in net.nodes(data=True):
             xCoordinate = 0
             yCoordinate = 0
-            name = node['name']
+            name = nodey[0]
             xCoordinate = xAssemblage[name]
             yCoordinate = yAssemblage[name]
             megaGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
                                size=assemblageSize[name])
-            graphs[graphCount].add_node(fromAssemblage, label=fromAssemblage, x=xCoordinate, y=yCoordinate,
-                                        name=fromAssemblage, size=assemblageSize[name])
-            graphs[graphCount].add_node(toAssemblage, label=toAssemblage, x=xCoordinate, y=yCoordinate,
-                                        name=toAssemblage, size=assemblageSize[name])
+            #graphs[graphCount].add_node(fromAssemblage, label=fromAssemblage, x=xCoordinate, y=yCoordinate,
+            #                            name=fromAssemblage, size=assemblageSize[name])
+            #graphs[graphCount].add_node(toAssemblage, label=toAssemblage, x=xCoordinate, y=yCoordinate,
+            #                            name=toAssemblage, size=assemblageSize[name])
 
+        count=0
         for e in net.edges_iter():   ### no need to go in order -- just look at all the other edges to see if there is an X
             d = net.get_edge_data(*e)
             fromAssemblage = e[0]
             toAssemblage = e[1]
             weight = d['weight']
             distance = distanceBetweenAssemblages[fromAssemblage + "*" + toAssemblage]
-            count = megaGraph[fromAssemblage][toAssemblage]['weight']
+            #count = megaGraph.get_edge_data(fromAssemblage,toAssemblage,'weight'
             count += 1
-            megaGraph.add_path([fromAssemblage], [toAssemblage], weight=count,
+            megaGraph.add_path([fromAssemblage, toAssemblage], weight=count,
                                distance=distance, color=number,
                                size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
 
-            graphs[graphCount].add_path([fromAssemblage], [toAssemblage],
-                                        xy1=(xAssemblage[fromAssemblage], yAssemblage[fromAssemblage]),
-                                        xy2=(xAssemblage[toAssemblage], yAssemblage[toAssemblage]),
-                                        weight=weight,
-                                        meanDistance=distance,
-                                        size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
+            #graphs[graphCount].add_path([fromAssemblage], [toAssemblage],
+            #                            xy1=(xAssemblage[fromAssemblage], yAssemblage[fromAssemblage]),
+            #                            xy2=(xAssemblage[toAssemblage], yAssemblage[toAssemblage]),
+            #                            weight=weight,
+            #                            meanDistance=distance,
+            #                            size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
 
     plt.rcParams['text.usetex'] = False
     plt.figure(0,figsize=(8,8))
     mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
+
     pos=nx.graphviz_layout(mst,prog="neato")
     #pos=nx.spring_layout(mst,iterations=500)
     edgewidth=[]
@@ -988,9 +991,10 @@ def finalGoodbye(start,maxNodes,currentTotal):
         curses.endwin()
         curses.resetty()
         curses.nl()
+        curses.echo()
     ## determine time elapsed
     #time.sleep(5)
-    timeNow = datetime.now()
+    timeNow = time.time()
     timeElapsed = (timeNow-start).seconds
     print "Seriation complete.\r"
     print "Maximum size of seriation: %d\r" % maxNodes
@@ -1296,7 +1300,7 @@ def main():
 
     # start the clock to track how long this run takes
     global start
-    start = datetime.now()
+    start = time.time()
     logging.debug("Start time:  %s ", start)
     logging.debug("Arguments: %s", args)
     bootstrapCI=0
@@ -1312,7 +1316,7 @@ def main():
     except IOError as e:
         logging.error("Cannot open %s. Error: %s", filename, e.strerror)
         print("Cannot open %s. Error. %s ", filename, e.strerror)
-        if screenFlag:
+        if screenFlag is not None:
             curses.endwin()
             curses.resetty()
         sys.exit("Quitting due to errors.")
@@ -1342,10 +1346,20 @@ def main():
     if args['xyfile'] is not None:
         largestX,largestY,distanceBetweenAssemblages,xAssemblage,yAssemblage=openXYFile(args['xyfile'])
 
+    else:
+        for ass in assemblages:
+            xAssemblage[ass]=0.0
+            yAssemblage[ass]=0.0
+
+        allp=all_pairs(assemblages)
+        for pr in allp:
+            name = pr[0]+"*"+pr[1]
+            distanceBetweenAssemblages[name]=0
+
     ############################################################################################################
     logging.debug("Assume threshold is 1.0 unless its specified in arguments.")
     threshold=1.0
-    if args['threshold'] is not None:
+    if args['threshold'] >0 :
         threshold=args[threshold]
     logging.debug("Going to create list of valid pairs for comparisons.")
     validAssemblagesForComparisons={}
