@@ -1126,7 +1126,8 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
     sorted_pairs = sorted(edgeHash.iteritems(), key=operator.itemgetter(1))
 
     for key,value in sorted_pairs:
-        msg = key + " 1 "+ str(value)
+        ass1,ass2=key.split("*")
+        msg = ass1+"\t"+ass2+"\t" + " 1 "+ str(value) +"\n"
         OUTPAIRSFILE.write(msg)
 
     OUTFILE.write("*Tie data\nFrom To Edge Weight Network End pValue pError meanSolutionDistance\n")
