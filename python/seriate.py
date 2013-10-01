@@ -527,7 +527,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
 
             #### FIND INNER EDGE RELATIVE TO THE EXISTING END ASSEMBLAGE ##############
             #neighbors = nnetwork.neighbors(endAssemblage)
-            #path = nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"])
+            path = nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"])
             logging.debug("Seriation %d at this point: %s ", nnetwork.graph['GraphID'],path)
             logging.debug("End assemblage for this seriation: %s",endAssemblage)
             logging.debug("Which end: %d", whichEnd)
@@ -626,6 +626,8 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     logging.debug( "\t\t\t\t\t %s", nnetwork.adjacency_list())
                     xerror =0
                     ccount=0
+                    numberOfDs=0
+                    Us=0
                     for e in nnetwork.edges_iter(): ### no need to go in order -- jsut look at all the other edges to see if there is an X
                         ccount+=1
                         d = nnetwork.get_edge_data(*e)
@@ -637,13 +639,20 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
 
                         logging.debug( "\t\t\t\t#### Type %d: Here is what we get for comparison # %d ",i, ccount)  ## note that i is the current type
                         logging.debug( " \t\t\t\t\t inwardEdge - outwardEdge: %s ->  %s", comparison[i],newComparison[i])
-                        if newComparison[i] is "X": #or newComparison[i] is "U":
+                        if newComparison[i] is "X" :
                             xerror += 1  ### BLARGH a previous X or an UP ! This will not be tolerated!
                             logging.debug( "\t\t\t\t\t Since I got %s my potential new value is still X.",newComparison[i])
                             logging.debug( "\t\t\t\t\t Now going to get the continue pair of assemblages to examine in the chain")
-                            ccount +=1
+
+                        if newComparison[i] is "U":
+                            Us += 1
+                        if newComparison[i] is "D":
+                            numberOfDs += 1
+                    if numberOfDs ==0:          ## there has to be at least one "D" if the rest are Us (but Ms are okay)
+                        xerror += 1
+
                     if xerror > 0:
-                        error +=1
+                        error+=1
                         break
                     else:
                         comparisonMap += "U"
