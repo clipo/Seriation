@@ -118,7 +118,7 @@ my @assemblageNumber      = ();
 my @arrayOfSeriations     = ();
 my %assemblageFrequencies = ();
 my %assemblageValues =      ();
-my %assemblageSize = ();
+my %assemblageSize        = ();
 my @allNetworks           = ();
 my $maxnumber;
 my $count = 0;
