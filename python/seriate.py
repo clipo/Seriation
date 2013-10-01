@@ -16,6 +16,7 @@ import networkx as nx
 import traceback
 import memory
 import matplotlib.pyplot as plt
+import operator
 import time
 import os
 
@@ -952,201 +953,192 @@ def finalGoodbye(start,maxNodes,currentTotal):
     print ("Time elapsed for calculation: %d\n\r", timeElapsed)
 
 
-def output(filteredArray):
-    ########################################### OUTPUT SECTION ####################################
-$screen and $scr->at(13,1)->puts( "Now printing output file... ");
-    $screen and $scr->at(1,40)->puts("STEP: Output files...         ");
-print OUTFILE "*Node data\n";
-print OUTFILE "ID AssemblageSize X Y Easting Northing\n";
-print OUTPAIRSFILE "*Node data\n";
-print OUTPAIRSFILE "ID AssemblageSize X Y Easting Northing\n";
-print OUTDOTFILE "graph seriation \n{\n";
-print OUTDOTFILE "\n/* list of nodes */\n";
-if ($mst) {
-    print OUTBOOTSTRAPFILE "*Node data\nID AssemblageSize X Y Easting Northing\n";
-    print OUTDISTANCEFILE "*Node data\nID AssemblageSize X Y Easting Northing\n";
-}
-$count = 0;
-$screen and $scr->at(1,40)->puts("STEP: Printing list of nodes....     ");
-## note this assumes the use of UTM coordinates (northing and easting)
-foreach my $l (@labels) {
-    #print OUTFILE $l, "\n";
-    my $x = $xAssemblage{ $l }/1000000 || 0;
-    my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
-    my $easting = $xAssemblage{ $l } || 0;
-    my $northing = $yAssemblage{ $l } || 0;
-    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
-    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
-    print OUTDOTFILE "\"".$l."\";\n";
-    if ($mst){
-        print OUTBOOTSTRAPFILE  $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
-        print OUTDISTANCEFILE  $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
-    }
-}
-print OUTFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
-print OUTPAIRSFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
-if ($mst) {
-    print OUTBOOTSTRAPFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
-    print OUTDISTANCEFILE "*Node properties\nID AssemblageSize X Y Easting Northing\n";
-}
-$screen and $scr->at(1,40)->puts("STEP: Printing list of nodes attributes... ");
-foreach my $l (@labels) {
-   my $x = $xAssemblage{ $l }/1000000 || 0;
-    my $y = ($largestY-$yAssemblage{ $l })/100000 || 0;
-    my $easting = $xAssemblage{ $l } || 0;
-    my $northing = $yAssemblage{ $l } || 0;
-    print OUTFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
-    print OUTPAIRSFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
-    print OUTDOTFILE "\"".$l."\";\n";
-    if ($mst) {
-        print OUTBOOTSTRAPFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
-        print OUTDISTANCEFILE $l . " ". $assemblageSize{ $l }." ".$x." ".$y." ".$easting." ".$northing."\n";
-    }
-}
+def setupOutput(filename, pairFlag,mstFlag):
 
-## This prints out counts of the edges as they appear in ALL of the solutions
-$screen and $scr->at(1,40)->puts("STEP: Going through and counting pairs...     ");
-print OUTPAIRSFILE "*Tie data\nFrom To Edge Count\n";
-if ($mst) {
-    print OUTBOOTSTRAPFILE "*Tie data\nFrom To Edge End Weight ID\n";
-    print OUTDISTANCEFILE "*Tie data\nFrom To Edge End Weight ID\n";
-}
-## first count up all of the edges by going through the solutions and each edge
-## put the edge count in a hash of edges
-my %edgeHash=();
+    outputFile = filename[0,-4]+".vna"
+    try:
+        OUTFILE= csv.writer(outputFile,'wb' )
+    except csv.Error as e:
+        msg = "Can't open file %s to write: %s" % outputFile, e
+        sys.exit(msg)
 
-foreach my $network (@filteredarray) {
-    #print "\n\r netowrk type ", ref($network),"\n\r";
-    my @Edges;
-    if (ref($network) eq 'REF') {
-        @Edges = $$network->unique_edges;
-    } elsif ($network eq undef ) {
-        next;
-    } else {
-        @Edges = $network->unique_edges
-    }
-    my $eCount=0;
-    foreach my $e (@Edges) {
-        my $edge0 = @$e[0];
-        my $edge1 = @$e[1];
-        my $pairname= $edge0." ".$edge1;
-        $edgeHash{ $pairname }++;
-    }
-}
-## now go through the edgeHash and print out the edges
-## do this is sorted order of the counts. For fun.
-$screen and $scr->at(1,40)->puts("STEP: Doing the pair output...                ");
-foreach (sort { ($edgeHash{$b} cmp $edgeHash{$a}) || ($b cmp $a) } keys %edgeHash)  {
-    print OUTPAIRSFILE $_, " 1 ", $edgeHash{$_}, "\n";
-}
+    outpairsFile = filename[0,-4]+"-pairs.vna"
+    if pairFlag is not None:
+        try:
+            OUTPAIRSFILE= csv.writer(outpairsFile, 'wb')
+        except csv.Error as e:
+            msg = "Can't open file %s to write: %s" % outputFile, e
+            sys.exit(msg)
 
-print OUTFILE "*Tie data\nFrom To Edge Weight Network End pValue pError meanSolutionDistance\n";
-$screen and $scr->at(1,40)->puts("STEP: Eliminating duplicates...     ");
-my @uniqueArray = uniq @filteredarray;
+    outmstFile=  filename[0,-4]+"-mst.vna"
+    outmst2File = filename[0,-4]+"-mst-distance.vna"
+    
+    if mstFlag is not None:
+        try:
+            OUTMSTFILE= csv.writer(outmstFile, 'wb')
+            OUTMSTDISTANCEFILE = csv.writer(outmst2File,'wb')
+        except csv.Error as e:
+            msg = "Can't open file %s to write: %s" % outputFile, e
+            sys.exit(msg)
+            
+    return OUTFILE, OUTPAIRSFILE, OUTMSTFILE,OUTMSTDISTANCEFILE
 
-$screen and $scr->at(1,40)->puts("STEP: Printing edges...     ");
-print OUTDOTFILE "\n/* list of edges */\n";
 
-my %distanceHash=();
-my %seriationHash;
-## only print unique ones...
+    ########################################### OUTPUT SECTION ####################################################
+def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredArray,
+             OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,mstFlag,largestonlyFlag,maxEdges,xyfileFlag,pairwiseFileFlag ):
 
-foreach my $network (@uniqueArray) {
-    if (ref($network) eq 'REF') {
-        $network = $$network;
-    } elsif ($network eq undef ) {
-        next;
-    }
-    $screen and $scr->at(14,1)->puts( "Now on solution: ");
-    $screen and $scr->at(14,18)->puts($network->get_graph_attribute("GraphID") );
-    my $eCount;
+    scr.addstr(13,1, "Now printing output file... ")
+    scr.addstr(1,40,"STEP: Output files...         ")
+    OUTFILE.writerow( "*Node data")
+    OUTFILE.writerow("ID AssemblageSize X Y Easting Northing")
+    OUTPAIRSFILE.writerow("*Node data")
+    OUTPAIRSFILE.writerow("ID AssemblageSize X Y Easting Northing")
+    count = 0
+    scr.addstr(1,40,"STEP: Printing list of nodes....     ")
+    ## note this assumes the use of UTM coordinates (northing and easting)
+    for l in assemblages:
+        x = xAssemblage[l]/1000000 or 0
+        y = (largestY-yAssemblage[ l ])/100000 or 0
+        easting = xAssemblage[ l ] or 0
+        northing = yAssemblage[ l ] or 0
 
-    if ($largestonly>0) {
-        if ($network->unique_edges == $maxEdges) {
+        msg = l + " "+ str(assemblageSize[ l ])+" "+ str(x)+" "+str(y)+" "+easting+" "+northing
+        OUTFILE.writerow(msg)
+        OUTPAIRSFILE.writerow(msg)
+        if mstFlag is not None:
+            OUTMSTFILE.writerow(msg)
+            OUTMSTDISTANCEFILE.writerow(msg)
 
-            my $groupDistance=0;
-            my @Edges = $network->unique_edges;
-            my $meanDistance=0.0;
-            my $eCount=0;
-            if ($xyfile) {
-               foreach my $e (@Edges) {
-                  my $edge0 = @$e[0];
-                  my $edge1 = @$e[1];
-                  my $pairname= $edge0."*".$edge1;
-                  $groupDistance += $distanceBetweenAssemblages{ $pairname };
-                  $eCount++;
-               }
-               $meanDistance = $groupDistance/$eCount;      ## use the average for the group for now
-               #print "\n\rMean distance for this group is: ", $meanDistance, "\n\r";
-               $network->set_graph_attribute("meanDistance", $meanDistance);
-            } else {
-                $meanDistance="0";
-                $network->set_graph_attribute("meanDistance", "0");
-            }
-            my $text;
-            foreach my $e (@Edges) {
-               my $edge0 = @$e[0];
-               my $edge1 = @$e[1];
-               my ($pVal, $pErr);
-                if ( $pairwiseFile ) {
-                    my $pairname= $edge0."#".$edge1;
-                    $pVal = $pairwise{ $pairname };
-                    $pErr = $pairwiseError{ $pairname };
-                } else {
-                    $pVal = 0.0;
-                    $pErr = 0.0;
-                }
-                print OUTDOTFILE "\"",@$e[0], "\""," -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight(@$e[0], @$e[1]),"\" ];\n";
-                $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
-                print OUTFILE $text, " ", $meanDistance, "\n";
-            }
-            $network->set_graph_attribute("meanDistance", $meanDistance);
-            $distanceHash{ $network->get_graph_attribute("GraphID") }= $meanDistance;
-            $seriationHash{ $network->get_graph_attribute("GraphID") }->{'meanDistance'}= $meanDistance;
-            $seriationHash{ $network->get_graph_attribute("GraphID") }->{'ID'}=$network->get_graph_attribute("GraphID");
-            $seriationHash{ $network->get_graph_attribute("GraphID") }->{'size'}=scalar(@Edges);
-        }
-    } else {  ## not just the largest, but ALL seriation solutions
+    OUTFILE.writerow("*Node properties\nID AssemblageSize X Y Easting Northing\n")
+    OUTPAIRSFILE.writerow("*Node properties\nID AssemblageSize X Y Easting Northing\n")
+    if mstFlag is not None:
+        OUTMSTFILE.writerow("*Node properties\nID AssemblageSize X Y Easting Northing\n")
+        OUTMSTDISTANCEFILE.writerow("*Node properties\nID AssemblageSize X Y Easting Northing\n")
 
-        my @Edges = $network->unique_edges;
-        my $groupDistance=0;
-        my $meanDistance=0.0;
-        my $eCount=0;
-        my $text;
-        if ($xyfile) {
-           foreach my $e (@Edges) {
-              my $edge0 = @$e[0];
-              my $edge1 = @$e[1];
-              my $pairname= $edge0."*".$edge1;
-              $groupDistance += $distanceBetweenAssemblages{ $pairname };
-              $eCount++;
-           }
-           $meanDistance = $groupDistance/$eCount;         ##use the average distance as the metric
-        } else {
-           $meanDistance = "0";
-        }
-        foreach my $e (@Edges) {
-           my $edge0 = @$e[0];
-           my $edge1 = @$e[1];
-           my ($pVal, $pErr);
-            if ( $pairwiseFile ) {
-                my $pairname= $edge0."#".$edge1;
-                $pVal = $pairwise{ $pairname };
-                $pErr = $pairwiseError{ $pairname };
-            } else {
-                $pVal = 0.0;
-                $pErr = 0.0;
-            }
-            print OUTDOTFILE "\"", @$e[0],"\"", " -- ", "\"", @$e[1], "\"", " [weight = \"", $network->get_edge_weight($edge0, $edge1),"\" ];\n";
-            $text = @$e[0]. " ". @$e[1]." 1 ".scalar(@Edges). " ". $network->get_graph_attribute("GraphID"). " ". $network->get_edge_attribute(@$e[0], @$e[1], "End")." ". $pVal." ". $pErr;
-            print OUTFILE $text, " ", $meanDistance, "\n";
-        }
+    scr.addstr(1,40,"STEP: Printing list of nodes attributes... ")
+    for l in assemblages:
+        x = xAssemblage[l]/1000000 or 0
+        y = (largestY-yAssemblage[l])/100000 or 0
+        easting = xAssemblage[l] or 0
+        northing = yAssemblage[l] or 0
+        msg = l +" "+ assemblageSize[ l]+" "+x+" "+y+" "+easting+" "+northing
+        OUTFILE.writerow(msg)
+        OUTPAIRSFILE.writerow(msg)
+        if mstFlag is not None:
+            OUTMSTFILE.writerow( msg )
+            print OUTMSTDISTANCEFILE.writerow(msg)
 
-        $network->set_graph_attribute("meanDistance", $meanDistance);
-        $distanceHash{ $text }= $meanDistance;
-        $seriationHash{ $network->get_graph_attribute("GraphID") }->{'meanDistance'}= $meanDistance;
-        $seriationHash{ $network->get_graph_attribute("GraphID") }->{'ID'}=$network->get_graph_attribute("GraphID");
-        $seriationHash{ $network->get_graph_attribute("GraphID") }->{'size'}=scalar(@Edges);
+    ## This prints out counts of the edges as they appear in ALL of the solutions
+    scr.addstr(1,40,"STEP: Going through and counting pairs...     ")
+    OUTPAIRSFILE.writerow("*Tie data\nFrom To Edge Count\n")
+    if mstFlag is not None:
+        OUTMSTFILE.writerow( "*Tie data\nFrom To Edge End Weight ID")
+        OUTMSTDISTANCEFILE.writerow("*Tie data\nFrom To Edge End Weight ID")
+
+    ## first count up all of the edges by going through the solutions and each edge
+    ## put the edge count in a hash of edges
+    edgeHash={}
+
+    for network in filteredArray:
+        for e in network.edges_iter(): ### no need to go in order -- jsut look at all the other edges to see if there is an X
+            pairname= e[0]+" "+e[1]
+            edgeHash[ pairname ] += 1
+    ## now go through the edgeHash and print out the edges
+    ## do this is sorted order of the counts. For fun.
+    scr.addstr(1,40,"STEP: Doing the pair output...                ")
+    sorted_pairs = sorted(edgeHash.iteritems(), key=operator.itemgetter(1))
+
+    for key,value in sorted_pairs:
+        msg = key + " 1 "+ str(value)
+        OUTPAIRSFILE.writerow(msg)
+
+    OUTFILE.writerow("*Tie data\nFrom To Edge Weight Network End pValue pError meanSolutionDistance")
+    scr.addstr(1,40,"STEP: Eliminating duplicates...     ")
+    uniqueArray = set(filteredArray)
+
+    scr.addstr(1,40,"STEP: Printing edges...     ")
+
+    distanceHash={}
+    seriationHash ={}
+    ## only print unique ones...
+
+    pairwise=[]
+    pairwiseError=[]
+    for network in uniqueArray:
+        scr.addstr(14,1, "Now on solution: ")
+        scr.addstr(14,18,network["GraphID"] )
+
+
+        if largestonlyFlag>0:
+            if len(network.edges()) == maxEdges:
+                groupDistance=0
+                edgeCount = len(network.edges())
+                meanDistance=0.0
+                eCount=0
+                if xyfileFlag is not None:
+                    for e in network.edges_iter():
+                        pairname= e[0]+"*"+e[1]
+                        groupDistance += distanceBetweenAssemblages[ pairname ]
+                        eCount += 1
+
+                    meanDistance = groupDistance/eCount      ## use the average for the group for now
+                    #print "\n\rMean distance for this group is: ", meanDistance, "\n\r"
+                    network["meanDistance"]= meanDistance
+                else:
+                    meanDistance="0"
+                    network["meanDistance"]= "0"
+
+                for e in network.edges_iter():
+                    pVal=0.0
+                    pErr=0.0
+                    d = e.get
+                    if pairwiseFileFlag is not None:
+                        pairname= e[0]+"#"+e[1]
+                        pVal = pairwise[ pairname ]
+                        pErr = pairwiseError[pairname]
+
+                    text = e[0]+" "+e[1]+" 1 "+str(edgeCount)+ " "+network["GraphID"]+ " "+e[0]+ " End "+pVal+" "+ pErr + " " +meanDistance
+                    OUTFILE.writerow(text)
+
+                network['meanDistance'] = meanDistance
+                distanceHash[ network["GraphID"] ]= meanDistance
+                seriationHash[ network["GraphID"] ]['meanDistance']= meanDistance
+                seriationHash[ network["GraphID"] ]['ID']=network["GraphID"]
+                seriationHash[ network["GraphID"] ]['size']=edgeCount
+        else:  ## not just the largest, but ALL seriation solutions
+            edgeCount = len(network.edges())
+            groupDistance=0
+            meanDistance=0.0
+            eCount=0
+            if xyfileFlag is not None:
+                for e in network.edges_iter():
+                  pairname= e[0]+"*"+e[1]
+                  groupDistance += distanceBetweenAssemblages[ pairname ]
+                  eCount += 1
+
+                meanDistance = groupDistance/eCount         ##use the average distance as the metric
+            else:
+                meanDistance = "0"
+
+            for e in network.edges_iter():
+                pVal=0.0
+                pErr=0.0
+                if pairwiseFileFlag is not None:
+                    pairname= e[0]+"#"+e[1]
+                    pVal = pairwise[ pairname ]
+                    pErr = pairwiseError[ pairname ]
+                else:
+                    pVal = 0.0
+                    pErr = 0.0
+                text = e[0]+ " "+ e[1]+" 1 "+str(edgeCount)+ " "+ network["GraphID"]+ " "+  pVal+" "+ pErr+ " "+meanDistance
+                OUTFILE.writerow(text)
+
+            network["meanDistance"]=meanDistance
+            distanceHash[ text] = meanDistance
+            seriationHash[network["GraphID"] ]['meanDistance']= meanDistance
+            seriationHash[network["GraphID"] ]['ID']=network["GraphID"]
+            seriationHash[network["GraphID"] ]['size']=edgeCount
 
 
 
@@ -1185,6 +1177,7 @@ def main():
     global scr
     global screenFlag
     screenFlag=0
+    pairFlag=0
     if args['screen'] is not None:
         screenFlag=1
         ## Set up the screen display (default).
@@ -1239,6 +1232,7 @@ def main():
     logging.debug("Going to open pairwise file it is exists.")
     if args['pairwiseFile'] is not None:
         openPairwiseFile(args['pairwiseFile'])
+        pairFlag = 1
 
     ############################################################################################################
     logging.debug("Going to open XY file if it exists.")
@@ -1266,6 +1260,10 @@ def main():
         bootstrapCI = 1
         typeFrequencyLowerCI, typeFrequencyUpperCI = bootstrapCICalculation(assemblages, assemblageSize, 1000,
                                                                             args['bootstrapSignificance'])
+
+    ###########################################################################################################
+    ### setup the output files. Do this now so that if it fails, its not AFTER all the seriation stuff
+    OUTPUT,OUTPAIRSFILE=setupOutput(filename, pairFlag)
 
     ###########################################################################################################
     logging.debug("Now precalculating all the combinations between pairs of assemblages. ")
@@ -1348,7 +1346,7 @@ def main():
 
     ###########################################################################################################
     if len(networks):
-        print "\n\r\n\r\n\r\n\r\n\rNo solutions Found!!\n\r";
+        print "\n\r\n\r\n\r\n\r\n\rNo solutions Found!!\n\r"
         finalGoodbye(start,maxNodes,currentTotal)
 
     ###########################################################################################################
@@ -1376,12 +1374,12 @@ def main():
                 if len(minus)== 0:
                     exists += 1
         if exists >0:
-             ##print "pushing $fnetwork to list\n\r";
+             ##print "pushing fnetwork to list\n\r"
              filteredarray.append(solutions[i])
 
         logging.debug("End with %d solutions.", len(filteredarray))
         filterCount= len(filteredarray)
-        scr.addstr(11,1,"End with $filterCount solutions.")
+        scr.addstr(11,1,"End with filterCount solutions.")
     elif args['allsolutions'] is not None:
         filteredarray = solutions  ## all possible networks
     else:
