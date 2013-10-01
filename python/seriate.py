@@ -366,6 +366,7 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
             c = scr.getch()
             if c == ord('q'):
                 curses.endwin()
+                curses.resetty()
                 sys.exit("Quitting as requested.\n\r")
         logging.debug("Triple test: %s * %s * %s", permu[0],permu[1],permu[2])
 
@@ -520,6 +521,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                 c = scr.getch()
                 if c == ord('q'):
                     curses.endwin()
+                    curses.resetty()
                     sys.exit("Quitting as requested.\n\r")
 
             ## now see if the test assemblages fits on the end.
@@ -984,6 +986,7 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
 def finalGoodbye(start,maxNodes,currentTotal):
     if screenFlag >0:
         curses.endwin()
+        curses.resetty()
     ## determine time elapsed
     #time.sleep(5)
     timeNow = datetime.now()
@@ -1280,6 +1283,7 @@ def main():
             curses.echo()
             curses.nocbreak()
             curses.endwin()
+            curses.resetty()
             traceback.print_exc()           # Print the exception
 
     ##################################################################################################
@@ -1309,6 +1313,7 @@ def main():
         print("Cannot open %s. Error. %s ", filename, e.strerror)
         if screenFlag:
             curses.endwin()
+            curses.resetty()
         sys.exit("Quitting due to errors.")
 
     ############################################################################################################
