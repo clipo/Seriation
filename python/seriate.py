@@ -1145,7 +1145,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
     for network in uniqueArray:
         if screenFlag:
             scr.addstr(14,1, "Now on solution: ")
-            scr.addstr(14,18,network["GraphID"] )
+            scr.addstr(14,18,network.graph["GraphID"] )
             #print "now on solution: ", network["GraphID"],"\n"
 
         if largestonlyFlag>0:
