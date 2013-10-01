@@ -908,8 +908,8 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
     plt.figure(0,figsize=(8,8))
     mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
 
-    pos=nx.graphviz_layout(mst,prog="neato")
-    #pos=nx.spring_layout(mst,iterations=500)
+    #pos=nx.graphviz_layout(mst,prog="neato")
+    pos=nx.spring_layout(mst,iterations=500)
     edgewidth=[]
     weights = nx.get_edge_attributes(mst, 'weight')
     for w in weights:
@@ -967,8 +967,8 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
     #UU=nx.disjoint_union_all(nlist) # union the nonisomorphic graphs
     #pos=nx.spring_layout(UU,iterations=50)
 
-    ##pos=nx.graphviz_layout(UU,prog="neato")
-    pos=nx.graphviz_layout(UU,prog="twopi",root=0)
+    pos=nx.graphviz_layout(UU,prog="/Volumes/Macintosh HD/usr/local/bin/neato")
+    #pos=nx.graphviz_layout(UU,prog="twopi",root=0)
     ##labels=nx.draw_networkx_labels(UU,pos)
     # color nodes the same in each connected subgraph
     C=nx.connected_component_subgraphs(UU)
