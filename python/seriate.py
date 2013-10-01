@@ -86,7 +86,7 @@ def openFile(filename):
         assemblageSize[ label ]= rowtotal
         countOfAssemblages +=1
 
-    return countOfAssemblages, assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses
+    return len(assemblages), assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses
 
 def preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFrequencyLowerCI):
     logging.debug("Precalculating the comparisons between all pairs of assemblages...")
@@ -139,7 +139,6 @@ def preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFre
                     comparison +=  "M"
                 if dif1 == 0:
                     comparison +=  "U"
-
             logging.debug( "Type %d: - comparison is: %s  a score of: %d",i, comparison[i], dif1)
 
         logging.debug("Comparison for %s and %s is: %s ",pair[0],pair[1],comparison)
@@ -427,6 +426,7 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
                 if dif2 == 0:
                     difscore2 = 0
             logging.debug("Difscore2 (between ass2 and ass3:  %d", difscore2)
+
             if difscore == 1 and difscore2 == 1:     # F1 > F2 < F3  criteria not met
                 error += 1
                 continue
@@ -439,19 +439,19 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
             elif difscore == -1  and difscore2 == 1:   # F1 < F2 < F3
                 comparison12 += "D"
                 comparison23 += "U"
-            elif difscore == 0  and  difscore2 == 1  :
+            elif difscore == 0  and  difscore2 == 1  :  #F1 = F2 < F3 OK
                 comparison12 += "M"
                 comparison23 += "U"
-            elif difscore == 1 and  difscore2 == 0  :
+            elif difscore == 1 and  difscore2 == 0  :   #F1 > F2 = F3 OK
                 comparison12 += "U"
                 comparison23 += "M"
-            elif   difscore == 0  and  difscore2 == -1  :
+            elif   difscore == 0  and  difscore2 == -1  :#F1 = F2 > F3 OK
                 comparison12 += "M"
                 comparison23 += "D"
-            elif   difscore == -1  and  difscore2 == 0  :
+            elif   difscore == -1  and  difscore2 == 0  : #F1 < F2 = F3 OK
                 comparison12 += "D"
                 comparison23 += "M"
-            elif   difscore == 0  and  difscore2 == 0  :
+            elif   difscore == 0  and  difscore2 == 0  : #F1 = F2 = F3 OK
                 comparison12 += "M"
                 comparison23 += "M"
             else:
@@ -461,21 +461,23 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
                 sys.exit()
 
             logging.debug("Comparison12: %s Comparison23: %s", comparison12,comparison23)
-
         if error == 0:
             # uses NetworkX
             net = nx.Graph(name=numberOfTriplets, GraphID=numberOfTriplets,End1=permu[0],End2=permu[2])
-
             net.add_node(permu[0], name=permu[0], site="end", end=1, connectedTo=permu[1] )
             net.add_node(permu[1], name=permu[1], site="middle", end=0, connectedTo="middle")
             net.add_node(permu[2], name=permu[2], site="end", end=1, connectedTo=permu[1])
+            net.add_edge(permu[1], permu[0],weight=comparison12, GraphID=numberOfTriplets,end=1)
+            net.add_edge(permu[0], permu[1],weight=comparison12, GraphID=numberOfTriplets,end=1)
+            net.add_edge(permu[1], permu[2],weight=comparison23, GraphID=numberOfTriplets,end=1)
+            net.add_edge(permu[2], permu[1],weight=comparison23, GraphID=numberOfTriplets,end=1)
+            logging.debug("VALID TRIPLE SOLUTION: %s * %s * %s " , permu[0],permu[1], permu[2])
+            logging.debug("VALID TRIPLE SOLUTION: %s  <--->   %s", comparison12, comparison23)
+            logging.debug("VALID TRIPLE SOLUTION: %s ", net.adjacency_list())
+            path = nx.shortest_path(net, source=permu[0], target=permu[2])
+            logging.debug("VALID TRIPLE SOLUTION: Ends are: %s and %s",permu[0],permu[2])
+            logging.debug("VALID TRIPLE SOLUTION: Shortest Path: %s ", path)
 
-            net.add_path([permu[0], permu[1]],weight=comparison12, GraphID=numberOfTriplets,end=1)
-            net.add_path([permu[2], permu[1]],weight=comparison23, GraphID=numberOfTriplets,end=1)
-
-            logging.debug("VALID SOLUTION: %s * %s * %s " , permu[0],permu[1], permu[2])
-            logging.debug("VALID SOLUTION: %s  <--->   %s", comparison12, comparison23)
-            logging.debug("VALID SOLUTION: %s ", net.adjacency_list())
             triples.append( net )
             numberOfTriplets += 1
             logging.debug("Current number of triplets: %d", numberOfTriplets)
@@ -489,55 +491,74 @@ def filter_list(full_list, excludes):
 
 def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForComparisons,assemblages,typeFrequencyLowerCI, typeFrequencyUpperCI, bootstrapCI,solutionCount):
 
-    logging.debug(" ######################Starting Seriation ######################################")
+    logging.debug(" ######################Starting check for solution %s with %s nodes ######################################",nnetwork.graph['GraphID'],len(nnetwork))
     if screenFlag > 0:
-        scr.addstr(1,40, "STEP: Adding to seriations ....      ")
+        scr.addstr(1,40, "STEP: Testing for addition to seriation ....      ")
         scr.refresh()
 
     whichEnd = 0
-    logging.debug("The end of assemblages of network are: %s and %s", nnetwork.graph["End1"] , nnetwork.graph["End2"])
+    logging.debug("The end of assemblages of network %d are: %s and %s", nnetwork.graph['GraphID'], nnetwork.graph["End1"] , nnetwork.graph["End2"])
     logging.debug("Network:  %s", nnetwork.adjacency_list())
+    path = nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"])
+    logging.debug("Seriation %d to evaluate: Shortest Path: %s ", nnetwork.graph['GraphID'], path)
 
     new_network=nx.Graph()
-    for endAssemblage in (nnetwork.graph["End1"],nnetwork.graph['End2']):
+    #for endAssemblage in (nnetwork.graph["End1"],nnetwork.graph['End2']):
+    for endAssemblage in (path[0],path[len(path)-1]):
+        logging.debug(">>>>>> Checking ends of seriation %d ..%s %s now on %s", nnetwork.graph['GraphID'], path[0],path[len(path)-1],endAssemblage)
         whichEnd += 1 ## either a 1 or a 2
         list1 = validAssemblagesForComparisons[ endAssemblage ]
         list2 = nnetwork.nodes()
         validAssemblages = list(filter_list(list1, list2))
+        logging.debug("The list of valid comparative assemblages for %s is %s",endAssemblage,validAssemblages)
         for testAssemblage in validAssemblages:
+            logging.debug(">>>>>Now checking %s to see if we can be put next to %s",testAssemblage,endAssemblage)
             if screenFlag >0:
-                msg = "Checking %s against %s." % (testAssemblage, endAssemblage)
+                msg = "Now checking %s against %s." % (testAssemblage, endAssemblage)
                 scr.addstr(3,0, msg)
                 scr.refresh()
-
                 c = scr.getch()
                 if c == ord('q'):
                     curses.endwin()
                     sys.exit("Quitting as requested.\n\r")
-            # We dont want to include the assemblage twice or anything already in network
-            if testAssemblage in nnetwork.nodes():
-                continue
 
             ## now see if the test assemblages fits on the end.
-            logging.debug("\t\tChecking assemblage %s to see if it fits on the end of the current solution.", testAssemblage )
+            logging.debug("Checking assemblage %s to see if it fits on the end of the current solution.", testAssemblage )
 
             #### FIND INNER EDGE RELATIVE TO THE EXISTING END ASSEMBLAGE ##############
-            neighbors = nnetwork.neighbors(endAssemblage)
-            if len(neighbors) > 1 or len(neighbors)==0:
-                print "\r\n\r\n\r\nThere are too many or too few neighbors (should only be 1!). Error!\n\r"
+            #neighbors = nnetwork.neighbors(endAssemblage)
+            #path = nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"])
+            logging.debug("Seriation %d at this point: %s ", nnetwork.graph['GraphID'],path)
+            logging.debug("End assemblage for this seriation: %s",endAssemblage)
+            logging.debug("Which end: %d", whichEnd)
+            neighbors = None
+            if endAssemblage == nnetwork.graph["End1"]:
+                neighbors=path[1]
+                logging.debug("End1 Neighbor: %s", neighbors)
+            elif endAssemblage == nnetwork.graph["End2"]:
+                neighbors=path[len(path)-2]
+                logging.debug("End2 Neighbor: %s", neighbors)
+            else: ## sanity check
+                print "\r\n\r\n\r\nSomething is wrong finding the next assemblage over.. Error!\n\r"
                 print "\r\nWe are testing endAssemblage: %s "% endAssemblage
                 print "\r\n with neighbors:", neighbors
                 print "For this network:  ", nnetwork.adjacency_list()
                 #print nx.write_adjlist(nnetwork,sys.stdout) # write adjacency list to screen
                 sys.exit("Quitting due to errors.")
-
-            logging.debug( "\t\t\t The number of neighbors at endAssemblage is %d (should be just one).", len(neighbors))
-            logging.debug( "\t\t\tThere should be just 1 neighbor to endAssemblage and that is: %s", neighbors[0])
-            c = pairGraph.get_edge_data(neighbors[0],endAssemblage )
+            ## Sanity check
+            if neighbors is None:
+                print "\r\n\r\n\r\nSomething is wrong finding the next assemblage over.. Error!\n\r"
+                print "\r\nWe are testing endAssemblage: %s "% endAssemblage
+                print "\r\n with neighbor:", neighbors
+                print "For this network:  ", nnetwork.adjacency_list()
+                #print nx.write_adjlist(nnetwork,sys.stdout) # write adjacency list to screen
+                sys.exit("Quitting due to errors.")
+            logging.debug( "\t\t\tThere should be just 1 neighbor to %s and that is: %s", endAssemblage, neighbors )
+            c = pairGraph.get_edge_data(neighbors,endAssemblage )
             comparison=c['weight']
             n = pairGraph.get_edge_data(endAssemblage, testAssemblage )
             newComparison=n['weight']
-
+            logging.debug( "\t\t\tComparison of the ends with one inward assembalge: %s", comparison)
             ##########################################################################
             comparisonMap =""
             oneToColumns=range(len(assemblages[testAssemblage]))
@@ -601,13 +622,14 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     logging.debug( "\t\t\t\t#### Type %d: Got a difscore of 1 and a comparison of a M. This could be okay.", i)
                     logging.debug( "\t\t\t\tType %d:   Matching case A (1, M)", i)
                     logging.debug( "\t\t\t\tThis will only work if there no Xs anywhere previously OR if the opposite end doesnt ALSO go up!")
+                    logging.debug( "\t\t\t\tValues here are %f and %f",assemblages[testAssemblage][i],assemblages[endAssemblage][i])
                     logging.debug( "\t\t\t\t\t %s", nnetwork.adjacency_list())
                     xerror =0
                     ccount=0
                     for e in nnetwork.edges_iter(): ### no need to go in order -- jsut look at all the other edges to see if there is an X
                         ccount+=1
                         d = nnetwork.get_edge_data(*e)
-                        logging.debug( "\t\t\t\t\ Now on %s => weight: %s",e,d['weight'])
+                        logging.debug( "\t\t\t\t Now on %s => weight: %s",e,d['weight'])
                         newComparison = d['weight']
                         if newComparison[i] is None:
                             print "Comparison is empty. Error! Stopping.\n\r\n\r"
@@ -615,7 +637,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
 
                         logging.debug( "\t\t\t\t#### Type %d: Here is what we get for comparison # %d ",i, ccount)  ## note that i is the current type
                         logging.debug( " \t\t\t\t\t inwardEdge - outwardEdge: %s ->  %s", comparison[i],newComparison[i])
-                        if newComparison[i] is "X" or newComparison[i] is "U":
+                        if newComparison[i] is "X": #or newComparison[i] is "U":
                             xerror += 1  ### BLARGH a previous X or an UP ! This will not be tolerated!
                             logging.debug( "\t\t\t\t\t Since I got %s my potential new value is still X.",newComparison[i])
                             logging.debug( "\t\t\t\t\t Now going to get the continue pair of assemblages to examine in the chain")
@@ -778,7 +800,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     print "\t\t\t\tHere is the comparison value: %s " % comparison[i]
                     sys.exit("Quitting due to errors.")
 
-                logging.debug( "\t\t\t\t#### Type %d:  Errors so far error")
+                logging.debug( "\t\t\t\t#### Type %d:  Errors so far error", error)
 
             logging.debug("Checked out %s. Found %d errors.", testAssemblage, error)
             if error == 0:
@@ -786,9 +808,13 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                 logging.debug( "Original network: %s ", nnetwork.adjacency_list())
                 logging.debug( "New comparison map is: %s ", comparisonMap)
                 #first make a copy
-
-                new_network = nnetwork.to_directed()
+                new_network = nnetwork.copy()
                 new_network.graph["GraphID"]= solutionCount + 1
+                logging.debug( "Here's the new network (befre addition): %s", new_network.adjacency_list())
+                logging.debug("Ends of the seriation %d (before): %s and %s - %d",nnetwork.graph['GraphID'],nnetwork.graph["End1"],nnetwork.graph["End2"], whichEnd )
+                path = nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"])
+                logging.debug(" New network shortest path (before): %s ", path)
+
                 ## now add to this *new one*
                 new_network.add_node(testAssemblage, name=testAssemblage,end=1,site="end")
                 ## mark this vertice as the new "END"
@@ -796,16 +822,24 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                 new_network.add_node(endAssemblage, name=endAssemblage,site="middle", end=0)
                 #### This adds the comparison to the new edge that has been added.
                 new_network.add_path( [testAssemblage, endAssemblage], weight=comparisonMap, end=1, site="end", GraphID=solutionCount )
+                logging.debug("Ends of the seriation %d (before): %s and %s - %d",nnetwork.graph['GraphID'], nnetwork.graph["End1"],nnetwork.graph["End2"], whichEnd )
                 if whichEnd==1:
                     new_network.graph["End1"]=testAssemblage
                     whichEnd += 1
                 else:
                     new_network.graph["End2"]=testAssemblage
                     whichEnd = 0
-
-                logging.debug( "Here's the new network (with addition): %s", new_network.adjacency_list())
+                logging.debug("Ends of the seriation %s (after): %s and %s - %d",new_network.graph['GraphID'],new_network.graph["End1"],new_network.graph["End2"], whichEnd )
+                logging.debug( "Here's the new network %s (with addition): %s", new_network.graph['GraphID'], new_network.adjacency_list())
+                path = nx.shortest_path(new_network, new_network.graph["End1"] , new_network.graph["End2"])
+                logging.debug("New network %d shortest path (after): %s ", new_network.graph['GraphID'], path)
                 ## copy this solution to the new array of networks
-                logging.debug( "----------------#############-------END CHECK LOOP---------#############-----------------" )
+
+
+
+        logging.debug( "----------------#############-------End of check for %s ---------#############-----------------",nnetwork.graph["GraphID"])
+        logging.debug("------ %s -------", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
+        logging.debug("------------------------------------------------------------------------------------------------")
 
     if len(new_network.nodes())>0:
         return new_network
@@ -942,7 +976,7 @@ def finalGoodbye(start,maxNodes,currentTotal):
     if screenFlag >0:
         curses.endWin()
     ## determine time elapsed
-    time.sleep(5)
+    #time.sleep(5)
     timeNow = datetime.now()
     timeElapsed = (timeNow-start).seconds
     print "Seriation complete."
@@ -1067,9 +1101,13 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
     edgeHash={}
 
     for network in filteredArray:
-        for e in network.edges_iter(): ### no need to go in order -- jsut look at all the other edges to see if there is an X
-            pairname= e[0]+" "+e[1]
+        for e in network.edges_iter(): ### no need to go in order -- just look at all the other edges to see if there is an X
+            pairname= e[0]+"*"+e[1]
+            edgeHash[ pairname ] = 0
+        for e in network.edges_iter(): ### no need to go in order -- just look at all the other edges to see if there is an X
+            pairname= e[0]+"*"+e[1]
             edgeHash[ pairname ] += 1
+
     ## now go through the edgeHash and print out the edges
     ## do this is sorted order of the counts. For fun.
     if screenFlag:
@@ -1092,10 +1130,9 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
     distanceHash={}
     seriationHash ={}
     ## only print unique ones...
-    pairwise=[]
-    pairwiseError=[]
+    pairwise={}
+    pairwiseError={}
     for network in uniqueArray:
-
         if screenFlag:
             scr.addstr(14,1, "Now on solution: ")
             scr.addstr(14,18,network["GraphID"] )
@@ -1133,15 +1170,15 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
                     OUTFILE.write(text)
                 network['meanDistance'] = meanDistance
                 distanceHash[ network["GraphID"] ]= meanDistance
-                seriationHash[ network["GraphID"] ]['meanDistance']= meanDistance
-                seriationHash[ network["GraphID"] ]['ID']=network["GraphID"]
-                seriationHash[ network["GraphID"] ]['size']=edgeCount
+                #seriationHash[ network["GraphID"] ]['meanDistance']= meanDistance
+                #seriationHash[ network["GraphID"] ]['ID']=network["GraphID"]
+                #seriationHash[ network["GraphID"] ]['size']=edgeCount
         else:  ## not just the largest, but ALL seriation solutions
             edgeCount = len(network.edges())
             groupDistance=0
             meanDistance=0.0
             eCount=0
-            if xyfileFlag is not None:
+            if xyfileFlag > 0:
                 for e in network.edges_iter():
                   pairname= e[0]+"*"+e[1]
                   groupDistance += distanceBetweenAssemblages[ pairname ]
@@ -1149,27 +1186,35 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
                 meanDistance = groupDistance/eCount         ##use the average distance as the metric
             else:
                 meanDistance = "0"
+
+            ## initialize ashes
+            for e in network.edges_iter():
+                pairname= e[0]+"#"+e[1]
+                pairwise[ pairname ] = 0
+                pairwiseError[ pairname ] = 0
+
             for e in network.edges_iter():
                 pVal=0.0
                 pErr=0.0
                 print "e0: ", e[0],"\n"
                 print "e1: ", e[1],"\n"
-                if pairwiseFileFlag is not None:
+                if pairwiseFileFlag >0 :
                     pairname= e[0]+"#"+e[1]
                     pVal = pairwise[ pairname ]
                     pErr = pairwiseError[ pairname ]
                 else:
                     pVal = 0.0
                     pErr = 0.0
-                text = e[0]+ " "+ e[1]+" 1 "+str(edgeCount)+ " "+ network["GraphID"]+ " "+\
+
+                text = e[0]+ " "+ e[1]+" 1 "+str(edgeCount)+ " "+ str(network.graph["GraphID"])+ " "+\
                        str(pVal)+" "+ str(pErr)+ " "+str(meanDistance)+"\n"
                 OUTFILE.write(text)
 
-            network["meanDistance"]=meanDistance
+            network.graph["meanDistance"]=meanDistance
             distanceHash[ text] = meanDistance
-            seriationHash[network["GraphID"] ]['meanDistance']= meanDistance
-            seriationHash[network["GraphID"] ]['ID']=network["GraphID"]
-            seriationHash[network["GraphID"] ]['size']=edgeCount
+            #seriationHash[network.graph["GraphID"] ]['meanDistance']= meanDistance
+            #seriationHash[network.graph["GraphID"] ]['ID']=network["GraphID"]
+            #seriationHash[network.graph["GraphID"] ]['size']=edgeCount
 
 def main():
     mem=memory.Memory()
@@ -1319,7 +1364,7 @@ def main():
 
     ###########################################################################################################
     stepcount = 0
-    currentMaxSeriationSize = 3
+    currentMaxSeriationSize = 2
     newNetworks=[]
     solutionCount=len(triples)
     maxNodes=3
@@ -1327,15 +1372,31 @@ def main():
     solutions=[]
 
     while currentMaxSeriationSize <= maxSeriationSize:
-        currentMaxSeriationSize += 1
         ### first time through copy the triples, else get the previous new ones.
-        if currentMaxSeriationSize==4:
+        #print "current step: ", currentMaxSeriationSize
+
+        if currentMaxSeriationSize==2:  ## first time through. Just copy the triples to the working arrays
             networks = triples
+            #print "Number of triples:", len(triples)
             solutions = triples     # clear the
+
         else:
-            networks = newNetworks  # copy the array of previous new ones for this round
-            newNetworks=[]          # clear the array of new solutions
-            solutions += newNetworks  # append the new list to the previous one
+            if len(newNetworks) == 0:  ## if we didnt get any new solutions the last round.
+                break
+            else:
+                i =0
+                logging.debug("Current solution set at step %d", currentMaxSeriationSize)
+                for g in newNetworks:
+                    logging.debug("Solution: %d - %s ", i, g.nodes())
+                    i += 1
+                networks = newNetworks  # copy the array of previous new ones for this round
+                newNetworks=[]          # clear the array of new solutions
+                solutions += newNetworks  # append the new list to the previous one
+                #print "Number of new Networks:", len(newNetworks)
+
+        currentMaxSeriationSize += 1
+        #print "Number of networks:", len(networks)
+        #print "Number of solutions:", len(solutions)
 
         stepcount += 1
         logging.debug("_______________________________________________________________________________________")
@@ -1356,7 +1417,7 @@ def main():
         ## look through the set of existing valid networks.
         for nnetwork in networks:
             logging.debug("-----------------------------------------------------------------------------------")
-            logging.debug("Network: %s", nnetwork.adjacency_list())
+            logging.debug("Network: %s", nnetwork.nodes())
             logging.debug("-----------------------------------------------------------------------------------")
             ## find the ends
             ## given the ends, find the valid set of assemblages that can be potentially added
@@ -1373,6 +1434,7 @@ def main():
                     maxNodes = len(validNewNetwork.nodes())
                 currentTotal = len(newNetworks)
 
+
         if screenFlag > 0:
             msg = "Current Max Nodes:  %d " % maxNodes
             scr.addstr(6, 0, msg)
@@ -1385,14 +1447,21 @@ def main():
             scr.addstr(9, 0, msg)
             scr.refresh()
 
-    ###########################################################################################################
-    if len(networks):
-        print "\n\r\n\r\n\r\n\r\n\rNo solutions Found!!\n\r"
-        finalGoodbye(start,maxNodes,currentTotal)
+    end_solution=[]
+    if len(newNetworks)>0:
+        end_solutions = newNetworks
+    else:
+        end_solutions = networks
+    logging.debug("Process complete at seriation size %d with %d solutions.",maxSeriationSize,len(end_solutions))
+
+        ###########################################################################################################
+        #if len(networks):
+        #    print "\n\r\n\r\n\r\n\r\n\rNo solutions Found!!\n\r"
+        #    finalGoodbye(start,maxNodes,currentTotal)
 
     ###########################################################################################################
     if args['mst'] is not None:
-        minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,filename)
+        minimumSpanningTree(end_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,filename)
 
     if args['largestonly'] is not None:
         largestonlyFlag = 1
@@ -1427,7 +1496,7 @@ def main():
     elif args['allsolutions'] is not None:
         filteredarray = solutions  ## all possible networks
     else:
-        filteredarray = newNetworks ## just the largest ones (from the last round)
+        filteredarray = end_solutions ## just the largest ones (from the last round)
 
 
     #################################################### OUTPUT SECTION ####################################################
