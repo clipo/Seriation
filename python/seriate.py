@@ -18,6 +18,7 @@ import memory
 import matplotlib.pyplot as plt
 import operator
 import time
+from datetime import datetime
 import os
 
 # start prettyprint (python Dumper)
@@ -804,7 +805,6 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
 
                 logging.debug( "Here's the new network (with addition): %s", new_network.adjacency_list())
                 ## copy this solution to the new array of networks
-
                 logging.debug( "----------------#############-------END CHECK LOOP---------#############-----------------" )
 
     if len(new_network.nodes())>0:
@@ -938,50 +938,46 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
     plt.savefig("atlas.png",dpi=250)
     plt.show() # display
 
-
 def finalGoodbye(start,maxNodes,currentTotal):
     if screenFlag >0:
         curses.endWin()
-
     ## determine time elapsed
+    time.sleep(5)
     timeNow = datetime.now()
     timeElapsed = (timeNow-start).seconds
+    print "Seriation complete."
+    print "Maximum size of seriation: %d" % maxNodes
+    print "Number of solutions at last step: %d" % currentTotal
+    print "Time elapsed for calculation: %d" % timeElapsed
 
-    print ("\n\rSeriation complete.\n\r")
-    print ("Maximum size of seriation: %d \n\r", maxNodes)
-    print ("Number of solutions at last step: %d \n\r",currentTotal)
-    print ("Time elapsed for calculation: %d\n\r", timeElapsed)
-
-
-def setupOutput(filename, pairFlag,mstFlag):
-
-    outputFile = filename[0,-4]+".vna"
+def setupOutput(filename, pairwiseFlag,mstFlag):
+    outputFile = filename[0:-4]+".vna"
     try:
-        OUTFILE= csv.writer(outputFile,'wb' )
+        OUTFILE = open(outputFile, 'w')
     except csv.Error as e:
         msg = "Can't open file %s to write: %s" % outputFile, e
         sys.exit(msg)
 
-    outpairsFile = filename[0,-4]+"-pairs.vna"
-    if pairFlag is not None:
+    outpairsFile = filename[0:-4]+"-pairs.vna"
+    if pairwiseFlag is not None:
         try:
-            OUTPAIRSFILE= csv.writer(outpairsFile, 'wb')
+            OUTPAIRSFILE = open(outpairsFile, 'w')
         except csv.Error as e:
             msg = "Can't open file %s to write: %s" % outputFile, e
             sys.exit(msg)
 
-    outmstFile=  filename[0,-4]+"-mst.vna"
-    outmst2File = filename[0,-4]+"-mst-distance.vna"
+    outmstFile=  filename[0:-4] + "-mst.vna"
+    outmst2File = filename[0:-4] + "-mst-distance.vna"
     
     if mstFlag is not None:
         try:
-            OUTMSTFILE= csv.writer(outmstFile, 'wb')
-            OUTMSTDISTANCEFILE = csv.writer(outmst2File,'wb')
+            OUTMSTFILE = open(outmstFile, 'w')
+            OUTMSTDISTANCEFILE = open(outmst2File, 'w')
         except csv.Error as e:
             msg = "Can't open file %s to write: %s" % outputFile, e
             sys.exit(msg)
             
-    return OUTFILE, OUTPAIRSFILE, OUTMSTFILE,OUTMSTDISTANCEFILE
+    return OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE
 
 #################################################### sort by multiple keys ####################################################
 def multikeysort(items, columns):
@@ -998,55 +994,73 @@ def multikeysort(items, columns):
 
 #################################################### OUTPUT SECTION ####################################################
 def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredArray,
-             OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,mstFlag,largestonlyFlag,maxEdges,xyfileFlag,pairwiseFileFlag ):
-
-    scr.addstr(13,1, "Now printing output file... ")
-    scr.addstr(1,40,"STEP: Output files...         ")
-    OUTFILE.writerow( "*Node data")
-    OUTFILE.writerow("ID AssemblageSize X Y Easting Northing")
-    OUTPAIRSFILE.writerow("*Node data")
-    OUTPAIRSFILE.writerow("ID AssemblageSize X Y Easting Northing")
+             OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,mstFlag,largestonlyFlag,maxEdges,xyfileFlag,pairwiseFileFlag):
+    if screenFlag:
+        scr.addstr(13,1, "Now printing output file... ")
+        scr.addstr(1,40,"STEP: Output files...         ")
+        scr.refresh()
+    OUTFILE.write( "*Node data\n")
+    OUTFILE.write("ID AssemblageSize X Y Easting Northing\n")
+    OUTPAIRSFILE.write("*Node data\n")
+    OUTPAIRSFILE.write("ID AssemblageSize X Y Easting Northing\n")
     count = 0
-    scr.addstr(1,40,"STEP: Printing list of nodes....     ")
+    if screenFlag:
+        scr.addstr(1,40,"STEP: Printing list of nodes....     ")
+        scr.refresh()
     ## note this assumes the use of UTM coordinates (northing and easting)
     for l in assemblages:
-        x = xAssemblage[l]/1000000 or 0
-        y = (largestY-yAssemblage[ l ])/100000 or 0
-        easting = xAssemblage[ l ] or 0
-        northing = yAssemblage[ l ] or 0
+        x = 0
+        y = 0
+        northing = 0
+        easting = 0
+        if xyfileFlag:
+            x = xAssemblage[l]/1000000
+            y = (largestY-yAssemblage[ l ])/100000
+            easting = xAssemblage[ l ]
+            northing = yAssemblage[ l ]
 
-        msg = l + " "+ str(assemblageSize[ l ])+" "+ str(x)+" "+str(y)+" "+easting+" "+northing
-        OUTFILE.writerow(msg)
-        OUTPAIRSFILE.writerow(msg)
+        msg = l + " "+ str(assemblageSize[ l ])+" "+ str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
+        OUTFILE.write(msg)
+        OUTPAIRSFILE.write(msg)
         if mstFlag is not None:
-            OUTMSTFILE.writerow(msg)
-            OUTMSTDISTANCEFILE.writerow(msg)
+            OUTMSTFILE.write(msg)
+            OUTMSTDISTANCEFILE.write(msg)
 
-    OUTFILE.writerow("*Node properties\nID AssemblageSize X Y Easting Northing\n")
-    OUTPAIRSFILE.writerow("*Node properties\nID AssemblageSize X Y Easting Northing\n")
+    OUTFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
+    OUTPAIRSFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
+
     if mstFlag is not None:
-        OUTMSTFILE.writerow("*Node properties\nID AssemblageSize X Y Easting Northing\n")
-        OUTMSTDISTANCEFILE.writerow("*Node properties\nID AssemblageSize X Y Easting Northing\n")
+        OUTMSTFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
+        OUTMSTDISTANCEFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
 
-    scr.addstr(1,40,"STEP: Printing list of nodes attributes... ")
+    if screenFlag:
+        scr.addstr(1,40,"STEP: Printing list of nodes attributes... ")
+        scr.refresh()
     for l in assemblages:
-        x = xAssemblage[l]/1000000 or 0
-        y = (largestY-yAssemblage[l])/100000 or 0
-        easting = xAssemblage[l] or 0
-        northing = yAssemblage[l] or 0
-        msg = l +" "+ assemblageSize[ l]+" "+x+" "+y+" "+easting+" "+northing
-        OUTFILE.writerow(msg)
-        OUTPAIRSFILE.writerow(msg)
+        easting = 0
+        northing = 0
+        x = 0
+        y = 0
+        if xyfileFlag:
+            x = xAssemblage[l]/1000000
+            y = (largestY-yAssemblage[l])/100000
+            easting = xAssemblage[l]
+            northing = yAssemblage[l]
+        msg = l +" "+ str(assemblageSize[ l])+" "+str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
+        OUTFILE.write(msg)
+        OUTPAIRSFILE.write(msg)
         if mstFlag is not None:
-            OUTMSTFILE.writerow( msg )
-            print OUTMSTDISTANCEFILE.writerow(msg)
+            OUTMSTFILE.write( msg )
+            print OUTMSTDISTANCEFILE.write(msg)
 
     ## This prints out counts of the edges as they appear in ALL of the solutions
-    scr.addstr(1,40,"STEP: Going through and counting pairs...     ")
-    OUTPAIRSFILE.writerow("*Tie data\nFrom To Edge Count\n")
+    if screenFlag:
+        scr.addstr(1,40,"STEP: Going through and counting pairs...     ")
+        scr.refresh()
+    OUTPAIRSFILE.write("*Tie data\nFrom To Edge Count\n")
     if mstFlag is not None:
-        OUTMSTFILE.writerow( "*Tie data\nFrom To Edge End Weight ID")
-        OUTMSTDISTANCEFILE.writerow("*Tie data\nFrom To Edge End Weight ID")
+        OUTMSTFILE.write( "*Tie data\nFrom To Edge End Weight ID\n")
+        OUTMSTDISTANCEFILE.write("*Tie data\nFrom To Edge End Weight ID\n")
 
     ## first count up all of the edges by going through the solutions and each edge
     ## put the edge count in a hash of edges
@@ -1058,28 +1072,35 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
             edgeHash[ pairname ] += 1
     ## now go through the edgeHash and print out the edges
     ## do this is sorted order of the counts. For fun.
-    scr.addstr(1,40,"STEP: Doing the pair output...                ")
+    if screenFlag:
+        scr.addstr(1,40,"STEP: Doing the pair output...                ")
+        scr.refresh()
+
     sorted_pairs = sorted(edgeHash.iteritems(), key=operator.itemgetter(1))
 
     for key,value in sorted_pairs:
         msg = key + " 1 "+ str(value)
-        OUTPAIRSFILE.writerow(msg)
+        OUTPAIRSFILE.write(msg)
 
-    OUTFILE.writerow("*Tie data\nFrom To Edge Weight Network End pValue pError meanSolutionDistance")
-    scr.addstr(1,40,"STEP: Eliminating duplicates...     ")
+    OUTFILE.write("*Tie data\nFrom To Edge Weight Network End pValue pError meanSolutionDistance\n")
+    if screenFlag:
+        scr.addstr(1,40,"STEP: Eliminating duplicates...     ")
+        scr.addstr(1,40,"STEP: Printing edges...     ")
+        scr.refresh()
+
     uniqueArray = set(filteredArray)
-
-    scr.addstr(1,40,"STEP: Printing edges...     ")
-
     distanceHash={}
     seriationHash ={}
     ## only print unique ones...
-
     pairwise=[]
     pairwiseError=[]
     for network in uniqueArray:
-        scr.addstr(14,1, "Now on solution: ")
-        scr.addstr(14,18,network["GraphID"] )
+
+        if screenFlag:
+            scr.addstr(14,1, "Now on solution: ")
+            scr.addstr(14,18,network["GraphID"] )
+            print "now on solution: ", network["GraphID"],"\n"
+
         if largestonlyFlag>0:
             if len(network.edges()) == maxEdges:
                 groupDistance=0
@@ -1107,8 +1128,9 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
                         pairname= e[0]+"#"+e[1]
                         pVal = pairwise[ pairname ]
                         pErr = pairwiseError[pairname]
-                    text = e[0]+" "+e[1]+" 1 "+str(edgeCount)+ " "+network["GraphID"]+ " "+e[0]+ " End "+pVal+" "+ pErr + " " +meanDistance
-                    OUTFILE.writerow(text)
+                    text = e[0]+" "+e[1]+" 1 "+str(edgeCount)+ " "+network["GraphID"]+ " "\
+                            +e[0]+ " End "+str(pVal)+" "+ str(pErr) + " " +str(meanDistance)+"\n"
+                    OUTFILE.write(text)
                 network['meanDistance'] = meanDistance
                 distanceHash[ network["GraphID"] ]= meanDistance
                 seriationHash[ network["GraphID"] ]['meanDistance']= meanDistance
@@ -1130,6 +1152,8 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
             for e in network.edges_iter():
                 pVal=0.0
                 pErr=0.0
+                print "e0: ", e[0],"\n"
+                print "e1: ", e[1],"\n"
                 if pairwiseFileFlag is not None:
                     pairname= e[0]+"#"+e[1]
                     pVal = pairwise[ pairname ]
@@ -1137,8 +1161,9 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
                 else:
                     pVal = 0.0
                     pErr = 0.0
-                text = e[0]+ " "+ e[1]+" 1 "+str(edgeCount)+ " "+ network["GraphID"]+ " "+  pVal+" "+ pErr+ " "+meanDistance
-                OUTFILE.writerow(text)
+                text = e[0]+ " "+ e[1]+" 1 "+str(edgeCount)+ " "+ network["GraphID"]+ " "+\
+                       str(pVal)+" "+ str(pErr)+ " "+str(meanDistance)+"\n"
+                OUTFILE.write(text)
 
             network["meanDistance"]=meanDistance
             distanceHash[ text] = meanDistance
@@ -1146,11 +1171,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
             seriationHash[network["GraphID"] ]['ID']=network["GraphID"]
             seriationHash[network["GraphID"] ]['size']=edgeCount
 
-
-
-
 def main():
-
     mem=memory.Memory()
     parser = argparse.ArgumentParser(description='Conduct seriation analysis')
     parser.add_argument('--debug')
@@ -1163,15 +1184,14 @@ def main():
     parser.add_argument('--threshold')
     parser.add_argument('--noscreen')
     parser.add_argument('--xyfile')
-    parser.add_argument('--pairwiseFile')
+    parser.add_argument('--pairwisefile')
     parser.add_argument('--mst')
     parser.add_argument('--stats')
     parser.add_argument('--nosum')
     parser.add_argument('--screen')
-    parser.add_argument('--allSolutions')
+    parser.add_argument('--allsolutions')
     parser.add_argument('--memusage')
     parser.add_argument('--inputfile')
-    parser.add_argument('--mst')
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
@@ -1179,11 +1199,11 @@ def main():
         sys.exit()
 
     ##################################################################################################
-
     global scr
     global screenFlag
     screenFlag=0
-    pairFlag=0
+    pairwiseFlag=0
+    mstFlag=0
     if args['screen'] is not None:
         screenFlag=1
         ## Set up the screen display (default).
@@ -1216,7 +1236,7 @@ def main():
 
     # start the clock to track how long this run takes
     global start
-    start = datetime.now().time()
+    start = datetime.now()
     logging.debug("Start time:  %s ", start)
     logging.debug("Arguments: %s", args)
     bootstrapCI=0
@@ -1229,22 +1249,35 @@ def main():
     try:
         logging.debug("Going to try to open and load: %s", filename)
         maxSeriationSize, assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses = openFile(filename)
-    except IOError, msg:
-        logging.error("Cannot open %s. Error: %s", filename, msg)
-        print("Cannot open %s. Error. %s " % filename, msg)
+    except IOError as e:
+        logging.error("Cannot open %s. Error: %s", filename, e.strerror)
+        print("Cannot open %s. Error. %s ", filename, e.strerror)
+        if screenFlag:
+            curses.endwin()
         sys.exit("Quitting due to errors.")
 
     ############################################################################################################
+    if args['largestonly'] is not None:
+        largestonlyFlag=1
+
+    if args['xyfile'] is not None:
+        xyfileFlag=1
+
+    ############################################################################################################
     logging.debug("Going to open pairwise file it is exists.")
-    if args['pairwiseFile'] is not None:
-        openPairwiseFile(args['pairwiseFile'])
-        pairFlag = 1
+    if args['pairwisefile'] is not None:
+        openPairwiseFile(args['pairwisefile'])
+        pairwiseFlag = 1
 
     ############################################################################################################
     logging.debug("Going to open XY file if it exists.")
     largestX=0
     largestY=0
     distanceBetweenAssemblages={}
+    xAssemblage={}
+    yAssemblage={}
+    largestonlyFlag=0
+    xyfileFlag=0
     if args['xyfile'] is not None:
         largestX,largestY,distanceBetweenAssemblages,xAssemblage,yAssemblage=openXYFile(args['xyfile'])
 
@@ -1266,10 +1299,12 @@ def main():
         bootstrapCI = 1
         typeFrequencyLowerCI, typeFrequencyUpperCI = bootstrapCICalculation(assemblages, assemblageSize, 1000,
                                                                             args['bootstrapSignificance'])
+    if args['mst'] is not None:
+        mstFlag=1
 
     ###########################################################################################################
     ### setup the output files. Do this now so that if it fails, its not AFTER all the seriation stuff
-    OUTPUT,OUTPAIRSFILE=setupOutput(filename, pairFlag)
+    OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE=setupOutput(filename,pairwiseFlag,mstFlag)
 
     ###########################################################################################################
     logging.debug("Now precalculating all the combinations between pairs of assemblages. ")
@@ -1359,6 +1394,9 @@ def main():
     if args['mst'] is not None:
         minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,filename)
 
+    if args['largestonly'] is not None:
+        largestonlyFlag = 1
+
     ################################################# FILTERING  ####################################
     # now do some weeding. Basically start with the first network that is the largest, and work backwards. Ignore any
     # network that is already represented in the smaller ones since these are trivial (e.g., A->B->C->D already covers
@@ -1370,7 +1408,7 @@ def main():
         if screenFlag:
             scr.addstr(1,40,"STEP: Filter to get uniques... ")
         logging.debug("---Filtering solutions so we only end up with the unique ones.")
-        logging.debug("----Start with % solutions.", len(solutions))
+        logging.debug("---Start with % solutions.", len(solutions))
         for i in range(0,len(solutions),-1):
             exists=0
             for tnetwork in filteredarray:
@@ -1389,11 +1427,12 @@ def main():
     elif args['allsolutions'] is not None:
         filteredarray = solutions  ## all possible networks
     else:
-        filteredarray = networks ## just the largest ones (from the last round)
+        filteredarray = newNetworks ## just the largest ones (from the last round)
 
 
-
-
+    #################################################### OUTPUT SECTION ####################################################
+    output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredarray,
+             OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,mstFlag,largestonlyFlag,maxNodes,xyfileFlag,pairwiseFlag)
 
     ## say goodbye
     finalGoodbye(start,maxNodes,currentTotal)
