@@ -988,10 +988,10 @@ def finalGoodbye(start,maxNodes,currentTotal):
     #time.sleep(5)
     timeNow = datetime.now()
     timeElapsed = (timeNow-start).seconds
-    print "Seriation complete."
-    print "Maximum size of seriation: %d" % maxNodes
-    print "Number of solutions at last step: %d" % currentTotal
-    print "Time elapsed for calculation: %d" % timeElapsed
+    print "Seriation complete.\r"
+    print "Maximum size of seriation: %d\r" % maxNodes
+    print "Number of solutions at last step: %d\r" % currentTotal
+    print "Time elapsed for calculation: %d\r" % timeElapsed
 
 def setupOutput(filename, pairwiseFlag,mstFlag):
     outputFile = filename[0:-4]+".vna"
