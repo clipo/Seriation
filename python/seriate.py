@@ -987,6 +987,7 @@ def finalGoodbye(start,maxNodes,currentTotal):
     if screenFlag >0:
         curses.endwin()
         curses.resetty()
+        curses.nl()
     ## determine time elapsed
     #time.sleep(5)
     timeNow = datetime.now()
@@ -994,7 +995,7 @@ def finalGoodbye(start,maxNodes,currentTotal):
     print "Seriation complete.\r"
     print "Maximum size of seriation: %d\r" % maxNodes
     print "Number of solutions at last step: %d\r" % currentTotal
-    print "Time elapsed for calculation: %d\r" % timeElapsed
+    print "Time elapsed for calculation: %d seconds\r" % timeElapsed
 
 def setupOutput(filename, pairwiseFlag,mstFlag):
     outputFile = filename[0:-4]+".vna"
