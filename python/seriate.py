@@ -1092,9 +1092,9 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
         msg = l +" "+ str(assemblageSize[ l])+" "+str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
         OUTFILE.write(msg)
         OUTPAIRSFILE.write(msg)
-        if mstFlag is not None:
+        if mstFlag >0:
             OUTMSTFILE.write( msg )
-            print OUTMSTDISTANCEFILE.write(msg)
+            OUTMSTDISTANCEFILE.write(msg)
 
     ## This prints out counts of the edges as they appear in ALL of the solutions
     if screenFlag:
@@ -1145,7 +1145,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
         if screenFlag:
             scr.addstr(14,1, "Now on solution: ")
             scr.addstr(14,18,network["GraphID"] )
-            print "now on solution: ", network["GraphID"],"\n"
+            #print "now on solution: ", network["GraphID"],"\n"
 
         if largestonlyFlag>0:
             if len(network.edges()) == maxEdges:
@@ -1205,8 +1205,8 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
             for e in network.edges_iter():
                 pVal=0.0
                 pErr=0.0
-                print "e0: ", e[0],"\n"
-                print "e1: ", e[1],"\n"
+                #print "e0: ", e[0],"\n"
+                #print "e1: ", e[1],"\n"
                 if pairwiseFileFlag >0 :
                     pairname= e[0]+"#"+e[1]
                     pVal = pairwise[ pairname ]
