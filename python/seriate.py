@@ -1453,7 +1453,7 @@ def main():
             scr.addstr(8, 43, "                                           ")
             msg = "Number of seriation solutions at this step: %d" % currentTotal
             scr.addstr(8, 0, msg)
-            msg = "Memory used: %d         ", mem.memory()
+            msg = "Memory used:        " + str(mem.memory())
             scr.addstr(9, 0, msg)
             scr.refresh()
 
