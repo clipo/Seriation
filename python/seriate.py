@@ -983,7 +983,7 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
 
 def finalGoodbye(start,maxNodes,currentTotal):
     if screenFlag >0:
-        curses.endWin()
+        curses.endwin()
     ## determine time elapsed
     #time.sleep(5)
     timeNow = datetime.now()
@@ -1279,7 +1279,7 @@ def main():
             scr.keypad(0)
             curses.echo()
             curses.nocbreak()
-            curses.endwin()
+            curses.endwin()curses.endwin()
             traceback.print_exc()           # Print the exception
 
     ##################################################################################################
