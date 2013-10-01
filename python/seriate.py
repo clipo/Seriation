@@ -1279,7 +1279,7 @@ def main():
             scr.keypad(0)
             curses.echo()
             curses.nocbreak()
-            curses.endwin()curses.endwin()
+            curses.endwin()
             traceback.print_exc()           # Print the exception
 
     ##################################################################################################
