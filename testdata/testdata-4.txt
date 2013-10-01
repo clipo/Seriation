@@ -1,0 +1,4 @@
+Assemblage-1	0	53	3	44
+Assemblage-2	0	45	5	50
+Assemblage-3	5	30	20	45
+Assemblage-4	20	10	30	40
