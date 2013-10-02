@@ -506,9 +506,14 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
     for endAssemblage in (path[0],path[len(path)-1]):
         logging.debug(">>>>>> Checking ends of seriation %d ..%s %s now on %s", nnetwork.graph['GraphID'], path[0],path[len(path)-1],endAssemblage)
         whichEnd += 1 ## either a 1 or a 2
+
         list1 = validAssemblagesForComparisons[ endAssemblage ]
         list2 = nnetwork.nodes()
+        logging.debug("List 1: %s", list1)
+        logging.debug("List 2: %s", list2)
+
         validAssemblages = list(filter_list(list1, list2))
+        logging.debug("Valid assemblages: %s", validAssemblages)
         logging.debug("The list of valid comparative assemblages for %s is %s",endAssemblage,validAssemblages)
         for testAssemblage in validAssemblages:
             logging.debug(">>>>>Now checking %s to see if we can be put next to %s",testAssemblage,endAssemblage)
@@ -838,19 +843,19 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                 ## mark the interior vertice as not "END
                 new_network.add_node(endAssemblage, name=endAssemblage,site="middle", end=0)
                 #### This adds the comparison to the new edge that has been added.
-                new_network.add_path( [testAssemblage, endAssemblage], weight=comparisonMap, end=1, site="end", GraphID=solutionCount )
-                logging.debug("Ends of the seriation %d (before): %s and %s - %d",nnetwork.graph['GraphID'], nnetwork.graph["End1"],nnetwork.graph["End2"], whichEnd )
-
-                logging.debug("Ends of the seriation %s (after): %s and %s - %d",new_network.graph['GraphID'],new_network.graph["End1"],new_network.graph["End2"], whichEnd )
-                logging.debug( "Here's the new network %s (with addition): %s", new_network.graph['GraphID'], new_network.adjacency_list())
-                path = nx.shortest_path(new_network, new_network.graph["End1"] , new_network.graph["End2"])
-                logging.debug("New network %d shortest path (after): %s ", new_network.graph['GraphID'], path)
-                ## copy this solution to the new array of networks
+                new_network.add_edge( testAssemblage, endAssemblage, weight=comparisonMap, end=1, site="end", GraphID=solutionCount )
+                logging.debug("Ends of the seriation %d (before): %s and %s - %d",new_network.graph['GraphID'], new_network.graph["End1"],new_network.graph["End2"], whichEnd )
 
                 if whichEnd==1:
                     new_network.graph["End1"]=testAssemblage
                 else:
                     new_network.graph["End2"]=testAssemblage
+
+                logging.debug("Ends of the seriation %s (after): %s and %s - %d",new_network.graph['GraphID'],new_network.graph["End1"],new_network.graph["End2"], whichEnd )
+                logging.debug("Here's the new network %s (with addition): %s", new_network.graph['GraphID'], new_network.adjacency_list())
+                path = nx.shortest_path(new_network, new_network.graph["End1"] , new_network.graph["End2"])
+                logging.debug("New network %d shortest path (after): %s ", new_network.graph['GraphID'], path)
+                ## copy this solution to the new array of networks
 
         if whichEnd==1:
             whichEnd += 1
