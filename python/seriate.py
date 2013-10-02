@@ -399,11 +399,12 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
                 else:
                     difscore = 0
             else:    #if the bootstrapCI is not being used
+                    ## go from right to left (ass 1 <-> ass2)
                 dif1 = ass1 - ass2
                 if ass1 < ass2:
-                    difscore = 1
-                if ass1 > ass2:
                     difscore = -1
+                if ass1 > ass2:
+                    difscore = 1
                 if ass1 == ass2:
                     difscore = 0
             logging.debug("Difscore between ass1 and ass2:  %d", difscore)
@@ -421,13 +422,13 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
                     difscore = 0
             else:          ## if the bootstrapCI is not being used
                 if ass2 > ass3:
-                    difscore2 = -1
-                if ass2 < ass3:
                     difscore2 = 1
+                if ass2 < ass3:
+                    difscore2 = -1
                 if ass2 == ass3:
                     difscore2 = 0
             logging.debug("Difscore2 between ass2 and ass3:  %d", difscore2)
-
+            ## compare from right to left.... (ass2 <-> ass3)
             if difscore == 1 and difscore2 == 1:     # F1 > F2 > F3  criteria not met
                 comparison12 += "U"
                 comparison23 += "U"
@@ -575,6 +576,8 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                 logging.debug( "\t\tComparing Assemblage: %s  and    Assemblage: %s  ########",testAssemblage,endAssemblage)
                 logging.debug( "\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,i,i,i,i,i,i)
                 logging.debug( "\t\t\t\tType %d:  testAssemblage 1: %d  endAssemblage 2: %d ", i, newassemblage[i],oldassemblage[i])
+
+                ### assume right to left ( testAssemblage <-> endAssemblage )
                          ##  COMBINATIONS of VALUES
                            #   dif      comparison      result  comparisonMap
                            #   1        U             okay      U
@@ -603,21 +606,13 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     else:
                         difscore = 0
 
-                else:
-                    if whichEnd==1:
-                        if newassemblage[i] < oldassemblage[i]:
-                            difscore = 1
-                        if newassemblage[i] > oldassemblage[i]:
-                            difscore = -1
-                        if newassemblage[i] == oldassemblage[i]:
-                            difscore = 0
-                    else:
-                        if newassemblage[i] < oldassemblage[i]:
-                            difscore = -1
-                        if newassemblage[i] > oldassemblage[i]:
-                            difscore = 1
-                        if newassemblage[i] == oldassemblage[i]:
-                            difscore = 0
+                else:   ## go from right to left
+                    if newassemblage[i] < oldassemblage[i]:
+                        difscore = -1
+                    if newassemblage[i] > oldassemblage[i]:
+                        difscore = 1
+                    if newassemblage[i] == oldassemblage[i]:
+                        difscore = 0
 
                 logging.debug( "\t\t\t\t#### Type %d: - comparison is: %s  a score of: %d",i, comparison[i], difscore)
                 #################################################################################       #### 1 U  #############
@@ -641,7 +636,6 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     Us=0
                     inward=[]
                     ## work inward
-
                     for e in nnetwork.edges_iter(): ### no need to go in order -- jsut look at all the other edges to see if there is an X
                         logging.debug("now on: %s",e)
                         d = nnetwork.get_edge_data(*e)
