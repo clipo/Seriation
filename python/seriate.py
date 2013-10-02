@@ -400,11 +400,11 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
                     difscore = 0
             else:    #if the bootstrapCI is not being used
                 dif1 = ass1 - ass2
-                if dif1 < 0:
-                    difscore = -1
-                if dif1 > 0:
+                if ass1 < ass2:
                     difscore = 1
-                if dif1 == 0:
+                if ass1 > ass2:
+                    difscore = -1
+                if ass1 == ass2:
                     difscore = 0
             logging.debug("Difscore between ass1 and ass2:  %d", difscore)
             # now compare assemblages 2 and 3
@@ -413,34 +413,32 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
                 lowerCI_2 = typeFrequencyUpperCI[ permu[1] ][i]
                 upperCI_3 = typeFrequencyUpperCI[ permu[2] ][i]
                 lowerCI_3 = typeFrequencyUpperCI[ permu[2] ][i]
-                if upperCI_2 < lowerCI_3:
+                if upperCI_3 < lowerCI_2:
                     difscore = -1
-                elif lowerCI_2 > upperCI_3:
+                elif lowerCI_3 > upperCI_2:
                     difscore = 1
                 else:
                     difscore = 0
             else:          ## if the bootstrapCI is not being used
-                dif2 = ass3 - ass2
-                if dif2 < 0:
+                if ass2 > ass3:
                     difscore2 = -1
-                if dif2 > 0:
+                if ass2 < ass3:
                     difscore2 = 1
-                if dif2 == 0:
+                if ass2 == ass3:
                     difscore2 = 0
-            logging.debug("Difscore2 (between ass2 and ass3:  %d", difscore2)
+            logging.debug("Difscore2 between ass2 and ass3:  %d", difscore2)
 
-            if difscore == 1 and difscore2 == 1:     # F1 > F2 < F3  criteria not met
-                error += 1
-                continue
-            elif difscore == 1  and difscore2 == -1:  #  F1 > F2 > F3 OK
+            if difscore == 1 and difscore2 == 1:     # F1 > F2 > F3  criteria not met
                 comparison12 += "U"
+                comparison23 += "U"
+            elif difscore == 1  and difscore2 == -1:  #  F1 > F2 < F3 BAD
+                error += 1
+            elif difscore == -1  and  difscore2 == -1: #   F1 < F2 < F3 OK
+                comparison12 += "D"
                 comparison23 += "D"
-            elif   difscore == -1  and  difscore2 == -1: #   F1 < F2 >F3 OK
+            elif difscore == -1  and difscore2 == 1:   # F1 < F2 < F3
                 comparison12 += "X"
                 comparison23 += "X"
-            elif difscore == -1  and difscore2 == 1:   # F1 < F2 < F3
-                comparison12 += "D"
-                comparison23 += "U"
             elif difscore == 0  and  difscore2 == 1  :  #F1 = F2 < F3 OK
                 comparison12 += "M"
                 comparison23 += "U"
@@ -457,7 +455,6 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
                 comparison12 += "M"
                 comparison23 += "M"
             else:
-                error += 1
                 print "\n\rNo match to our possibility of combinations. Difscore 1: %d Difscore 2: %d \n\r" % difscore,difscore2
                 print "I must quit. Debugging required.\n\r"
                 sys.exit()
@@ -465,7 +462,7 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
             logging.debug("Comparison12: %s Comparison23: %s", comparison12,comparison23)
         if error == 0:
             # uses NetworkX
-            net = nx.Graph(name=numberOfTriplets, GraphID=numberOfTriplets,End1=permu[0],End2=permu[2])
+            net = nx.Graph(name=numberOfTriplets, GraphID=numberOfTriplets,End1=permu[0],End2=permu[2],Middle=permu[1])
             net.add_node(permu[0], name=permu[0], site="end", end=1, connectedTo=permu[1] )
             net.add_node(permu[1], name=permu[1], site="middle", end=0, connectedTo="middle")
             net.add_node(permu[2], name=permu[2], site="end", end=1, connectedTo=permu[1])
@@ -595,20 +592,27 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     lowerCI_end=  typeFrequencyLowerCI[endAssemblage][i]
 
                     if upperCI_test < lowerCI_end:
-                        difscore = -1
-                    elif lowerCI_test > upperCI_end:
                         difscore = 1
+                    elif lowerCI_test > upperCI_end:
+                        difscore = -1
                     else:
                         difscore = 0
 
                 else:
-                    dif1 = newassemblage[i] - oldassemblage[i]
-                    if dif1 < 0:
-                        difscore = -1
-                    if dif1 > 0:
-                        difscore = 1
-                    if dif1 == 0:
-                        difscore = 0
+                    if whichEnd==1:
+                        if newassemblage[i] < oldassemblage[i]:
+                            difscore = 1
+                        if newassemblage[i] > oldassemblage[i]:
+                            difscore = -1
+                        if newassemblage[i] == oldassemblage[i]:
+                            difscore = 0
+                    else:
+                        if newassemblage[i] < oldassemblage[i]:
+                            difscore = -1
+                        if newassemblage[i] > oldassemblage[i]:
+                            difscore = 1
+                        if newassemblage[i] == oldassemblage[i]:
+                            difscore = 0
 
                 logging.debug( "\t\t\t\t#### Type %d: - comparison is: %s  a score of: %d",i, comparison[i], difscore)
                 #################################################################################       #### 1 U  #############
@@ -616,7 +620,6 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     comparisonMap += "U"
                     logging.debug(  "\t\t\t\t#### Type %d: Got a difscore of 1 and a comparison of a U. This works.",i)
                     logging.debug( " \t\t\t\tAdding %s to vertices %s", testAssemblage,endAssemblage)
-
                 #################################################################################           ### 1 M   #############
                 elif difscore == 1 and comparison[i] is "M":
                     # this is okay - its a match and the new value is greater. New value shoudl be U
@@ -626,52 +629,51 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     logging.debug( "\t\t\t\tType %d:   Matching case A (1, M)", i)
                     logging.debug( "\t\t\t\tThis will only work if there no Xs anywhere previously OR if the opposite end doesnt ALSO go up!")
                     logging.debug( "\t\t\t\tValues here are %f and %f",assemblages[testAssemblage][i],assemblages[endAssemblage][i])
-                    logging.debug( "\t\t\t\t\t %s", nnetwork.adjacency_list())
+                    logging.debug( "\t\t\t\t\t %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
                     xerror =0
                     ccount=0
                     numberOfDs=0
                     Us=0
+                    inward=[]
+                    ## work inward
+
                     for e in nnetwork.edges_iter(): ### no need to go in order -- jsut look at all the other edges to see if there is an X
-                        ccount+=1
+                        logging.debug("now on: %s",e)
                         d = nnetwork.get_edge_data(*e)
-                        logging.debug( "\t\t\t\t Now on %s => weight: %s",e,d['weight'])
+                        logging.debug( "\t\t\t\t Now on %s <-> %s weight: %s",e[0],e[1],d['weight'])
                         newComparison = d['weight']
                         if newComparison[i] is None:
                             print "Comparison is empty. Error! Stopping.\n\r\n\r"
                             sys.exit("Quitting due to errors.")
-
                         logging.debug( "\t\t\t\t#### Type %d: Here is what we get for comparison # %d ",i, ccount)  ## note that i is the current type
                         logging.debug( " \t\t\t\t\t inwardEdge - outwardEdge: %s ->  %s", comparison[i],newComparison[i])
                         if newComparison[i] is "X" :
-                            xerror += 1  ### BLARGH a previous X or an UP ! This will not be tolerated!
+                            error += 1  ### BLARGH a previous X or an UP ! This will not be tolerated!
                             logging.debug( "\t\t\t\t\t Since I got %s my potential new value is still X.",newComparison[i])
                             logging.debug( "\t\t\t\t\t Now going to get the continue pair of assemblages to examine in the chain")
-
-                        if newComparison[i] is "U":
+                        elif newComparison[i] is "U":
                             Us += 1
-                        if newComparison[i] is "D":
+                        elif newComparison[i] is "D":
                             numberOfDs += 1
-                    if numberOfDs ==0:          ## there has to be at least one "D" if the rest are Us (but Ms are okay)
-                        xerror += 1
+                        ccount+=1
 
-                    if xerror > 0:
-                        error+=1
-                        break
-                    else:
-                        comparisonMap += "U"
-                        logging.debug( "\t\t\t\t ####Type %d: For this type, OK to add %s to vertices %s ",i,testAssemblage,endAssemblage)
-                        logging.debug( "\t\t\t\t\t No previous X values anywhere. ")
-                        logging.debug( "\t\t\t\t Type %d: Adding an U to the comparisons.", i)
-                        logging.debug( "\t\t\t\t\t Comparison map is now comparisonMap")
+                    if numberOfDs>1:          ## there has to be at least one "D" if the rest are Us (but Ms are okay)
+                        error += 1
+
+                    logging.debug("\t\t\t\t\tErrors so far: %d",error)
+                    comparisonMap += "U"
+                    logging.debug( "\t\t\t\t ####Type %d: For this type, OK to add %s to vertices %s ",i,testAssemblage,endAssemblage)
+                    logging.debug( "\t\t\t\t\t No previous X values anywhere. ")
+                    logging.debug( "\t\t\t\t Type %d: Adding an U to the comparisons.", i)
+                    logging.debug( "\t\t\t\t\t Comparison map is now comparisonMap")
                 #################################################################################    ## 1 D   #############
                 elif difscore == 1 and comparison[i] is  "D" :
-                    ## error the new value is greater but should be less. Error!
-                    error += 1
-                    continue
+                    #continue
                     logging.debug( "\t\t\t\t####Type %d: Value 1:  %d value 2: %d", i,newassemblage[i],oldassemblage[i])
                     logging.debug( "\t\t\t\tType %d: Comparison is: %s a score of: %d  ", i, comparison[i], difscore)
-                    logging.debug( "\t\t\t\tType %d: Rejecting %s from %s", testAssemblage,endAssemblage)
+                    logging.debug( "\t\t\t\tType %d: Rejecting %s from %s", i,testAssemblage,endAssemblage)
                     logging.debug( "\t\t\t\t\t because value is 1 and comparison is D.")
+                    error += 1
                 #################################################################################     # -1 U #############
                 elif difscore == -1  and comparison[i] is  "U":
                     ## new score is less and the Comparison is up .. Error!
@@ -750,16 +752,18 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                             sys.exit("Quitting due to errors.")
                         logging.debug( "\t\t\t\t\t Since I got %s my potential new value is change.", compArray[i])
                         logging.debug( "\t\t\t\t\t Now going to continue to check pair of assemblages in the chain to look for problems.")
-
+                    logging.debug("\t\t\t\t\tPotential change is going to be: %s", potential_change)
                     ## now decide what the change should be. Here are cases:
                     ## X exists, then it must be an X, Otherwise, D
                     if "X" in potential_change:
                         change = "X"
                     else:
                         change = "D"
-
+                    logging.debug("\t\t\t\t\tThe change is going to be: %s", change)
+                    logging.debug("\t\t\t\t\tComparisonMap before: %s", comparisonMap)
                     ## in this case I dont think there are any errors possible. types can always go down from any other value
                     comparisonMap +=  change      ## use the value from above.
+                    logging.debug("\t\t\t\t\tComparisonMap before: %s", comparisonMap)
                     logging.debug( "\t\t\t\t#### Type %d: OK to add %s to vertices %s because ", i, testAssemblage, endAssemblage)
                     logging.debug( "\t\t\t\t score is -1 and the comparison is D. ComparisonMap is now %s ", comparisonMap)
                     if comparisonMap=="":
@@ -789,14 +793,15 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                 elif difscore == -1  and comparison[i] is  "X":
                     # newscore is down but comparison is X. This means that there was already a peak
                     ## this is okay since it is down from a mode peak
+                    comparisonMap += "D"
                     logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because ", i, testAssemblage, endAssemblage)
                     logging.debug( " \t\t\t\tscore is -1 and the comparison is D. ComparisonMap is now %s ", comparisonMap)
-                    comparisonMap += "D"
+
                 #################################################################################    ## 1  X #############
                 elif difscore == 1 and comparison[i] is  "X":
                     ## new score is up but comparison is X.. no cant work because past peak
                     error += 1
-                    break
+                    #break
                     logging.debug( "\t\t\t\t#### Type %d: Rejecting %s from %s]. We can't go up ", testAssemblage, endAssemblage)
                     logging.debug( " \t\t\t\t after a peak. so error. Error now error")
                 ################################################################################# ## 0  X #############
@@ -812,9 +817,9 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     print "\t\t\t\tHere is the comparison value: %s " % comparison[i]
                     sys.exit("Quitting due to errors.")
 
-                logging.debug( "\t\t\t\t#### Type %d:  Errors so far error", error)
+                logging.debug( "\t\t\t\t#### Type %d:  Errors so far error: %d", i, error)
 
-            logging.debug("Checked out %s. Found %d errors.", testAssemblage, error)
+            logging.debug("Checked out %s. Found %d total errors.", testAssemblage, error)
             if error == 0:
                 logging.debug("Found no errors!  Going to add %s to end of existing network at %s", testAssemblage, endAssemblage)
                 logging.debug( "Original network: %s ", nnetwork.adjacency_list())
@@ -835,19 +840,22 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                 #### This adds the comparison to the new edge that has been added.
                 new_network.add_path( [testAssemblage, endAssemblage], weight=comparisonMap, end=1, site="end", GraphID=solutionCount )
                 logging.debug("Ends of the seriation %d (before): %s and %s - %d",nnetwork.graph['GraphID'], nnetwork.graph["End1"],nnetwork.graph["End2"], whichEnd )
-                if whichEnd==1:
-                    new_network.graph["End1"]=testAssemblage
-                    whichEnd += 1
-                else:
-                    new_network.graph["End2"]=testAssemblage
-                    whichEnd = 0
+
                 logging.debug("Ends of the seriation %s (after): %s and %s - %d",new_network.graph['GraphID'],new_network.graph["End1"],new_network.graph["End2"], whichEnd )
                 logging.debug( "Here's the new network %s (with addition): %s", new_network.graph['GraphID'], new_network.adjacency_list())
                 path = nx.shortest_path(new_network, new_network.graph["End1"] , new_network.graph["End2"])
                 logging.debug("New network %d shortest path (after): %s ", new_network.graph['GraphID'], path)
                 ## copy this solution to the new array of networks
 
+                if whichEnd==1:
+                    new_network.graph["End1"]=testAssemblage
+                else:
+                    new_network.graph["End2"]=testAssemblage
 
+        if whichEnd==1:
+            whichEnd += 1
+        else:
+            whichEnd = 0
 
         logging.debug( "----------------#############-------End of check for %s ---------#############-----------------",nnetwork.graph["GraphID"])
         logging.debug("------ %s -------", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
@@ -995,7 +1003,7 @@ def finalGoodbye(start,maxNodes,currentTotal):
     ## determine time elapsed
     #time.sleep(5)
     timeNow = time.time()
-    timeElapsed = (timeNow-start).seconds
+    timeElapsed = timeNow-start
     print "Seriation complete.\r"
     print "Maximum size of seriation: %d\r" % maxNodes
     print "Number of solutions at last step: %d\r" % currentTotal
@@ -1417,7 +1425,7 @@ def main():
                 i =0
                 logging.debug("Current solution set at step %d", currentMaxSeriationSize)
                 for g in newNetworks:
-                    logging.debug("Solution: %d - %s ", i, g.nodes())
+                    logging.debug("Solution: %d - %s ", i, nx.shortest_path(g, g.graph["End1"] , g.graph["End2"]))
                     i += 1
                 networks = newNetworks  # copy the array of previous new ones for this round
                 newNetworks=[]          # clear the array of new solutions
@@ -1447,7 +1455,7 @@ def main():
         ## look through the set of existing valid networks.
         for nnetwork in networks:
             logging.debug("-----------------------------------------------------------------------------------")
-            logging.debug("Network: %s", nnetwork.nodes())
+            logging.debug("Network: %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
             logging.debug("-----------------------------------------------------------------------------------")
             ## find the ends
             ## given the ends, find the valid set of assemblages that can be potentially added
