@@ -463,42 +463,10 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
                 print "I must quit. Debugging required.\n\r"
                 sys.exit()
 
-#''' comment this block out for now
-#
-#            ## compare from right to left.... (ass2 <-> ass3)
-#            if difscore == 1 and difscore2 == 1:     # F1 > F2 > F3  criteria not met
-#                comparison12 += "U"
-#                comparison23 += "U"
-#            elif difscore == 1  and difscore2 == -1:  #  F1 > F2 < F3 BAD
-#                error += 1
-#            elif difscore == -1  and  difscore2 == -1: #   F1 < F2 < F3 OK
-#                comparison12 += "D"
-#                comparison23 += "D"
-#            elif difscore == -1  and difscore2 == 1:   # F1 < F2 < F3
-#                comparison12 += "X"
-#                comparison23 += "X"
-#            elif difscore == 0  and  difscore2 == 1  :  #F1 = F2 < F3 OK
-#                comparison12 += "M"
-#                comparison23 += "U"
-#            elif difscore == 1 and  difscore2 == 0  :   #F1 > F2 = F3 OK
-#                comparison12 += "U"
-#                comparison23 += "M"
-#            elif   difscore == 0  and  difscore2 == -1  :#F1 = F2 > F3 OK
-#                comparison12 += "M"
-#                comparison23 += "D"
-#            elif   difscore == -1  and  difscore2 == 0  : #F1 < F2 = F3 OK
-#                comparison12 += "D"
-#                comparison23 += "M"
-#            elif   difscore == 0  and  difscore2 == 0  : #F1 = F2 = F3 OK
-#                comparison12 += "M"
-#                comparison23 += "M"
-#            else:
-#'''
-
             logging.debug("Comparison12: %s Comparison23: %s", comparison12,comparison23)
 
         comparison = comparison12 + comparison23
-        test = re.compile('DU|DM*U').search(comparison)
+        test = re.compile('DU').search(comparison)
         if test is not None:
             error +=1
 
