@@ -385,90 +385,123 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
             ass2 = assemblages[ permu[1] ][i]
             ass3 = assemblages[ permu[2] ][i]
             logging.debug( "ass1: %f ass2: %f ass3: %f",ass1,ass2,ass3)
-            # first compare assemblages 1 and 2
-            if bootstrapCI:
-                upperCI_1 = typeFrequencyUpperCI[ assemblages[ permu[0] ] ][i]
-                lowerCI_1 = typeFrequencyUpperCI[ assemblages[ permu[0] ] ][i]
-                upperCI_2 = typeFrequencyUpperCI[ assemblages[ permu[1] ] ][i]
-                lowerCI_2 = typeFrequencyUpperCI[ assemblages[ permu[1] ] ][i]
-                dif1 = ass1 - ass2
-                if upperCI_1 < lowerCI_2:
-                    difscore = -1
-                elif lowerCI_1 > upperCI_2:
-                    difscore = 1
-                else:
-                    difscore = 0
-            else:    #if the bootstrapCI is not being used
-                    ## go from right to left (ass 1 <-> ass2)
-                dif1 = ass1 - ass2
-                if ass1 < ass2:
-                    difscore = -1
-                if ass1 > ass2:
-                    difscore = 1
-                if ass1 == ass2:
-                    difscore = 0
-            logging.debug("Difscore between ass1 and ass2:  %d", difscore)
-            # now compare assemblages 2 and 3
-            if bootstrapCI:   # boostrap confidence intervals
-                upperCI_2 = typeFrequencyUpperCI[ permu[1] ][i]
-                lowerCI_2 = typeFrequencyUpperCI[ permu[1] ][i]
-                upperCI_3 = typeFrequencyUpperCI[ permu[2] ][i]
-                lowerCI_3 = typeFrequencyUpperCI[ permu[2] ][i]
-                if upperCI_3 < lowerCI_2:
-                    difscore = -1
-                elif lowerCI_3 > upperCI_2:
-                    difscore = 1
-                else:
-                    difscore = 0
-            else:          ## if the bootstrapCI is not being used
-                if ass2 > ass3:
-                    difscore2 = 1
-                if ass2 < ass3:
-                    difscore2 = -1
-                if ass2 == ass3:
-                    difscore2 = 0
-            logging.debug("Difscore2 between ass2 and ass3:  %d", difscore2)
+            ## first compare assemblages 1 and 2
+            #if bootstrapCI:
+            #    upperCI_1 = typeFrequencyUpperCI[ assemblages[ permu[0] ] ][i]
+            #    lowerCI_1 = typeFrequencyUpperCI[ assemblages[ permu[0] ] ][i]
+            #    upperCI_2 = typeFrequencyUpperCI[ assemblages[ permu[1] ] ][i]
+            #    lowerCI_2 = typeFrequencyUpperCI[ assemblages[ permu[1] ] ][i]
+            #    dif1 = ass1 - ass2
+            #    if upperCI_1 < lowerCI_2:
+            #        difscore = -1
+            #    elif lowerCI_1 > upperCI_2:
+            #        difscore = 1
+            #    else:
+            #        difscore = 0
+            #else:    #if the bootstrapCI is not being used
+            #        ## go from right to left (ass 1 <-> ass2)
+            #    dif1 = ass1 - ass2
+            #    if ass1 < ass2:
+            #        difscore = -1
+            #    if ass1 > ass2:
+            #        difscore = 1
+            #    if ass1 == ass2:
+            #        difscore = 0
+            #logging.debug("Difscore between ass1 and ass2:  %d", difscore)
+            ## now compare assemblages 2 and 3
+            #if bootstrapCI:   # boostrap confidence intervals
+            #    upperCI_2 = typeFrequencyUpperCI[ permu[1] ][i]
+            #    lowerCI_2 = typeFrequencyUpperCI[ permu[1] ][i]
+            #    upperCI_3 = typeFrequencyUpperCI[ permu[2] ][i]
+            #    lowerCI_3 = typeFrequencyUpperCI[ permu[2] ][i]
+            #    if upperCI_3 < lowerCI_2:
+            #        difscore = -1
+            #    elif lowerCI_3 > upperCI_2:
+            #        difscore = 1
+            #    else:
+            #        difscore = 0
+            #else:          ## if the bootstrapCI is not being used
+            #    if ass2 > ass3:
+            #        difscore2 = 1
+            #    if ass2 < ass3:
+            #        difscore2 = -1
+            #    if ass2 == ass3:
+            #        difscore2 = 0
+            #logging.debug("Difscore2 between ass2 and ass3:  %d", difscore2)
 
-            ## compare from right to left.... (ass2 <-> ass3)
-            if difscore == 1 and difscore2 == 1:     # F1 > F2 > F3  criteria not met
+
+            if ass1 < ass2 < ass3:
                 comparison12 += "U"
-                comparison23 += "U"
-            elif difscore == 1  and difscore2 == -1:  #  F1 > F2 < F3 BAD
-                error += 1
-            elif difscore == -1  and  difscore2 == -1: #   F1 < F2 < F3 OK
-                comparison12 += "D"
                 comparison23 += "D"
-            elif difscore == -1  and difscore2 == 1:   # F1 < F2 < F3
+            elif ass1 < ass2 > ass3:
                 comparison12 += "X"
                 comparison23 += "X"
-            elif difscore == 0  and  difscore2 == 1  :  #F1 = F2 < F3 OK
-                comparison12 += "M"
-                comparison23 += "U"
-            elif difscore == 1 and  difscore2 == 0  :   #F1 > F2 = F3 OK
+            elif ass1 < ass2 == ass3:
                 comparison12 += "U"
                 comparison23 += "M"
-            elif   difscore == 0  and  difscore2 == -1  :#F1 = F2 > F3 OK
-                comparison12 += "M"
+            elif ass1 > ass2 < ass3:
+                error += 1
+            elif ass1 > ass2 > ass3:
+                comparison12 += "U"
                 comparison23 += "D"
-            elif   difscore == -1  and  difscore2 == 0  : #F1 < F2 = F3 OK
+            elif ass1 > ass2 == ass3:
                 comparison12 += "D"
                 comparison23 += "M"
-            elif   difscore == 0  and  difscore2 == 0  : #F1 = F2 = F3 OK
+            elif ass1 == ass2 == ass3:
                 comparison12 += "M"
                 comparison23 += "M"
+            elif ass1 == ass2 > ass3:
+                comparison12 += "M"
+                comparison23 += "U"
+            elif ass1 == ass3 < ass3:
+                comparison12 += "M"
+                comparison23 += "D"
             else:
                 print "\n\rNo match to our possibility of combinations. Difscore 1: %d Difscore 2: %d \n\r" % difscore,difscore2
                 print "I must quit. Debugging required.\n\r"
                 sys.exit()
 
+#''' comment this block out for now
+#
+#            ## compare from right to left.... (ass2 <-> ass3)
+#            if difscore == 1 and difscore2 == 1:     # F1 > F2 > F3  criteria not met
+#                comparison12 += "U"
+#                comparison23 += "U"
+#            elif difscore == 1  and difscore2 == -1:  #  F1 > F2 < F3 BAD
+#                error += 1
+#            elif difscore == -1  and  difscore2 == -1: #   F1 < F2 < F3 OK
+#                comparison12 += "D"
+#                comparison23 += "D"
+#            elif difscore == -1  and difscore2 == 1:   # F1 < F2 < F3
+#                comparison12 += "X"
+#                comparison23 += "X"
+#            elif difscore == 0  and  difscore2 == 1  :  #F1 = F2 < F3 OK
+#                comparison12 += "M"
+#                comparison23 += "U"
+#            elif difscore == 1 and  difscore2 == 0  :   #F1 > F2 = F3 OK
+#                comparison12 += "U"
+#                comparison23 += "M"
+#            elif   difscore == 0  and  difscore2 == -1  :#F1 = F2 > F3 OK
+#                comparison12 += "M"
+#                comparison23 += "D"
+#            elif   difscore == -1  and  difscore2 == 0  : #F1 < F2 = F3 OK
+#                comparison12 += "D"
+#                comparison23 += "M"
+#            elif   difscore == 0  and  difscore2 == 0  : #F1 = F2 = F3 OK
+#                comparison12 += "M"
+#                comparison23 += "M"
+#            else:
+#'''
+
             logging.debug("Comparison12: %s Comparison23: %s", comparison12,comparison23)
+
         if error == 0:
             # uses NetworkX
             net = nx.Graph(name=numberOfTriplets, GraphID=numberOfTriplets, End1=permu[0], End2=permu[2], Middle=permu[1])
             net.add_node(permu[0], name=permu[0], site="end", end=1, connectedTo=permu[1] )
             net.add_node(permu[1], name=permu[1], site="middle", end=0, connectedTo="middle")
             net.add_node(permu[2], name=permu[2], site="end", end=1, connectedTo=permu[1])
-            net.add_edge(permu[1], permu[0],weight=comparison12, GraphID=numberOfTriplets,end=1)
+            net.add_edge(permu[0], permu[1],weight=comparison12, GraphID=numberOfTriplets,end=1)
             net.add_edge(permu[2], permu[1],weight=comparison23, GraphID=numberOfTriplets,end=1)
             logging.debug("VALID TRIPLE SOLUTION: %s * %s * %s " , permu[0],permu[1], permu[2])
             logging.debug("VALID TRIPLE SOLUTION: %s  <--->   %s", comparison12, comparison23)
@@ -476,11 +509,9 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
             path = nx.shortest_path(net, source=permu[0], target=permu[2])
             logging.debug("VALID TRIPLE SOLUTION: Ends are: %s and %s",permu[0],permu[2])
             logging.debug("VALID TRIPLE SOLUTION: Shortest Path: %s ", path)
-
             triples.append( net )
             numberOfTriplets += 1
             logging.debug("Current number of triplets: %d", numberOfTriplets)
-        error = 0
 
     return triples
 
@@ -596,37 +627,20 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     upperCI_end =  typeFrequencyUpperCI[endAssemblage][i]
                     lowerCI_end=  typeFrequencyLowerCI[endAssemblage][i]
 
-                    if assEnd == "End1":
-                        if upperCI_test < lowerCI_end:
-                            difscore = -1
-                        elif lowerCI_test > upperCI_end:
-                            difscore = 1
-                        else:
-                            difscore = 0
+                    if upperCI_test < lowerCI_end:
+                        difscore = -1
+                    elif lowerCI_test > upperCI_end:
+                        difscore = 1
                     else:
-                        if upperCI_test < lowerCI_end:
-                            difscore = -1
-                        elif lowerCI_test > upperCI_end:
-                            difscore = 1
-                        else:
-                            difscore = 0
+                        difscore = 0
                 else:
-                    if assEnd == "End1":
-                        ## go from right to left
-                        if newassemblage[i] < oldassemblage[i]:
-                            difscore = -1
-                        if newassemblage[i] > oldassemblage[i]:
-                            difscore = 1
-                        if newassemblage[i] == oldassemblage[i]:
-                            difscore = 0
-                    else:
-                        ## other end so the values are
-                        if newassemblage[i] < oldassemblage[i]:
-                            difscore = 1
-                        if newassemblage[i] > oldassemblage[i]:
-                            difscore = -1
-                        if newassemblage[i] == oldassemblage[i]:
-                            difscore = 0
+                    ## go from inward to outward
+                    if newassemblage[i] < oldassemblage[i]:
+                        difscore = -1
+                    if newassemblage[i] > oldassemblage[i]:
+                        difscore = 1
+                    if newassemblage[i] == oldassemblage[i]:
+                        difscore = 0
 
                 logging.debug( "\t\t\t\t#### Type %d: - comparison is: %s  a score of: %d",i, comparison[i], difscore)
                 #################################################################################       #### 1 U  #############
@@ -646,7 +660,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     logging.debug( "\t\t\t\t\t %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
                     ccount=0
                     numberOfDs=0
-                    NumberOfUs=0
+                    numberOfUs=0
                     ## work inward
                     for e in nnetwork.edges_iter(): ### no need to go in order -- jsut look at all the other edges to see if there is an X
                         logging.debug("now on: %s",e)
@@ -664,15 +678,14 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                             logging.debug( "\t\t\t\t\t Since I got %s my potential new value is still X.",newComparison[i])
                             logging.debug( "\t\t\t\t\t Now going to get the continue pair of assemblages to examine in the chain")
                         elif newComparison[i] is "U":
-                            NumberOfUs += 1
+                            numberOfUs += 1
                         elif newComparison[i] is "D":
                             numberOfDs += 1
                         ccount+=1
 
-                    if numberOfDs>1: #and whichEnd ==1:          ## there has to be at least one "D" if the rest are Us (but Ms are okay)
+                    if numberOfUs>1:          ## there has to be at least one "D" if the rest are Us (but Ms are okay)
                         error += 1
-                    #elif whichEnd==1 and numberOfDs==0:
-                    #    error += 1
+
 
                     logging.debug("\t\t\t\t\tErrors so far: %d",error)
                     comparisonMap += "U"
@@ -752,10 +765,10 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                         logging.debug( "\t\t\t\tAttempt: %s Type %d: Here is what we get for comparison # %d: ", ccount, i, ccount)  ## note that i is the current type
                         logging.debug( " \t\t\t\t\t inwardEdge:%s - outwardEdge: %s ", comparison, compArray)
                         if compArray[i] is "U":
-                            potential_change += "X"
+                            potential_change += "U"
                         ############################################
                         elif compArray[i] is  "X" or compArray[i] is "D":
-                            potential_change += "D"
+                            potential_change += "X"
                         ############################################
                         elif compArray[i] is "M":
                             potential_change += "M"
@@ -823,7 +836,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     logging.debug( " \t\t\t\t after a peak. so error. Error now error")
                 ################################################################################# ## 0  X #############
                 elif difscore == 0 and comparison[i] is  "X":
-                   # newscore is down but comparison is X. This means that there was already a peak
+                   # newscore is unchanged but comparison is X. This means that there was already a peak
                     ## this is okay since it is down from a mode peak
                     comparisonMap += "X"
                     logging.debug( "\t\t\t\t#### Type %d:  Ok to add  %s to vertices %s because ", i, testAssemblage, endAssemblage)
