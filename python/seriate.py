@@ -410,11 +410,13 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
             elif ass1 == ass2 > ass3:
                 comparison12 += "M"
                 comparison23 += "U"
-            elif ass1 == ass3 < ass3:
+            elif ass1 == ass2 < ass3:
                 comparison12 += "M"
                 comparison23 += "D"
             else:
-                print "\n\rNo match to our possibility of combinations. Difscore 1: %d Difscore 2: %d \n\r" % difscore,difscore2
+
+                logging.debug("\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f" % ass1,ass2,ass3)
+                print "\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f \n\r" , ass1,ass2,ass3
                 print "I must quit. Debugging required.\n\r"
                 sys.exit()
 
@@ -1183,8 +1185,8 @@ def main():
             newNetworks=[]         # clear the array of new solutions
             if len(networks)==0:
                 # there were no networks the previous times so nothing to do.
-                exit()
-        i=0
+                currentMaxSeriationSize = maxSeriationSize
+
 
         #print "Number of networks:", len(networks)
         #print "Number of solutions:", len(solutions)
