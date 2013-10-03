@@ -1154,7 +1154,7 @@ def main():
 
     ###########################################################################################################
     stepcount = 0
-    currentMaxSeriationSize = 3
+    currentMaxSeriationSize = 2
     newNetworks=[]
     solutionCount=len(triples)
     maxNodes=3
@@ -1163,6 +1163,7 @@ def main():
     networks=[]
 
     while currentMaxSeriationSize < maxSeriationSize:
+        currentMaxSeriationSize += 1
         ### first time through copy the triples, else get the previous new ones.
         #print "current step: ", currentMaxSeriationSize
         if currentMaxSeriationSize==3:  ## first time through. Just copy the triples to the working arrays
@@ -1171,14 +1172,20 @@ def main():
         else:
             i = 0
             logging.debug("Currently have %d solutions at step %d", len(newNetworks),currentMaxSeriationSize)
-            del networks[:]
-            networks = newNetworks  # copy the array of previous new ones for this round
+            logging.debug("These solutions are ---  ")
+            for sol in newNetworks:
+                logging.debug("solution %d: %s", i, nx.shortest_path(sol, sol.graph["End1"] , sol.graph["End2"]))
+                i += 1
+            networks=[]
+            networks += newNetworks  # copy the array of previous new ones for this round
             solutions.append(newNetworks ) # append the new list to the previous one
             #print "Number of new Networks:", len(newNetworks)
-            del newNetworks[:]          # clear the array of new solutions
-
+            newNetworks=[]         # clear the array of new solutions
+            if len(networks)==0:
+                # there were no networks the previous times so nothing to do.
+                exit()
         i=0
-        currentMaxSeriationSize += 1
+
         #print "Number of networks:", len(networks)
         #print "Number of solutions:", len(solutions)
 
