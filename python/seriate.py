@@ -214,8 +214,8 @@ def thresholdDetermination(threshold, assemblages):
     ## Go through all of the combinations
     for combo in pairs:
         logging.debug("comparing combination of %s and %s ", combo[0] , combo[1] )
-        pairname  = combo[0] + "*" + combo[1]
-
+        pairname1  = combo[0] + "*" + combo[1]
+        pairname2  = combo[1] + "*" + combo[0]
         maxDifference = 0
         assemblage1 = assemblages[combo[0]]
         assemblage2 = assemblages[combo[1]]
@@ -231,8 +231,8 @@ def thresholdDetermination(threshold, assemblages):
             logging.debug("assemblage1: %f assemblage2: %f diff: %f",ass1,ass2,diff)
             if diff > maxDifference :
                 maxDifference = diff
-
-        assemblageComparison[ pairname ] = maxDifference
+        assemblageComparison[ pairname1 ] = maxDifference
+        assemblageComparison[ pairname2 ] = maxDifference
 
     ############## pre calculate the valid pairs of assemblages and stuff into hash ############################
     for assemblage1 in assemblages:
@@ -241,7 +241,7 @@ def thresholdDetermination(threshold, assemblages):
             if not assemblage1 == assemblage2:
                 testpair = assemblage1 + "*" + assemblage2
                 logging.debug("Pairs: %s and %s", assemblage1,assemblage2)
-                logging.debug("Comp value:  %f and threshold is: %f",assemblageComparison[testpair],threshold)
+                logging.debug("Comp value of pairs: %s:  %f and threshold is: %f",testpair, assemblageComparison[testpair],threshold)
                 if assemblageComparison[ testpair ] <= threshold:
                     logging.debug("Appending %s to the list of valid comparisons for %s ", assemblage1, assemblage2)
                     cAssemblages.append( assemblage2 )
@@ -258,7 +258,7 @@ def confidence_interval(data, confidence=0.95):
 
 ########################################### BOOTSTRAP CI SECTION ####################################
 def bootstrapCICalculation(assemblages, assemblageSize, bootsize=1000, confidenceInterval=0.95):
-    random.seed(start)
+
     perror ={}
     pvalue={}
     results = 0
@@ -274,69 +274,76 @@ def bootstrapCICalculation(assemblages, assemblageSize, bootsize=1000, confidenc
         scr.addstr(1,40, "STEP: Bootstrap CIs...        ")
         scr.refresh()
     countup=0
+
     ## for each assemblage
     logging.debug("Calculating bootstrap confidence intervals")
     # for each assemblage
 
     for currentLabel in sorted( assemblages.iterkeys()):
         #label = assemblages[countup]
-        a =  assemblages[ currentLabel ]
-        columns=len(assemblages[ currentLabel ])
+        assemblage =  assemblages[ currentLabel ]
+        types=len(assemblages[ currentLabel ])
         currentAssemblageSize = assemblageSize[ currentLabel ]
 
         ## create an array of arrays - one for each type
-        arrayOfStats = []
+        arrayOfStats=[]
         for c in assemblages:
             array=[]
             arrayOfStats.append([])
 
         ## size of bootstrapping (how many assemblages to create)
         loop = bootsize
-
-        while loop:
+        for counter in range(0,bootsize):
             assemsize = currentAssemblageSize
+            # clear and set the array
             cumulate=[]
-            classes = columns
+            while c in range(0,types):
+                cumulate[index]=0
+            classes = types
             index = 0
             total = 0.0
-            count   = 0
-
             ## now count through the classes and set up the frequencies
-            for count in range (0,classes):
-                cumulate[index] = a[0][count]  ## this is the index of the frequency for this class
-                total += a[0][count]            ## should ultimate equal 100
-                index += 1                      ## index should be total # of types at end
+            for typeFrequency in assemblage:
+                index += typeFrequency
+                cumulate[index] = typeFrequency  ## this is the index of the frequency for this class
+                ## index should be total # of types at end
 
+            ## set new_assemblage
             new_assemblage=[]
-            while assemsize>0:
-                rand = random()              ## random number from 0-1
+            while c in range(0,types):
+                new_assemblage[index]=0
+
+            for sherd in range(0,currentAssemblageSize):
+                rand = random.random()              ## random number from 0-1
                 classVar = 0
-                while (classVar < index) and (rand > cumulate[classVar] ):
-                    rand -= cumulate[classVar]
-                new_assemblage.append(classVar)
-                assemsize -= 1
+                typeIndex=0
+                found=0
+                for t in cumulate:
+                    if rand <=t and found==0:
+                        new_assemblage[typeIndex] += 1
+                        found=1
+                    typeIndex += 1
 
-            ## this should result in a new assemblage of the same size
-            ahat=[]
-            aholder={}
-            bholder={}
-            aholder = {}
+        ## count new assemblage frequencies
+        new_assemblage_freq = []
+        for c in new_assemblage:
+            new_assemblage_freq[index] = float(c/float(bootsize))
 
-            ## initialize arrauy
-            indexN = 0
-            for indexN in range(0,classes):
-                ahat[indexN] = 0
+        ## this should result in a new assemblage of the same size
+        ahat=[]
+        aholder={}
+        bholder={}
+        aholder = {}
 
-            ## count up the classes
-            for assem in new_assemblage:
-                aholder[assem] +=1
+        ## initialize arrauy
+        indexN = 0
+        for indexN in range(0,classes):
+            ahat[indexN] = 0
 
-            classCount=0
-            for stat in arrayOfStats.iterkeys():
-                results = aholder[classCount]
-                arrayOfStats.append(results / currentAssemblageSize)
-                classCount += 1
-            loop -= 1
+        classCount=0
+        for stat in arrayOfStats.iterkeys():
+            stat.append(new_assemblage_freq[classCount])
+            classCount += 1
 
         lowerCI=[]
         upperCI=[]
@@ -771,15 +778,17 @@ def finalGoodbye(start,maxNodes,currentTotal):
     print "Number of solutions at last step: %d\r" % currentTotal
     print "Time elapsed for calculation: %d seconds\r" % timeElapsed
 
-def setupOutput(filename, pairwiseFlag,mstFlag):
-    outputFile = filename[0:-4]+".vna"
+
+#################################################### set up all the output files ####################################################
+def setupOutput(filename, pairwiseFlag,mstFlag, outputDirectory,inputFile):
+    outputFile = outputDirectory + inputFile[0:-4]+".vna"
     try:
         OUTFILE = open(outputFile, 'w')
     except csv.Error as e:
         msg = "Can't open file %s to write: %s" % outputFile, e
         sys.exit(msg)
 
-    outpairsFile = filename[0:-4]+"-pairs.vna"
+    outpairsFile = outputDirectory +inputFile[0:-4]+"-pairs.vna"
     if pairwiseFlag is not None:
         try:
             OUTPAIRSFILE = open(outpairsFile, 'w')
@@ -787,8 +796,8 @@ def setupOutput(filename, pairwiseFlag,mstFlag):
             msg = "Can't open file %s to write: %s" % outputFile, e
             sys.exit(msg)
 
-    outmstFile=  filename[0:-4] + "-mst.vna"
-    outmst2File = filename[0:-4] + "-mst-distance.vna"
+    outmstFile=  outputDirectory + inputFile[0:-4] + "-mst.vna"
+    outmst2File = outputDirectory + inputFile[0:-4] + "-mst-distance.vna"
     
     if mstFlag is not None:
         try:
@@ -1025,6 +1034,7 @@ def main():
     parser.add_argument('--allsolutions')
     parser.add_argument('--memusage')
     parser.add_argument('--inputfile')
+    parser.add_argument('--outputdirectory')
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
@@ -1075,21 +1085,35 @@ def main():
     logging.debug("Arguments: %s", args)
     bootstrapCI=0
     filename=args['inputfile']
+
     if filename is "":
         logging.error("You must enter a filename to continue.")
         print "You must enter a filename to continue."
         sys.exit("Quitting due to errors.")
-
     try:
         logging.debug("Going to try to open and load: %s", filename)
         maxSeriationSize, assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses = openFile(filename)
     except IOError as e:
         logging.error("Cannot open %s. Error: %s", filename, e.strerror)
+
         print("Cannot open %s. Error. %s ", filename, e.strerror)
         if screenFlag is not None:
             curses.endwin()
             curses.resetty()
         sys.exit("Quitting due to errors.")
+    inputFile=""
+    try:
+        inputparts =map(str,args['inputfile'].split("/"))
+        inputFile= inputparts[len(inputparts)-1]
+    except:
+        sys.exit("There was a problem with parsing the input file. Check it and try again.")
+
+    ############################################################################################################
+    outputDirectory = ""
+    if args['outputdirectory'] is not None:
+        outputDirectory = args['outputdirectory']
+    else:
+        outputDirectory = "../output/"
 
     ############################################################################################################
     if args['largestonly'] is not None:
@@ -1115,7 +1139,6 @@ def main():
     xyfileFlag=0
     if args['xyfile'] is not None:
         largestX,largestY,distanceBetweenAssemblages,xAssemblage,yAssemblage=openXYFile(args['xyfile'])
-
     else:
         for ass in assemblages:
             xAssemblage[ass]=0.0
@@ -1129,8 +1152,9 @@ def main():
     ############################################################################################################
     logging.debug("Assume threshold is 1.0 unless its specified in arguments.")
     threshold=1.0
-    if args['threshold'] >0 :
-        threshold=args[threshold]
+    if args['threshold']>0 :
+        threshold=float(args['threshold'])
+
     logging.debug("Going to create list of valid pairs for comparisons.")
     validAssemblagesForComparisons={}
     validAssemblagesForComparisons = thresholdDetermination(threshold, assemblages)
@@ -1149,7 +1173,7 @@ def main():
 
     ###########################################################################################################
     ### setup the output files. Do this now so that if it fails, its not AFTER all the seriation stuff
-    OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE=setupOutput(filename,pairwiseFlag,mstFlag)
+    OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE=setupOutput(filename,pairwiseFlag,mstFlag,outputDirectory,inputFile)
 
     ###########################################################################################################
     logging.debug("Now precalculating all the combinations between pairs of assemblages. ")
@@ -1253,6 +1277,7 @@ def main():
         end_solutions = newNetworks
     else:
         end_solutions = networks
+
     logging.debug("Process complete at seriation size %d with %d solutions.",maxSeriationSize,len(end_solutions))
 
     ###########################################################################################################
