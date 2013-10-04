@@ -73,14 +73,17 @@ def openFile(filename):
 
     values=[]
     for row in reader:
+        row = map(str, row)
         label=row[0]
         labels[ label ] = label
         row.pop(0)
-        numberOfClasses = len(row)
+        #row=[map(int,x.split()) for x in f if x.strip()]
         row = map(float, row)
-        rowtotal = sum(row)
+        numberOfClasses = len(row)
+        #rowtotal = sum(row)
         freq=[]
-        for r in row:
+        rowtotal=sum(row)
+        for r in row[1:]:
             freq.append(float(float(r)/float(rowtotal)))
             values.append(float(r))
         assemblages[ label ] = freq
@@ -90,6 +93,7 @@ def openFile(filename):
         countOfAssemblages +=1
 
     return len(assemblages), assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses
+
 
 def preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFrequencyLowerCI):
     logging.debug("Precalculating the comparisons between all pairs of assemblages...")
@@ -463,6 +467,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
     logging.debug("Seriation %d to evaluate: Shortest Path: %s ", nnetwork.graph['GraphID'], nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
     array_of_new_nodes=[]
     maxnodes=len(nnetwork.nodes())
+
     for assEnd in ("End1","End2"):
         if assEnd=="End1":
             otherEnd="End2"
@@ -563,14 +568,17 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     logging.debug("Outer value: %f Inner value: %f", oldVal, newVal)
                     if newVal<oldVal:
                         c += "U"
+                        c1="U"
                     elif newVal>oldVal:
                         c += "D"
+                        c1 = "U"
                     elif newVal == oldVal:
                         c += "M"
+                        c1="U"
                     else:
                         logging.debug("Error. Quitting.")
                         sys.exit("got null value in comparison of value for type %d in the comparison of %s", i, compareAssemblage)
-                    logging.debug("Comparison is now %s", c)
+                    logging.debug("Comparison %s is now %s", c1,c)
                     newVal=oldVal
                     previousAssemblage=compareAssemblage
 
@@ -613,7 +621,7 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                     maxnodes = len(new_network)
             logging.debug( "----------------#############-------End of check for %s ---------#############-----------------",testAssemblage)
         logging.debug("--------------------------------------Finished with %s-----------------------------------------------------",assEnd)
-    logging.debug("------------------------------------------------------------------------------------------------")
+    logging.debug("------------------------------- Finished with Both Ends-----------------------------------------------------------------")
 
     if len(array_of_new_nodes)>0:
         return new_network,maxnodes,
@@ -1174,6 +1182,11 @@ def main():
         else:
             i = 0
             logging.debug("Currently have %d solutions at step %d", len(newNetworks),currentMaxSeriationSize)
+
+            if len(newNetworks)==0:
+                # there were no networks the previous times so nothing to do.
+                break
+
             logging.debug("These solutions are ---  ")
             for sol in newNetworks:
                 logging.debug("solution %d: %s", i, nx.shortest_path(sol, sol.graph["End1"] , sol.graph["End2"]))
@@ -1183,9 +1196,6 @@ def main():
             solutions.append(newNetworks ) # append the new list to the previous one
             #print "Number of new Networks:", len(newNetworks)
             newNetworks=[]         # clear the array of new solutions
-            if len(networks)==0:
-                # there were no networks the previous times so nothing to do.
-                currentMaxSeriationSize = maxSeriationSize
 
 
         #print "Number of networks:", len(networks)
@@ -1239,17 +1249,16 @@ def main():
             scr.addstr(9, 0, msg)
             scr.refresh()
 
-
     if len(newNetworks)>0:
         end_solutions = newNetworks
     else:
         end_solutions = networks
     logging.debug("Process complete at seriation size %d with %d solutions.",maxSeriationSize,len(end_solutions))
 
-        ###########################################################################################################
-        #if len(networks):
-        #    print "\n\r\n\r\n\r\n\r\n\rNo solutions Found!!\n\r"
-        #    finalGoodbye(start,maxNodes,currentTotal)
+    ###########################################################################################################
+    #if len(networks):
+    #    print "\n\r\n\r\n\r\n\r\n\rNo solutions Found!!\n\r"
+    #    finalGoodbye(start,maxNodes,currentTotal)
 
     ###########################################################################################################
     if args['mst'] is not None:
@@ -1276,11 +1285,11 @@ def main():
                 fnetworkArray = solutions[i].nodes()
                 tnetworkArray = tnetwork.nodes()
                 minus = fnetworkArray - tnetworkArray
-                if len(minus)== 0:
+                if len(minus)== len(fnetworkArray)-len(tnetworkArray):
                     exists += 1
-        if exists >0:
-             ##print "pushing fnetwork to list\n\r"
-             filteredarray.append(solutions[i])
+            if exists==0:
+                ##print "pushing fnetwork to list\n\r"
+                filteredarray.append(solutions[i])
 
         logging.debug("End with %d solutions.", len(filteredarray))
         filterCount= len(filteredarray)
