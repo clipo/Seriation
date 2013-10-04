@@ -9,6 +9,7 @@ import networkx as nx
 import pprint
 import Dumper
 from pylab import *
+import numpy
 import matplotlib.pyplot as plt
 
 import time
@@ -211,7 +212,7 @@ def main(argv):
     for w in weights:
         edgewidth.append(weights[w]*10)
 
-    maxValue = max(edgewidth)
+    maxValue = np.max(edgewidth)
     widths=[]
     for w in edgewidth:
         widths.append(((maxValue-w)+1)*5)

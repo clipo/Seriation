@@ -65,6 +65,17 @@ def main():
     parser.add_argument('--memusage')
     args = parser.parse_args()
     #pp.pprint(args)
-
+    scr=curses.initscr()
+    # Frame the interface area at fixed VT100 size
+    scr.border(0)
+    scr.addstr(12, 25, "Python curses in action!")
+    #scr.refresh()
+    #scr.getch()
+    #screen.box()
+    scr.addstr(14,21,"Step number:                     ")
+    scr.addstr(5,5,"Bsdfsdfsdfsdfsdfsdfsdfsdfsdf      ")
+    scr.refresh()
+    #scr.getch()
+    time.sleep(20)
 if __name__ == "__main__":
     main()
