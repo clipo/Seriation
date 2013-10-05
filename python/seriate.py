@@ -62,7 +62,6 @@ def openFile(filename):
     if screenFlag:
         scr.addstr(1,40,"STEP: Read in data...")
         scr.refresh()
-
     try:
         logging.debug("trying to open: %s ", filename)
         file=open(filename,'r')
@@ -112,20 +111,6 @@ def preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFre
             val2 = ass2[i]
             logging.debug( "\t\tComparing Assemblage: %s  and    Assemblage: %s  ########",pair[0],pair[1])
             logging.debug( "\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,i,i,i,i,i,i)
-                     ##  COMBINATIONS of VALUES
-                       #   dif	comparison	result	comparisonMap
-                       #   1	U	      okay	U
-                       #   1	M	      okay	U
-                       #   1	X	      bad	--
-                       #   1	D	      bad	--
-                       #   0	U	      okay	U
-                       #   0	M	      okay	M
-                       #   0	D	      okay	D
-                       #   0	X	      okay	X
-                       #   -1	U	      bad	--
-                       #   -1	M	      okay	M
-                       #   -1	D	      okay	D
-                       #   -1	X	      okay	D
 
             if bootstrapCI > 0:
                 upperCI_test = typeFrequencyUpperCI[pair[0]][i]
@@ -393,7 +378,7 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,
             ass3 = assemblages[ permu[2] ][i]
             logging.debug( "ass1: %f ass2: %f ass3: %f",ass1,ass2,ass3)
 
-            if bootstrapCI is not None:
+            if bootstrapCI >0 :
                 low1 = typeFrequencyLowerCI[permu[0]][i]
                 low2 = typeFrequencyLowerCI[permu[1]][i]
                 low3 = typeFrequencyLowerCI[permu[2]][i]
@@ -675,7 +660,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
     else:
         return False,0
 
-def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,filename):
+def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile):
     try:
         from networkx import graphviz_layout
     except ImportError:
@@ -724,13 +709,14 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
     plt.rcParams['text.usetex'] = False
     plt.figure(0,figsize=(8,8))
     mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
-
-    #pos=nx.graphviz_layout(mst,prog="neato")
-    pos=nx.spring_layout(mst,iterations=500)
+    os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+    #print os.environ["PATH"]
+    pos=nx.graphviz_layout(mst)
+    #pos=nx.spring_layout(mst,iterations=500)
     edgewidth=[]
     weights = nx.get_edge_attributes(mst, 'weight')
     for w in weights:
-        edgewidth.append(weights[w]*10)
+        edgewidth.append(weights[w])
 
     maxValue = max(edgewidth)
     widths=[]
@@ -765,14 +751,12 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
     #nx.draw(mst)
     #plt.savefig("path.png")
     plt.axis('off')
-    newfilename=filename[:4]+"-mst.png"
-    pngfile=newfilename+"-mst.png"
-    plt.savefig(pngfile,dpi=75)
-    print(pngfile)
-
+    newfilename=outputDirectory+inputFile[:4]+"-mst.png"
+    plt.savefig(newfilename,dpi=75)
     plt.figure(1,figsize=(30,20))
     # layout graphs with positions using graphviz neato
 
+    return
     UU=nx.Graph()
     # do quick isomorphic-like check, not a true isomorphism checker
     nlist=[] # list of nonisomorphic graphs
@@ -782,9 +766,9 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
             nlist.append(G)
     UU=nx.union_all(graphs) # union the nonisomorphic graphs
     #UU=nx.disjoint_union_all(nlist) # union the nonisomorphic graphs
-    #pos=nx.spring_layout(UU,iterations=50)
+    pos=nx.spring_layout(UU,iterations=50)
 
-    pos=nx.graphviz_layout(UU,prog="/Volumes/Macintosh HD/usr/local/bin/neato")
+    #pos=nx.graphviz_layout(UU)
     #pos=nx.graphviz_layout(UU,prog="twopi",root=0)
     ##labels=nx.draw_networkx_labels(UU,pos)
     # color nodes the same in each connected subgraph
@@ -800,7 +784,8 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
             alpha=.2,
             font_size=7,
         )
-    plt.savefig("atlas.png",dpi=250)
+    atlasFile=outputDirectory+inputFile[:4]+"-atlas.png"
+    plt.savefig(atlasFile,dpi=250)
     plt.show() # display
 
 def finalGoodbye(start,maxNodes,currentTotal):
@@ -1200,7 +1185,7 @@ def main():
     validAssemblagesForComparisons = thresholdDetermination(threshold, assemblages)
     typeFrequencyLowerCI={}
     typeFrequencyUpperCI={}
-
+    typeFrequencyMeanCI ={}
     ###########################################################################################################
     logging.debug("Now calculate the bootstrap comparisons based ")
     logging.debug("on specified confidence interval, if in the arguments.")
@@ -1333,7 +1318,7 @@ def main():
 
     ###########################################################################################################
     if args['mst'] is not None:
-        minimumSpanningTree(end_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,filename)
+        minimumSpanningTree(end_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
 
     if args['largestonly'] is not None:
         largestonlyFlag = 1
