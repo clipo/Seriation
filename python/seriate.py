@@ -12,6 +12,7 @@ import random
 import curses
 import numpy as np
 import scipy as sp
+from scipy import stats
 import networkx as nx
 import traceback
 import memory
@@ -83,7 +84,7 @@ def openFile(filename):
         #rowtotal = sum(row)
         freq=[]
         rowtotal=sum(row)
-        for r in row[1:]:
+        for r in row:
             freq.append(float(float(r)/float(rowtotal)))
             values.append(float(r))
         assemblages[ label ] = freq
@@ -250,22 +251,19 @@ def thresholdDetermination(threshold, assemblages):
     return validComparisonsArray
 
 def confidence_interval(data, confidence=0.95):
-    a = 1.0*np.array(data)
-    n = len(a)
-    m, se = np.mean(a), sp.stats.sem(a)
-    h = se * sp.stats.t._ppf((1+confidence)/2., n-1)
-    return m, m-h, m+h
+  ci2 = ( 1.0 - float(confidence))*.5
+  d = 1.0*np.array(data)
+  low_idx = int(ci2* d.size)
+  high_idx = int((1-ci2)*d.size)
+  d.sort()
+  return d.mean(), d[low_idx], d[high_idx]
 
 ########################################### BOOTSTRAP CI SECTION ####################################
-def bootstrapCICalculation(assemblages, assemblageSize, bootsize=1000, confidenceInterval=0.95):
+def bootstrapCICalculation(assemblages, assemblageSize, bootsize=100, confidenceInterval=0.95):
 
-    perror ={}
-    pvalue={}
-    results = 0
-    ptr1=0
-    classes = 0
     typeFrequencyLowerCI = {}
     typeFrequencyUpperCI = {}
+    typeFrequencyMeanCI = {}
 
     # now do ALL the pairwise assemblage comparisons
     # go to sleep and come back later.
@@ -273,98 +271,95 @@ def bootstrapCICalculation(assemblages, assemblageSize, bootsize=1000, confidenc
     if screenFlag:
         scr.addstr(1,40, "STEP: Bootstrap CIs...        ")
         scr.refresh()
-    countup=0
 
     ## for each assemblage
     logging.debug("Calculating bootstrap confidence intervals")
     # for each assemblage
 
     for currentLabel in sorted( assemblages.iterkeys()):
-        #label = assemblages[countup]
         assemblage =  assemblages[ currentLabel ]
         types=len(assemblages[ currentLabel ])
         currentAssemblageSize = assemblageSize[ currentLabel ]
 
         ## create an array of arrays - one for each type
         arrayOfStats=[]
-        for c in assemblages:
+        for c in range(0,types):
             array=[]
             arrayOfStats.append([])
 
         ## size of bootstrapping (how many assemblages to create)
         loop = bootsize
         for counter in range(0,bootsize):
+
             assemsize = currentAssemblageSize
             # clear and set the array
             cumulate=[]
-            while c in range(0,types):
-                cumulate[index]=0
-            classes = types
+            for d in range(0,types):
+                cumulate.append(0.0)
+
             index = 0
-            total = 0.0
+            count=0
             ## now count through the classes and set up the frequencies
             for typeFrequency in assemblage:
                 index += typeFrequency
-                cumulate[index] = typeFrequency  ## this is the index of the frequency for this class
+                cumulate[count] = index  ## this is the index of the frequency for this class
                 ## index should be total # of types at end
+                count += 1
 
             ## set new_assemblage
             new_assemblage=[]
-            while c in range(0,types):
-                new_assemblage[index]=0
+            for c in range(0,types):
+                new_assemblage.append(0.0)
 
-            for sherd in range(0,currentAssemblageSize):
-                rand = random.random()              ## random number from 0-1
+            for sherd in range(0,int(currentAssemblageSize)):
+                rand = random()             ## random number from 0-1
                 classVar = 0
-                typeIndex=0
+                typeIndex=types-1
                 found=0
-                for t in cumulate:
-                    if rand <=t and found==0:
-                        new_assemblage[typeIndex] += 1
-                        found=1
-                    typeIndex += 1
+                total = sum(cumulate)
+                for t in reversed(cumulate):
+                    if rand <= t:
+                        found=typeIndex
+                    typeIndex -=1
+                new_assemblage[found] += 1
 
-        ## count new assemblage frequencies
-        new_assemblage_freq = []
-        for c in new_assemblage:
-            new_assemblage_freq[index] = float(c/float(bootsize))
-
-        ## this should result in a new assemblage of the same size
-        ahat=[]
-        aholder={}
-        bholder={}
-        aholder = {}
-
-        ## initialize arrauy
-        indexN = 0
-        for indexN in range(0,classes):
-            ahat[indexN] = 0
-
-        classCount=0
-        for stat in arrayOfStats.iterkeys():
-            stat.append(new_assemblage_freq[classCount])
-            classCount += 1
+            ## count new assemblage frequencies
+            counter=0
+            new_assemblage_freq = []
+            for g in new_assemblage:
+                new_assemblage_freq.append(float(g/float(bootsize)))
+                arrayOfStats[counter].append(float(g/float(bootsize)))
+                counter += 1
+            ## this should result in a new assemblage of the same size
 
         lowerCI=[]
         upperCI=[]
-        for stat in arrayOfStats:
-            upper=0
-            lower=0
-            mean=0
-            mean, upper, lower = confidence_interval(stat, confidence=confidenceInterval)
+        meanCI=[]
+        for freq in arrayOfStats:
+            upper=0.0
+            lower=0.0
+            mean=0.0
+            mean, lower, upper = confidence_interval(freq, confidence=float(confidenceInterval))
+            if math.isnan(lower) is True:
+                lower=0.0
+            if math.isnan(upper) is True:
+                upper=0.0
+            if math.isnan(mean) is True:
+                mean=0.0
             lowerCI.append( lower)
             upperCI.append( upper )
+            meanCI.append( mean )
 
         typeFrequencyLowerCI[ currentLabel ] = lowerCI
         typeFrequencyUpperCI[ currentLabel ] = upperCI
-        results = 0
-        countup += 1
+        typeFrequencyMeanCI[ currentLabel ] = meanCI
 
-    return typeFrequencyLowerCI, typeFrequencyUpperCI
+    return typeFrequencyLowerCI, typeFrequencyUpperCI, typeFrequencyMeanCI
 
 ########################################### FIND ALL THE VALID TRIPLES  ####################################
 ########################################### #################################### ###########################
-def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,bootstrapCI,typeFrequencyLowerCI, typeFrequencyUpperCI):
+def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,
+                        bootstrapCI,typeFrequencyLowerCI, typeFrequencyUpperCI,typeFrequencyMeanCI):
     triples=[]
     error = 0
     numberOfTriplets = 0
@@ -398,40 +393,77 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,boo
             ass3 = assemblages[ permu[2] ][i]
             logging.debug( "ass1: %f ass2: %f ass3: %f",ass1,ass2,ass3)
 
-            if ass1 < ass2 < ass3:
-                comparison12 += "U"
-                comparison23 += "D"
-            elif ass1 < ass2 > ass3:
-                comparison12 += "X"
-                comparison23 += "X"
-            elif ass1 < ass2 == ass3:
-                comparison12 += "U"
-                comparison23 += "M"
-            elif ass1 > ass2 < ass3:
-                error += 1
-            elif ass1 > ass2 > ass3:
-                comparison12 += "U"
-                comparison23 += "D"
-            elif ass1 > ass2 == ass3:
-                comparison12 += "D"
-                comparison23 += "M"
-            elif ass1 == ass2 == ass3:
-                comparison12 += "M"
-                comparison23 += "M"
-            elif ass1 == ass2 > ass3:
-                comparison12 += "M"
-                comparison23 += "U"
-            elif ass1 == ass2 < ass3:
-                comparison12 += "M"
-                comparison23 += "D"
-            else:
+            if bootstrapCI is not None:
+                low1 = typeFrequencyLowerCI[permu[0]][i]
+                low2 = typeFrequencyLowerCI[permu[1]][i]
+                low3 = typeFrequencyLowerCI[permu[2]][i]
+                high1 = typeFrequencyUpperCI[permu[0]][i]
+                high2 = typeFrequencyUpperCI[permu[1]][i]
+                high3 = typeFrequencyUpperCI[permu[2]][i]
+                mean1 = typeFrequencyMeanCI[permu[0]][i]
+                mean2 = typeFrequencyMeanCI[permu[1]][i]
+                mean3 = typeFrequencyMeanCI[permu[2]][i]
 
-                logging.debug("\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f" % ass1,ass2,ass3)
-                print "\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f \n\r" , ass1,ass2,ass3
-                print "I must quit. Debugging required.\n\r"
-                sys.exit()
+                # compare 1 and 2
+                if high1 < low2:
+                    comparison12 = "D"
+                elif low1 > high2:
+                    comparison12 = "U"
+                else:
+                    comparison12 = "M"
 
-            logging.debug("Comparison12: %s Comparison23: %s", comparison12,comparison23)
+                ## compare 2 and 3
+                if high2 < low3:
+                    comparison23 = "U"
+                elif low2 > high3:
+                    comparison23 = "D"
+                else:
+                    comparison23 = "M"
+
+                ## check for problems
+                if comparison12 == "D" and comparison23 == "D":
+                    comparison12 += "X"
+                    comparison23 += "X"
+                elif comparison12 == "U" and comparison23 == "U":
+                    error += 1
+
+            else:     ### not bootstrap
+                if ass1 < ass2 < ass3:
+                    comparison12 += "U"
+                    comparison23 += "U"
+                elif ass1 < ass2 > ass3:
+                    comparison12 += "X"
+                    comparison23 += "X"
+                elif ass1 < ass2 == ass3:
+                    comparison12 += "U"
+                    comparison23 += "M"
+                elif ass1 > ass2 < ass3:
+                    comparison12 += "D"
+                    comparison23 += "U"
+                    error += 1
+                elif ass1 > ass2 > ass3:
+                    comparison12 += "D"
+                    comparison23 += "D"
+                elif ass1 > ass2 == ass3:
+                    comparison12 += "D"
+                    comparison23 += "M"
+                elif ass1 == ass2 == ass3:
+                    comparison12 += "M"
+                    comparison23 += "M"
+                elif ass1 == ass2 > ass3:
+                    comparison12 += "M"
+                    comparison23 += "D"
+                elif ass1 == ass2 < ass3:
+                    comparison12 += "M"
+                    comparison23 += "U"
+                else:
+
+                    logging.debug("\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f" % ass1,ass2,ass3)
+                    print "\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f \n\r" , ass1,ass2,ass3
+                    print "I must quit. Debugging required.\n\r"
+                    sys.exit()
+
+                logging.debug("Comparison12: %s Comparison23: %s", comparison12,comparison23)
 
         comparison = comparison12 + comparison23
         test = re.compile('DU').search(comparison)
@@ -462,8 +494,11 @@ def filter_list(full_list, excludes):
     s = set(excludes)
     return (x for x in full_list if x not in s)
 
-def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForComparisons,assemblages,typeFrequencyLowerCI, typeFrequencyUpperCI, bootstrapCI,solutionCount):
 
+def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComparisons, assemblages,
+                                    typeFrequencyLowerCI, typeFrequencyUpperCI, bootstrapCI,
+                                    typeFrequencyMeanCI,
+                                    solutionCount):
     logging.debug(" ######################Starting check for solution %s with %s nodes ######################################",nnetwork.graph['GraphID'],len(nnetwork))
     if screenFlag > 0:
         scr.addstr(1,40, "STEP: Testing for addition to seriation ....      ")
@@ -566,27 +601,32 @@ def checkForValidAdditionsToNetwork(nnetwork,pairGraph,validAssemblagesForCompar
                         lowerCI_test = typeFrequencyLowerCI[previousAssemblage][i]
                         upperCI_end = typeFrequencyUpperCI[compareAssemblage][i]
                         lowerCI_end = typeFrequencyLowerCI[compareAssemblage][i]
+                        mean_test = typeFrequencyMeanCI[previousAssemblage][i]
+                        mean_end = typeFrequencyMeanCI[compareAssemblage][i]
+
                         if upperCI_test < lowerCI_end:
                             c += "D"
                         elif lowerCI_test > upperCI_end:
                             c += "U"
                         else:
                             c += "M"
-                    logging.debug("Outer value: %f Inner value: %f", oldVal, newVal)
-                    if newVal<oldVal:
-                        c += "U"
-                        c1="U"
-                    elif newVal>oldVal:
-                        c += "D"
-                        c1 = "U"
-                    elif newVal == oldVal:
-                        c += "M"
-                        c1="U"
                     else:
-                        logging.debug("Error. Quitting.")
-                        sys.exit("got null value in comparison of value for type %d in the comparison of %s", i, compareAssemblage)
-                    logging.debug("Comparison %s is now %s", c1,c)
-                    newVal=oldVal
+                        logging.debug("Outer value: %f Inner value: %f", oldVal, newVal)
+                        if newVal<oldVal:
+                            c += "U"
+                            c1="U"
+                        elif newVal>oldVal:
+                            c += "D"
+                            c1 = "U"
+                        elif newVal == oldVal:
+                            c += "M"
+                            c1="U"
+                        else:
+                            logging.debug("Error. Quitting.")
+                            sys.exit("got null value in comparison of value for type %d in the comparison of %s", i, compareAssemblage)
+                        logging.debug("Comparison %s is now %s", c1,c)
+                        newVal=oldVal
+
                     previousAssemblage=compareAssemblage
 
                 test = re.compile('DU|DM*U').search(c)
@@ -1166,8 +1206,14 @@ def main():
     logging.debug("on specified confidence interval, if in the arguments.")
     if args['bootstrapCI'] is not None:
         bootstrapCI = 1
-        typeFrequencyLowerCI, typeFrequencyUpperCI = bootstrapCICalculation(assemblages, assemblageSize, 1000,
-                                                                            args['bootstrapSignificance'])
+        confidenceInterval=0.95
+        if args['bootstrapSignificance'] is not None:
+            confidenceInterval= args['bootstrapSignificance']
+        else:
+            confidenceInterval=0.95
+        typeFrequencyLowerCI, typeFrequencyUpperCI, typeFrequencyMeanCI= bootstrapCICalculation(assemblages,
+                                                                            assemblageSize, 100,
+                                                                            float(confidenceInterval))
     if args['mst'] is not None:
         mstFlag=1
 
@@ -1184,7 +1230,7 @@ def main():
     logging.debug("Calculate all the valid triples.")
     triples = []
     triples = findAllValidTriples(assemblages, pairGraph, validAssemblagesForComparisons, bootstrapCI,
-                                  typeFrequencyLowerCI, typeFrequencyUpperCI)
+                                  typeFrequencyLowerCI, typeFrequencyUpperCI,typeFrequencyMeanCI)
 
     ###########################################################################################################
     stepcount = 0
@@ -1252,7 +1298,7 @@ def main():
             ## this list is all assemblages meet the threshold requirements
             validNewNetworks,currentMaxNodes = checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComparisons,
                                                               assemblages, typeFrequencyLowerCI, typeFrequencyUpperCI,
-                                                              bootstrapCI, solutionCount)
+                                                              bootstrapCI, typeFrequencyMeanCI,solutionCount)
             if  validNewNetworks is not False:
                 newNetworks.append(validNewNetworks)
                 solutionCount += len(validNewNetworks)
