@@ -484,6 +484,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                                     typeFrequencyLowerCI, typeFrequencyUpperCI, bootstrapCI,
                                     typeFrequencyMeanCI,
                                     solutionCount):
+
     logging.debug(" ######################Starting check for solution %s with %s nodes ######################################",nnetwork.graph['GraphID'],len(nnetwork))
     if screenFlag > 0:
         scr.addstr(1,40, "STEP: Testing for addition to seriation ....      ")
@@ -492,7 +493,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
     logging.debug("The end of assemblages of network %d are: %s and %s", nnetwork.graph['GraphID'], nnetwork.graph["End1"] , nnetwork.graph["End2"])
     logging.debug("Network:  %s", nnetwork.adjacency_list())
     logging.debug("Seriation %d to evaluate: Shortest Path: %s ", nnetwork.graph['GraphID'], nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
-    array_of_new_nodes=[]
+    array_of_new_nodes=[]  ## a list of all the valid new networks that we run into
     maxnodes=len(nnetwork.nodes())
 
     for assEnd in ("End1","End2"):
@@ -647,8 +648,10 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                 logging.debug("Here's the new network %s (with addition): %s", new_network.graph['GraphID'], new_network.adjacency_list())
                 path = nx.shortest_path(new_network, new_network.graph["End1"] , new_network.graph["End2"])
                 logging.debug("New network %d shortest path (after): %s ", new_network.graph['GraphID'], path)
+
                 ## copy this solution to the new array of networks
                 array_of_new_nodes.append(new_network)
+
                 if len(new_network)> maxnodes:
                     maxnodes = len(new_network)
             logging.debug( "----------------#############-------End of check for %s ---------#############-----------------",testAssemblage)
@@ -656,7 +659,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
     logging.debug("------------------------------- Finished with Both Ends-----------------------------------------------------------------")
 
     if len(array_of_new_nodes)>0:
-        return new_network,maxnodes,
+        return array_of_new_nodes,maxnodes,
     else:
         return False,0
 
@@ -1237,11 +1240,9 @@ def main():
         else:
             i = 0
             logging.debug("Currently have %d solutions at step %d", len(newNetworks),currentMaxSeriationSize)
-
             if len(newNetworks)==0:
                 # there were no networks the previous times so nothing to do.
                 break
-
             logging.debug("These solutions are ---  ")
             for sol in newNetworks:
                 logging.debug("solution %d: %s", i, nx.shortest_path(sol, sol.graph["End1"] , sol.graph["End2"]))
@@ -1350,7 +1351,7 @@ def main():
                 else:
                     exists += 1
             if exists==0:
-                logging.debug("pushing fnetwork to list")
+                logging.debug("pushing tnetwork to list of filtered arrays")
                 filteredarray.append(tnetwork)
             exists=0
 
