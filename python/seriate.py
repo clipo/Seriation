@@ -493,7 +493,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
     logging.debug("The end of assemblages of network %d are: %s and %s", nnetwork.graph['GraphID'], nnetwork.graph["End1"] , nnetwork.graph["End2"])
     logging.debug("Network:  %s", nnetwork.adjacency_list())
     logging.debug("Seriation %d to evaluate: Shortest Path: %s ", nnetwork.graph['GraphID'], nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
-    array_of_new_nodes=[]  ## a list of all the valid new networks that we run into
+    array_of_new_networks=[]  ## a list of all the valid new networks that we run into
     maxnodes=len(nnetwork.nodes())
 
     for assEnd in ("End1","End2"):
@@ -650,7 +650,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                 logging.debug("New network %d shortest path (after): %s ", new_network.graph['GraphID'], path)
 
                 ## copy this solution to the new array of networks
-                array_of_new_nodes.append(new_network)
+                array_of_new_networks.append(new_network)
 
                 if len(new_network)> maxnodes:
                     maxnodes = len(new_network)
@@ -658,8 +658,8 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
         logging.debug("--------------------------------------Finished with %s-----------------------------------------------------",assEnd)
     logging.debug("------------------------------- Finished with Both Ends-----------------------------------------------------------------")
 
-    if len(array_of_new_nodes)>0:
-        return array_of_new_nodes,maxnodes,
+    if len(array_of_new_networks)>0:
+        return array_of_new_networks,maxnodes,
     else:
         return False,0
 
@@ -1286,7 +1286,7 @@ def main():
                                                               assemblages, typeFrequencyLowerCI, typeFrequencyUpperCI,
                                                               bootstrapCI, typeFrequencyMeanCI,solutionCount)
             if  validNewNetworks is not False:
-                newNetworks.append(validNewNetworks)
+                newNetworks = newNetworks + validNewNetworks
                 solutionCount += len(validNewNetworks)
                 logging.debug("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),solutionCount)
                 if currentMaxNodes > maxNodes:

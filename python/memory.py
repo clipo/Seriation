@@ -8,6 +8,9 @@ class Memory():
     def memory(self):
         return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000
 
+def __init__():
+    return
+
 def main():
     mem=Memory()
     dict = {}
