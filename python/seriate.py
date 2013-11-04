@@ -1225,6 +1225,7 @@ def main():
     currentTotal = len(triples)
     solutions=[]
     networks=[]
+    all_solutions=triples
 
     while currentMaxSeriationSize < maxSeriationSize:
         currentMaxSeriationSize += 1
@@ -1290,7 +1291,6 @@ def main():
                 if currentMaxNodes > maxNodes:
                     maxNodes = currentMaxNodes
                 currentTotal = len(newNetworks)
-                solutions.append(validNewNetworks)
 
         if screenFlag > 0:
             msg = "Current Max Nodes:  %d " % maxNodes
@@ -1306,15 +1306,12 @@ def main():
 
     if len(newNetworks)>0:
         end_solutions = newNetworks
+        all_solutions= all_solutions + newNetworks
     else:
         end_solutions = networks
+        all_solutions = networks
 
-    logging.debug("Process complete at seriation size %d with %d solutions.",maxSeriationSize,len(end_solutions))
-
-    ###########################################################################################################
-    #if len(networks):
-    #    print "\n\r\n\r\n\r\n\r\n\rNo solutions Found!!\n\r"
-    #    finalGoodbye(start,maxNodes,currentTotal)
+    logging.debug("Process complete at seriation size %d with %d solutions before filtering.",maxSeriationSize,len(end_solutions))
 
     ###########################################################################################################
     if args['mst'] is not None:
@@ -1336,34 +1333,45 @@ def main():
         logging.debug("--- Filtering solutions so we only end up with the unique ones.")
         logging.debug("--- Start with %d solutions.", len(end_solutions))
         filteredarray.append(end_solutions[-1])
-        for tnetwork in reversed(end_solutions):
-            logging.debug("---- Now on solution: %d", i)
+        newOne=0
+        for tnetwork in reversed(all_solutions):
             exists=0
             for fnetwork in filteredarray:
                 fnetworkArray= fnetwork.nodes()
                 logging.debug("----fnetworkArray: %s", fnetworkArray)
                 tnetworkArray = tnetwork.nodes()
                 logging.debug("----tnetworkArray: %s", tnetworkArray)
-                minus = list(set(fnetworkArray) - set(tnetworkArray))
+                minus = list(set(tnetworkArray) - set(fnetworkArray))
                 logging.debug("difference between: %s ", minus)
-                if len(minus)==len(fnetworkArray)-len(tnetworkArray) and len(minus)>0:
-                    logging.debug("pushing fnetwork to list")
-                    filteredarray.append(fnetwork)
+                change= len(minus)
+                logging.debug("Change: %d", change)
+                if change > 0 and len(list(set(minus)-set(fnetworkArray))):
+                    newOne += 1
+                else:
+                    exists += 1
+            if exists==0:
+                logging.debug("pushing fnetwork to list")
+                filteredarray.append(tnetwork)
+            exists=0
 
         logging.debug("End with %d solutions.", len(filteredarray))
         filterCount= len(filteredarray)
         if screenFlag:
             scr.addstr(11,1,"End with filterCount solutions.")
     elif args['allsolutions'] is not None:
-        filteredarray = solutions  ## all possible networks
+        filteredarray = all_solutions  ## all possible networks
     else:
         filteredarray = end_solutions ## just the largest ones (from the last round)
+
+    logging.debug("Process complete at seriation size %d with %d solutions after filtering.",maxSeriationSize,len(filteredarray))
+    currentTotal = len(filteredarray)
 
     #################################################### OUTPUT SECTION ####################################################
     output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredarray,
              OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,mstFlag,largestonlyFlag,maxNodes,xyfileFlag,pairwiseFlag)
+    #################################################### OUTPUT SECTION ####################################################
 
-    ## say goodbye
+    ## say goodbye and clean up the screen stuff #########################
     finalGoodbye(start,maxNodes,currentTotal)
 
 if __name__ == "__main__":
