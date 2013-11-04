@@ -959,7 +959,6 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
             scr.addstr(14,1, "Now on solution: ")
             scr.addstr(14,18,str(network.graph["GraphID"]) )
             #print "now on solution: ", network["GraphID"],"\n"
-
         if largestonlyFlag>0:
             if len(network.edges()) == maxEdges:
                 groupDistance=0
@@ -1291,6 +1290,7 @@ def main():
                 if currentMaxNodes > maxNodes:
                     maxNodes = currentMaxNodes
                 currentTotal = len(newNetworks)
+                solutions.append(validNewNetworks)
 
         if screenFlag > 0:
             msg = "Current Max Nodes:  %d " % maxNodes
@@ -1333,28 +1333,31 @@ def main():
     if args['filtered'] is not None:  ## only get the largest set that includes ALL
         if screenFlag:
             scr.addstr(1,40,"STEP: Filter to get uniques... ")
-        logging.debug("---Filtering solutions so we only end up with the unique ones.")
-        logging.debug("---Start with % solutions.", len(solutions))
-        for i in range(0,len(solutions),-1):
+        logging.debug("--- Filtering solutions so we only end up with the unique ones.")
+        logging.debug("--- Start with %d solutions.", len(end_solutions))
+        filteredarray.append(end_solutions[-1])
+        for tnetwork in reversed(end_solutions):
+            logging.debug("---- Now on solution: %d", i)
             exists=0
-            for tnetwork in filteredarray:
-                fnetworkArray = solutions[i].nodes()
+            for fnetwork in filteredarray:
+                fnetworkArray= fnetwork.nodes()
+                logging.debug("----fnetworkArray: %s", fnetworkArray)
                 tnetworkArray = tnetwork.nodes()
-                minus = fnetworkArray - tnetworkArray
-                if len(minus)== len(fnetworkArray)-len(tnetworkArray):
-                    exists += 1
-            if exists==0:
-                ##print "pushing fnetwork to list\n\r"
-                filteredarray.append(solutions[i])
+                logging.debug("----tnetworkArray: %s", tnetworkArray)
+                minus = list(set(fnetworkArray) - set(tnetworkArray))
+                logging.debug("difference between: %s ", minus)
+                if len(minus)==len(fnetworkArray)-len(tnetworkArray) and len(minus)>0:
+                    logging.debug("pushing fnetwork to list")
+                    filteredarray.append(fnetwork)
 
         logging.debug("End with %d solutions.", len(filteredarray))
         filterCount= len(filteredarray)
-        scr.addstr(11,1,"End with filterCount solutions.")
+        if screenFlag:
+            scr.addstr(11,1,"End with filterCount solutions.")
     elif args['allsolutions'] is not None:
         filteredarray = solutions  ## all possible networks
     else:
         filteredarray = end_solutions ## just the largest ones (from the last round)
-
 
     #################################################### OUTPUT SECTION ####################################################
     output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredarray,
