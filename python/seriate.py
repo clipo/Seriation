@@ -1012,7 +1012,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
             else:
                 meanDistance = "0"
 
-            ## initialize ashes
+            ## initialize edges
             for e in network.edges_iter():
                 pairname= e[0]+"#"+e[1]
                 pairwise[ pairname ] = 0
@@ -1021,8 +1021,6 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
             for e in network.edges_iter():
                 pVal=0.0
                 pErr=0.0
-                #print "e0: ", e[0],"\n"
-                #print "e1: ", e[1],"\n"
                 if pairwiseFileFlag >0 :
                     pairname= e[0]+"#"+e[1]
                     pVal = pairwise[ pairname ]
@@ -1037,9 +1035,6 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
 
             network.graph["meanDistance"]=meanDistance
             distanceHash[ text] = meanDistance
-            #seriationHash[network.graph["GraphID"] ]['meanDistance']= meanDistance
-            #seriationHash[network.graph["GraphID"] ]['ID']=network["GraphID"]
-            #seriationHash[network.graph["GraphID"] ]['size']=edgeCount
 
 def main():
     mem=memory.Memory()
