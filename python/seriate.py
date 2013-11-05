@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# Copyright (c) 2013.  Carl P. Lipo <clipo@csulb.edu>
+#
+# This work is licensed under the terms of the Apache Software License, Version 2.0.  See the file LICENSE for details.
 __author__ = 'carllipo'
 
 import csv
@@ -5,7 +9,7 @@ from datetime import datetime
 import pprint
 import argparse
 import sys
-import logging
+import logging as logger
 import itertools
 import math
 import random
@@ -23,13 +27,11 @@ import os
 from pylab import *
 import matplotlib.pyplot as plt
 import re
-import multiprocessing
 from copy import copy, deepcopy
 
 # start prettyprint (python Dumper)
 pp = pprint.PrettyPrinter(indent=4)
 
-#
 
 def all_pairs(lst):
     return list((itertools.permutations(lst, 2)))
@@ -60,10 +62,10 @@ def openFile(filename):
         scr.addstr(1,40,"STEP: Read in data...")
         scr.refresh()
     try:
-        logging.debug("trying to open: %s ", filename)
+        logger.debug("trying to open: %s ", filename)
         file=open(filename,'r')
     except csv.Error as e:
-        logging.error("Cannot open %s. Error: %s", filename, e)
+        logger.error("Cannot open %s. Error: %s", filename, e)
         sys.exit('file %s does not open: %s') %( filename, e)
 
     reader = csv.reader(file, delimiter='\t', quotechar='|')
@@ -93,7 +95,7 @@ def openFile(filename):
 
 
 def preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFrequencyLowerCI):
-    logging.debug("Precalculating the comparisons between all pairs of assemblages...")
+    logger.debug("Precalculating the comparisons between all pairs of assemblages...")
     pairs = all_pairs(assemblages)
     pairGraph = nx.Graph()
     for pair in pairs:
@@ -106,8 +108,8 @@ def preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFre
         for i in columns:
             val1 = ass1[i]
             val2 = ass2[i]
-            logging.debug( "\t\tComparing Assemblage: %s  and    Assemblage: %s  ########",pair[0],pair[1])
-            logging.debug( "\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,i,i,i,i,i,i)
+            logger.debug( "\t\tComparing Assemblage: %s  and    Assemblage: %s  ########",pair[0],pair[1])
+            logger.debug( "\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,i,i,i,i,i,i)
 
             if bootstrapCI > 0:
                 upperCI_test = typeFrequencyUpperCI[pair[0]][i]
@@ -128,14 +130,14 @@ def preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFre
                     comparison +=  "U"
                 if val1==val2:
                     comparison +=  "M"
-            logging.debug( "Type %d: - comparison is: %s ",i, comparison[i])
+            logger.debug( "Type %d: - comparison is: %s ",i, comparison[i])
 
-        logging.debug("Comparison for %s and %s is: %s ",pair[0],pair[1],comparison)
+        logger.debug("Comparison for %s and %s is: %s ",pair[0],pair[1],comparison)
         pairGraph.add_edge(pair[0],pair[1],weight=comparison)
     return pairGraph
 
 def openPairwiseFile( filename ):
-    logging.debug("Opening pairwise file %", filename)
+    logger.debug("Opening pairwise file %", filename)
     try:
         pw = open(filename,'r' )
     except csv.Error as e:
@@ -149,7 +151,7 @@ def openPairwiseFile( filename ):
 
 
 def openXYFile( filename ):
-    logging.debug("Opening pairwise file %", filename)
+    logger.debug("Opening pairwise file %", filename)
     ## open the xy file
     try:
         xyf= open( filename,'r')
@@ -186,7 +188,7 @@ def openXYFile( filename ):
 ## This arbitrary setting is to keep from arbitrary solutions being stuck on that come from the "ends"
 ## of solutions.
 ##
-## Precalculate all of the max differences between types in assembalge pairs.
+## Precalculate all of the max differences between types in assemblage pairs.
 
 def thresholdDetermination(threshold, assemblages):
     assemblageComparison={}
@@ -196,7 +198,7 @@ def thresholdDetermination(threshold, assemblages):
 
     ## Go through all of the combinations
     for combo in pairs:
-        logging.debug("comparing combination of %s and %s ", combo[0] , combo[1] )
+        logger.debug("comparing combination of %s and %s ", combo[0] , combo[1] )
         pairname1  = combo[0] + "*" + combo[1]
         pairname2  = combo[1] + "*" + combo[0]
         maxDifference = 0
@@ -204,14 +206,14 @@ def thresholdDetermination(threshold, assemblages):
         assemblage2 = assemblages[combo[1]]
         i=-1
         columns= len(assemblages[combo[0]])
-        logging.debug("Number of columns: %d", columns)
+        logger.debug("Number of columns: %d", columns)
         ## calculate the maximum differences between the pairs of assemblages (across all types)
         for i in (0, columns-1):
-            logging.debug("i: %d ",i)
+            logger.debug("i: %d ",i)
             ass1 = float(assemblage1[i])
             ass2 = float(assemblage2[i])
             diff = abs( ass1 - ass2 )
-            logging.debug("assemblage1: %f assemblage2: %f diff: %f",ass1,ass2,diff)
+            logger.debug("assemblage1: %f assemblage2: %f diff: %f",ass1,ass2,diff)
             if diff > maxDifference :
                 maxDifference = diff
         assemblageComparison[ pairname1 ] = maxDifference
@@ -223,10 +225,10 @@ def thresholdDetermination(threshold, assemblages):
         for assemblage2 in assemblages:
             if not assemblage1 == assemblage2:
                 testpair = assemblage1 + "*" + assemblage2
-                logging.debug("Pairs: %s and %s", assemblage1,assemblage2)
-                logging.debug("Comp value of pairs: %s:  %f and threshold is: %f",testpair, assemblageComparison[testpair],threshold)
+                logger.debug("Pairs: %s and %s", assemblage1,assemblage2)
+                logger.debug("Comp value of pairs: %s:  %f and threshold is: %f",testpair, assemblageComparison[testpair],threshold)
                 if assemblageComparison[ testpair ] <= threshold:
-                    logging.debug("Appending %s to the list of valid comparisons for %s ", assemblage1, assemblage2)
+                    logger.debug("Appending %s to the list of valid comparisons for %s ", assemblage1, assemblage2)
                     cAssemblages.append( assemblage2 )
 
         validComparisonsArray[ assemblage1]  = cAssemblages
@@ -255,7 +257,7 @@ def bootstrapCICalculation(assemblages, assemblageSize, bootsize=100, confidence
         scr.refresh()
 
     ## for each assemblage
-    logging.debug("Calculating bootstrap confidence intervals")
+    logger.debug("Calculating bootstrap confidence intervals")
     # for each assemblage
 
     for currentLabel in sorted( assemblages.iterkeys()):
@@ -358,13 +360,13 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,
                 curses.endwin()
                 curses.resetty()
                 sys.exit("Quitting as requested.\n\r")
-        logging.debug("Triple test: %s * %s * %s", permu[0],permu[1],permu[2])
+        logger.debug("Triple test: %s * %s * %s", permu[0],permu[1],permu[2])
 
         comparison12 = ""
         comparison23 = ""
         error = 0
         columns=len( assemblages[ permu[0] ])
-        logging.debug("Columns: %d", columns)
+        logger.debug("Columns: %d", columns)
         difscore=0
         difscore2=0
         comparison12=""
@@ -373,7 +375,7 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,
             ass1 = assemblages[ permu[0] ][i]
             ass2 = assemblages[ permu[1] ][i]
             ass3 = assemblages[ permu[2] ][i]
-            logging.debug( "ass1: %f ass2: %f ass3: %f",ass1,ass2,ass3)
+            logger.debug( "ass1: %f ass2: %f ass3: %f",ass1,ass2,ass3)
 
             if bootstrapCI >0 :
                 low1 = typeFrequencyLowerCI[permu[0]][i]
@@ -440,12 +442,12 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,
                     comparison23 += "U"
                 else:
 
-                    logging.debug("\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f" % ass1,ass2,ass3)
+                    logger.debug("\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f" % ass1,ass2,ass3)
                     print "\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f \n\r" , ass1,ass2,ass3
                     print "I must quit. Debugging required.\n\r"
                     sys.exit()
 
-                logging.debug("Comparison12: %s Comparison23: %s", comparison12,comparison23)
+                logger.debug("Comparison12: %s Comparison23: %s", comparison12,comparison23)
 
         comparison = comparison12 + comparison23
         test = re.compile('DU').search(comparison)
@@ -460,15 +462,15 @@ def findAllValidTriples(assemblages,pairGraph,validAssemblagesForComparisons,
             net.add_node(permu[2], name=permu[2], site="end", end=1, connectedTo=permu[1])
             net.add_edge(permu[0], permu[1],weight=comparison12, GraphID=numberOfTriplets,end=1)
             net.add_edge(permu[2], permu[1],weight=comparison23, GraphID=numberOfTriplets,end=1)
-            logging.debug("VALID TRIPLE SOLUTION: %s * %s * %s " , permu[0],permu[1], permu[2])
-            logging.debug("VALID TRIPLE SOLUTION: %s  <--->   %s", comparison12, comparison23)
-            logging.debug("VALID TRIPLE SOLUTION: %s ", net.adjacency_list())
+            logger.debug("VALID TRIPLE SOLUTION: %s * %s * %s " , permu[0],permu[1], permu[2])
+            logger.debug("VALID TRIPLE SOLUTION: %s  <--->   %s", comparison12, comparison23)
+            logger.debug("VALID TRIPLE SOLUTION: %s ", net.adjacency_list())
             path = nx.shortest_path(net, source=permu[0], target=permu[2])
-            logging.debug("VALID TRIPLE SOLUTION: Ends are: %s and %s",permu[0],permu[2])
-            logging.debug("VALID TRIPLE SOLUTION: Shortest Path: %s ", path)
+            logger.debug("VALID TRIPLE SOLUTION: Ends are: %s and %s",permu[0],permu[2])
+            logger.debug("VALID TRIPLE SOLUTION: Shortest Path: %s ", path)
             triples.append( net )
             numberOfTriplets += 1
-            logging.debug("Current number of triplets: %d", numberOfTriplets)
+            logger.debug("Current number of triplets: %d", numberOfTriplets)
 
     return triples
 
@@ -482,14 +484,14 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                                     typeFrequencyMeanCI,
                                     solutionCount):
 
-    logging.debug(" ######################Starting check for solution %s with %s nodes ######################################",nnetwork.graph['GraphID'],len(nnetwork))
+    logger.debug(" ######################Starting check for solution %s with %s nodes ######################################",nnetwork.graph['GraphID'],len(nnetwork))
     if screenFlag > 0:
         scr.addstr(1,40, "STEP: Testing for addition to seriation ....      ")
         scr.refresh()
 
-    logging.debug("The end of assemblages of network %d are: %s and %s", nnetwork.graph['GraphID'], nnetwork.graph["End1"] , nnetwork.graph["End2"])
-    logging.debug("Network:  %s", nnetwork.adjacency_list())
-    logging.debug("Seriation %d to evaluate: Shortest Path: %s ", nnetwork.graph['GraphID'], nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
+    logger.debug("The end of assemblages of network %d are: %s and %s", nnetwork.graph['GraphID'], nnetwork.graph["End1"] , nnetwork.graph["End2"])
+    logger.debug("Network:  %s", nnetwork.adjacency_list())
+    logger.debug("Seriation %d to evaluate: Shortest Path: %s ", nnetwork.graph['GraphID'], nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
     array_of_new_networks=[]  ## a list of all the valid new networks that we run into
     maxnodes=len(nnetwork.nodes())
 
@@ -500,19 +502,19 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
             otherEnd="End1"
 
         endAssemblage=nnetwork.graph[assEnd]
-        logging.debug(">>>>>> Checking ends of seriation %d:  %s is %s", nnetwork.graph['GraphID'], assEnd,endAssemblage)
+        logger.debug(">>>>>> Checking ends of seriation %d:  %s is %s", nnetwork.graph['GraphID'], assEnd,endAssemblage)
         list1 = validAssemblagesForComparisons[ endAssemblage ]
         list2 = nnetwork.nodes()
-        logging.debug("List 1 (valid comparisons): %s", list1)
-        logging.debug("List 2 (existing nodes): %s", list2)
+        logger.debug("List 1 (valid comparisons): %s", list1)
+        logger.debug("List 2 (existing nodes): %s", list2)
 
         validAssemblages = list(filter_list(list1, list2))
-        logging.debug("Valid assemblages: %s", validAssemblages)
-        logging.debug("The list of valid comparative assemblages for %s is %s",endAssemblage,validAssemblages)
+        logger.debug("Valid assemblages: %s", validAssemblages)
+        logger.debug("The list of valid comparative assemblages for %s is %s",endAssemblage,validAssemblages)
 
         ######################################################################################
         for testAssemblage in validAssemblages:
-            logging.debug(" Now checking %s to see if we can be put next to %s",testAssemblage,endAssemblage)
+            logger.debug(" Now checking %s to see if we can be put next to %s",testAssemblage,endAssemblage)
             if screenFlag >0:
                 msg = "Now checking %s against %s." % (testAssemblage, endAssemblage)
                 scr.addstr(3,0, msg)
@@ -524,23 +526,23 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                     sys.exit("Quitting as requested.\n\r")
 
             ## now see if the test assemblages fits on the end.
-            logging.debug("Checking assemblage %s to see if it fits on the end of the current solution.", testAssemblage )
+            logger.debug("Checking assemblage %s to see if it fits on the end of the current solution.", testAssemblage )
 
             #### FIND INNER EDGE RELATIVE TO THE EXISTING END ASSEMBLAGE ##############
             #neighbors = nnetwork.neighbors(endAssemblage)
 
-            logging.debug("Seriation %d with this %s: %s has this many nodes: %d", nnetwork.graph['GraphID'],assEnd,nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]), len(nnetwork.nodes()))
-            logging.debug("End assemblage for this seriation: %s",nnetwork.graph[assEnd])
-            logging.debug("Which end: %s", assEnd)
+            logger.debug("Seriation %d with this %s: %s has this many nodes: %d", nnetwork.graph['GraphID'],assEnd,nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]), len(nnetwork.nodes()))
+            logger.debug("End assemblage for this seriation: %s",nnetwork.graph[assEnd])
+            logger.debug("Which end: %s", assEnd)
             innerNeighbor = None
             if assEnd=="End1":
                 path = nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"])
                 innerNeighbor=path[1]
-                logging.debug("End1: %s Neighbor: %s", endAssemblage, innerNeighbor)
+                logger.debug("End1: %s Neighbor: %s", endAssemblage, innerNeighbor)
             elif assEnd=="End2":
                 path = nx.shortest_path(nnetwork, nnetwork.graph["End2"] , nnetwork.graph["End1"])
                 innerNeighbor=path[1]
-                logging.debug("End2: %s Neighbor: %s", endAssemblage, innerNeighbor)
+                logger.debug("End2: %s Neighbor: %s", endAssemblage, innerNeighbor)
             else: ## sanity check
                 print "\r\n\r\n\r\nSomething is wrong finding the next assemblage over.. Error!\n\r"
                 print "\r\nWe are testing endAssemblage: %s "% endAssemblage
@@ -556,29 +558,29 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                 print "For this network:  ", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"])
                 #print nx.write_adjlist(nnetwork,sys.stdout) # write adjacency list to screen
                 sys.exit("Quitting due to errors.")
-            logging.debug( "\t\t\tThere should be just 1 neighbor to %s and that is: %s", endAssemblage, innerNeighbor )
+            logger.debug( "\t\t\tThere should be just 1 neighbor to %s and that is: %s", endAssemblage, innerNeighbor )
             c = pairGraph.get_edge_data(innerNeighbor,endAssemblage )
             comparison=c['weight']
-            logging.debug( "\t\t\tCompare current pair with previous comparison: %s", comparison)
+            logger.debug( "\t\t\tCompare current pair with previous comparison: %s", comparison)
             ##########################################################################
             comparisonMap =""
             oneToColumns=range(len(assemblages[testAssemblage]))
-            logging.debug("Number of columns to check: %d", len(oneToColumns))
+            logger.debug("Number of columns to check: %d", len(oneToColumns))
 
             error = 0  ## set the error check to 0
             for i in oneToColumns:
-                logging.debug( "\t\t\tComparing Assemblage: %s  and    Assemblage: %s  ########",testAssemblage,endAssemblage)
-                logging.debug( "\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,i,i,i,i,i,i)
+                logger.debug( "\t\t\tComparing Assemblage: %s  and    Assemblage: %s  ########",testAssemblage,endAssemblage)
+                logger.debug( "\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,i,i,i,i,i,i)
                 c=""
                 p=nx.shortest_path(nnetwork, nnetwork.graph[assEnd] , nnetwork.graph[otherEnd])
-                logging.debug( "Working on path: %s",p)
+                logger.debug( "Working on path: %s",p)
                 newVal=assemblages[testAssemblage][i]
-                logging.debug("Start comparison with %s",testAssemblage)
+                logger.debug("Start comparison with %s",testAssemblage)
                 previousAssemblage=testAssemblage
                 for compareAssemblage in p:
                     oldVal=assemblages[compareAssemblage][i]
-                    logging.debug("Compare %s with %s ", previousAssemblage,compareAssemblage)
-                    logging.debug("Old value: %f  vs new value: %f",oldVal,newVal)
+                    logger.debug("Compare %s with %s ", previousAssemblage,compareAssemblage)
+                    logger.debug("Old value: %f  vs new value: %f",oldVal,newVal)
                     if bootstrapCI > 0:
                         upperCI_test = typeFrequencyUpperCI[previousAssemblage][i]
                         lowerCI_test = typeFrequencyLowerCI[previousAssemblage][i]
@@ -594,7 +596,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                         else:
                             c += "M"
                     else:
-                        logging.debug("Outer value: %f Inner value: %f", oldVal, newVal)
+                        logger.debug("Outer value: %f Inner value: %f", oldVal, newVal)
                         if newVal<oldVal:
                             c += "U"
                             c1="U"
@@ -605,30 +607,30 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                             c += "M"
                             c1="U"
                         else:
-                            logging.debug("Error. Quitting.")
+                            logger.debug("Error. Quitting.")
                             sys.exit("got null value in comparison of value for type %d in the comparison of %s", i, compareAssemblage)
-                        logging.debug("Comparison %s is now %s", c1,c)
+                        logger.debug("Comparison %s is now %s", c1,c)
                         newVal=oldVal
 
                     previousAssemblage=compareAssemblage
 
                 test = re.compile('DU|DM*U').search(c)
                 if test is not None:
-                    logging.debug("Comparison is %s. Error!",c)
+                    logger.debug("Comparison is %s. Error!",c)
                     error +=1
 
-            logging.debug("Checked out %s. Found %d total errors.", testAssemblage, error)
+            logger.debug("Checked out %s. Found %d total errors.", testAssemblage, error)
             if error == 0:
-                logging.debug("Found no errors!  Going to add %s to end of existing network at %s", testAssemblage, endAssemblage)
-                logging.debug( "Original network: %s ",nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
-                logging.debug( "New comparison map is: %s ", comparisonMap)
+                logger.debug("Found no errors!  Going to add %s to end of existing network at %s", testAssemblage, endAssemblage)
+                logger.debug( "Original network: %s ",nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
+                logger.debug( "New comparison map is: %s ", comparisonMap)
 
                 new_network = nnetwork.copy()
                 new_network.graph["GraphID"]= solutionCount + 1
-                logging.debug( "Here's the new network (before addition): %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
-                logging.debug("From %s the ends of the seriation are %d (before): %s and %s",assEnd, nnetwork.graph['GraphID'],nnetwork.graph["End1"],nnetwork.graph["End2"] )
+                logger.debug( "Here's the new network (before addition): %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
+                logger.debug("From %s the ends of the seriation are %d (before): %s and %s",assEnd, nnetwork.graph['GraphID'],nnetwork.graph["End1"],nnetwork.graph["End2"] )
                 path = nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"])
-                logging.debug(" New network shortest path (before): %s ", path)
+                logger.debug(" New network shortest path (before): %s ", path)
 
                 ## mark this vertice as the new "END"
                 new_network.add_node(testAssemblage, name=testAssemblage,end=1,site="end")
@@ -637,23 +639,23 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
 
                 #### This adds the comparison to the new edge that has been added.
                 new_network.add_edge( testAssemblage, endAssemblage, weight=comparisonMap, end=1, site="end", GraphID=solutionCount )
-                logging.debug("Ends of the seriation %d (before): %s and %s ",new_network.graph['GraphID'], new_network.graph["End1"],new_network.graph["End2"] )
+                logger.debug("Ends of the seriation %d (before): %s and %s ",new_network.graph['GraphID'], new_network.graph["End1"],new_network.graph["End2"] )
 
-                logging.debug("Reassigning the new end %s from %s to %s", assEnd,new_network.graph[assEnd],testAssemblage )
+                logger.debug("Reassigning the new end %s from %s to %s", assEnd,new_network.graph[assEnd],testAssemblage )
                 new_network.graph[assEnd]=testAssemblage
-                logging.debug("From %s end of the seriation %s (after): %s and %s",assEnd, new_network.graph['GraphID'],new_network.graph["End1"],new_network.graph["End2"] )
-                logging.debug("Here's the new network %s (with addition): %s", new_network.graph['GraphID'], new_network.adjacency_list())
+                logger.debug("From %s end of the seriation %s (after): %s and %s",assEnd, new_network.graph['GraphID'],new_network.graph["End1"],new_network.graph["End2"] )
+                logger.debug("Here's the new network %s (with addition): %s", new_network.graph['GraphID'], new_network.adjacency_list())
                 path = nx.shortest_path(new_network, new_network.graph["End1"] , new_network.graph["End2"])
-                logging.debug("New network %d shortest path (after): %s ", new_network.graph['GraphID'], path)
+                logger.debug("New network %d shortest path (after): %s ", new_network.graph['GraphID'], path)
 
                 ## copy this solution to the new array of networks
                 array_of_new_networks.append(new_network)
 
                 if len(new_network)> maxnodes:
                     maxnodes = len(new_network)
-            logging.debug( "----------------#############-------End of check for %s ---------#############-----------------",testAssemblage)
-        logging.debug("--------------------------------------Finished with %s-----------------------------------------------------",assEnd)
-    logging.debug("------------------------------- Finished with Both Ends-----------------------------------------------------------------")
+            logger.debug( "----------------#############-------End of check for %s ---------#############-----------------",testAssemblage)
+        logger.debug("--------------------------------------Finished with %s-----------------------------------------------------",assEnd)
+    logger.debug("------------------------------- Finished with Both Ends-----------------------------------------------------------------")
 
     if len(array_of_new_networks)>0:
         return array_of_new_networks,maxnodes,
@@ -1101,27 +1103,27 @@ def main():
     ##################################################################################################
     if args['debug'] is not None:
         ## Logging
-        logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+        logger.basicConfig(stream=sys.stderr, level=logger.DEBUG)
     else:
-        logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+        logger.basicConfig(stream=sys.stderr, level=logger.ERROR)
 
     # start the clock to track how long this run takes
     global start
     start = time.time()
-    logging.debug("Start time:  %s ", start)
-    logging.debug("Arguments: %s", args)
+    logger.debug("Start time:  %s ", start)
+    logger.debug("Arguments: %s", args)
     bootstrapCI=0
     filename=args['inputfile']
 
     if filename is "":
-        logging.error("You must enter a filename to continue.")
+        logger.error("You must enter a filename to continue.")
         print "You must enter a filename to continue."
         sys.exit("Quitting due to errors.")
     try:
-        logging.debug("Going to try to open and load: %s", filename)
+        logger.debug("Going to try to open and load: %s", filename)
         maxSeriationSize, assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses = openFile(filename)
     except IOError as e:
-        logging.error("Cannot open %s. Error: %s", filename, e.strerror)
+        logger.error("Cannot open %s. Error: %s", filename, e.strerror)
 
         print("Cannot open %s. Error. %s ", filename, e.strerror)
         if screenFlag is not None:
@@ -1150,13 +1152,13 @@ def main():
         xyfileFlag=1
 
     ############################################################################################################
-    logging.debug("Going to open pairwise file it is exists.")
+    logger.debug("Going to open pairwise file it is exists.")
     if args['pairwisefile'] is not None:
         openPairwiseFile(args['pairwisefile'])
         pairwiseFlag = 1
 
     ############################################################################################################
-    logging.debug("Going to open XY file if it exists.")
+    logger.debug("Going to open XY file if it exists.")
     largestX=0
     largestY=0
     distanceBetweenAssemblages={}
@@ -1177,20 +1179,20 @@ def main():
             distanceBetweenAssemblages[name]=0
 
     ############################################################################################################
-    logging.debug("Assume threshold is 1.0 unless its specified in arguments.")
+    logger.debug("Assume threshold is 1.0 unless its specified in arguments.")
     threshold=1.0
     if args['threshold']>0 :
         threshold=float(args['threshold'])
 
-    logging.debug("Going to create list of valid pairs for comparisons.")
+    logger.debug("Going to create list of valid pairs for comparisons.")
     validAssemblagesForComparisons={}
     validAssemblagesForComparisons = thresholdDetermination(threshold, assemblages)
     typeFrequencyLowerCI={}
     typeFrequencyUpperCI={}
     typeFrequencyMeanCI ={}
     ###########################################################################################################
-    logging.debug("Now calculate the bootstrap comparisons based ")
-    logging.debug("on specified confidence interval, if in the arguments.")
+    logger.debug("Now calculate the bootstrap comparisons based ")
+    logger.debug("on specified confidence interval, if in the arguments.")
     if args['bootstrapCI'] is not None:
         bootstrapCI = 1
         confidenceInterval=0.95
@@ -1209,12 +1211,12 @@ def main():
     OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE=setupOutput(filename,pairwiseFlag,mstFlag,outputDirectory,inputFile)
 
     ###########################################################################################################
-    logging.debug("Now precalculating all the combinations between pairs of assemblages. ")
-    logging.debug("This returns a graph with all pairs and the comparisons as weights.")
+    logger.debug("Now precalculating all the combinations between pairs of assemblages. ")
+    logger.debug("This returns a graph with all pairs and the comparisons as weights.")
     pairGraph = preCalculateComparisons(assemblages, bootstrapCI, typeFrequencyUpperCI, typeFrequencyLowerCI)
 
     ###########################################################################################################
-    logging.debug("Calculate all the valid triples.")
+    logger.debug("Calculate all the valid triples.")
     triples = []
     triples = findAllValidTriples(assemblages, pairGraph, validAssemblagesForComparisons, bootstrapCI,
                                   typeFrequencyLowerCI, typeFrequencyUpperCI,typeFrequencyMeanCI)
@@ -1239,13 +1241,13 @@ def main():
             solutions = triples # clear the
         else:
             i = 0
-            logging.debug("Currently have %d solutions at step %d", len(newNetworks),currentMaxSeriationSize)
+            logger.debug("Currently have %d solutions at step %d", len(newNetworks),currentMaxSeriationSize)
             if len(newNetworks)==0:
                 # there were no networks the previous times so nothing to do.
                 break
-            logging.debug("These solutions are ---  ")
+            logger.debug("These solutions are ---  ")
             for sol in newNetworks:
-                logging.debug("solution %d: %s", i, nx.shortest_path(sol, sol.graph["End1"] , sol.graph["End2"]))
+                logger.debug("solution %d: %s", i, nx.shortest_path(sol, sol.graph["End1"] , sol.graph["End2"]))
                 i += 1
             networks=[]
             networks += newNetworks  # copy the array of previous new ones for this round
@@ -1258,9 +1260,9 @@ def main():
         #print "Number of solutions:", len(solutions)
 
         stepcount += 1
-        logging.debug("_______________________________________________________________________________________")
-        logging.debug("Step number:  %d", currentMaxSeriationSize)
-        logging.debug("_______________________________________________________________________________________")
+        logger.debug("_______________________________________________________________________________________")
+        logger.debug("Step number:  %d", currentMaxSeriationSize)
+        logger.debug("_______________________________________________________________________________________")
 
         if screenFlag>0:
             scr.addstr(4,0,"Step number:                                    ")
@@ -1271,16 +1273,16 @@ def main():
             scr.addstr(5,0,msg)
             scr.refresh()
 
-        logging.debug("Number of solutions from previous step: %d", len(networks))
+        logger.debug("Number of solutions from previous step: %d", len(networks))
         match = 0      ## set the current match to zero for this step (sees if there are any new solutions for step)
         ## look through the set of existing valid networks.
         validNewNetworks=[]
 
         ##pool.map(seriationCheck, networks)
         for nnetwork in networks:
-            logging.debug("-----------------------------------------------------------------------------------")
-            logging.debug("Network: %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
-            logging.debug("-----------------------------------------------------------------------------------")
+            logger.debug("-----------------------------------------------------------------------------------")
+            logger.debug("Network: %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
+            logger.debug("-----------------------------------------------------------------------------------")
             ## find the ends
             ## given the ends, find the valid set of assemblages that can be potentially added
             ## this list is all assemblages meet the threshold requirements
@@ -1290,7 +1292,7 @@ def main():
             if validNewNetworks is not False:
                 newNetworks = newNetworks + validNewNetworks
                 solutionCount += len(validNewNetworks)
-                logging.debug("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),solutionCount)
+                logger.debug("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),solutionCount)
                 if currentMaxNodes > maxNodes:
                     maxNodes = currentMaxNodes
                 currentTotal = len(newNetworks)
@@ -1314,7 +1316,7 @@ def main():
         end_solutions = networks
         all_solutions = networks
 
-    logging.debug("Process complete at seriation size %d with %d solutions before filtering.",maxSeriationSize,len(end_solutions))
+    logger.debug("Process complete at seriation size %d with %d solutions before filtering.",maxSeriationSize,len(end_solutions))
 
     ###########################################################################################################
     if args['mst'] is not None:
@@ -1333,31 +1335,31 @@ def main():
     if args['filtered'] is not None:  ## only get the largest set that includes ALL
         if screenFlag:
             scr.addstr(1,40,"STEP: Filter to get uniques... ")
-        logging.debug("--- Filtering solutions so we only end up with the unique ones.")
-        logging.debug("--- Start with %d solutions.", len(end_solutions))
+        logger.debug("--- Filtering solutions so we only end up with the unique ones.")
+        logger.debug("--- Start with %d solutions.", len(end_solutions))
         filteredarray.append(end_solutions[-1])
         newOne=0
         for tnetwork in reversed(all_solutions):
             exists=0
             for fnetwork in filteredarray:
                 fnetworkArray= fnetwork.nodes()
-                logging.debug("----fnetworkArray: %s", fnetworkArray)
+                logger.debug("----fnetworkArray: %s", fnetworkArray)
                 tnetworkArray = tnetwork.nodes()
-                logging.debug("----tnetworkArray: %s", tnetworkArray)
+                logger.debug("----tnetworkArray: %s", tnetworkArray)
                 minus = list(set(tnetworkArray) - set(fnetworkArray))
-                logging.debug("difference between: %s ", minus)
+                logger.debug("difference between: %s ", minus)
                 change= len(minus)
-                logging.debug("Change: %d", change)
+                logger.debug("Change: %d", change)
                 if change > 0 and len(list(set(minus)-set(fnetworkArray))):
                     newOne += 1
                 else:
                     exists += 1
             if exists==0:
-                logging.debug("pushing tnetwork to list of filtered arrays")
+                logger.debug("pushing tnetwork to list of filtered arrays")
                 filteredarray.append(tnetwork)
             exists=0
 
-        logging.debug("End with %d solutions.", len(filteredarray))
+        logger.debug("End with %d solutions.", len(filteredarray))
         filterCount= len(filteredarray)
         if screenFlag:
             scr.addstr(11,1,"End with filterCount solutions.")
@@ -1366,7 +1368,7 @@ def main():
     else:
         filteredarray = end_solutions ## just the largest ones (from the last round)
 
-    logging.debug("Process complete at seriation size %d with %d solutions after filtering.",maxSeriationSize,len(filteredarray))
+    logger.debug("Process complete at seriation size %d with %d solutions after filtering.",maxSeriationSize,len(filteredarray))
     currentTotal = len(filteredarray)
 
     #################################################### OUTPUT SECTION ####################################################
