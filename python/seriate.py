@@ -805,6 +805,7 @@ def finalGoodbye(start,maxNodes,currentTotal):
     print "Maximum size of seriation: %d" % maxNodes
     print "Number of solutions at last step: %d" % currentTotal
     print "Time elapsed for calculation: %d seconds" % timeElapsed
+    os.system("reset")
 
 
 #################################################### set up all the output files ####################################################
