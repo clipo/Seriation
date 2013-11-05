@@ -670,7 +670,7 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
         raise ImportError("This function needs Graphviz and either PyGraphviz or Pydot")
 
     graphs=[]
-    megaGraph = nx.Graph(name="MST")
+    megaGraph = nx.Graph()
     number=0
     graphCount=0
     for net in networks:
@@ -682,7 +682,7 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
             name = nodey[0]
             xCoordinate = xAssemblage[name]
             yCoordinate = yAssemblage[name]
-            megaGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
+            megaGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
                                size=assemblageSize[name])
             #graphs[graphCount].add_node(fromAssemblage, label=fromAssemblage, x=xCoordinate, y=yCoordinate,
             #                            name=fromAssemblage, size=assemblageSize[name])
@@ -754,7 +754,7 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
     #nx.draw(mst)
     #plt.savefig("path.png")
     plt.axis('off')
-    newfilename=outputDirectory+inputFile[:4]+"-mst.png"
+    newfilename=outputDirectory+inputFile[0:-4]+"-mst.png"
     plt.savefig(newfilename,dpi=75)
     plt.figure(1,figsize=(30,20))
     # layout graphs with positions using graphviz neato
@@ -787,7 +787,7 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
             alpha=.2,
             font_size=7,
         )
-    atlasFile=outputDirectory+inputFile[:4]+"-atlas.png"
+    atlasFile=outputDirectory+inputFile[0:-4]+"-atlas.png"
     plt.savefig(atlasFile,dpi=250)
     plt.show() # display
 
