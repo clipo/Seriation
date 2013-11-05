@@ -29,11 +29,7 @@ from copy import copy, deepcopy
 # start prettyprint (python Dumper)
 pp = pprint.PrettyPrinter(indent=4)
 
-### yields a<->b and b<->a
-#def all_pairs(lst):
-#    for p in itertools.permutations(lst):
-#        i = iter(p)
-#        yield zip(i,i)
+#
 
 def all_pairs(lst):
     return list((itertools.permutations(lst, 2)))
