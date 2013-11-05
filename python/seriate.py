@@ -23,6 +23,7 @@ import os
 from pylab import *
 import matplotlib.pyplot as plt
 import re
+import multiprocessing
 from copy import copy, deepcopy
 
 # start prettyprint (python Dumper)
@@ -1069,6 +1070,13 @@ def main():
         parser.error(str(msg))
         sys.exit()
 
+    #### set up parallel processing
+    #try:
+    #    cpus = multiprocessing.cpu_count()
+    #except NotImplementedError:
+    #    cpus = 2   # arbitrary default
+
+    #pool = multiprocessing.Pool(processes=cpus)
     ##################################################################################################
     global scr
     global screenFlag
@@ -1276,6 +1284,8 @@ def main():
         match = 0      ## set the current match to zero for this step (sees if there are any new solutions for step)
         ## look through the set of existing valid networks.
         validNewNetworks=[]
+
+        ##pool.map(seriationCheck, networks)
         for nnetwork in networks:
             logging.debug("-----------------------------------------------------------------------------------")
             logging.debug("Network: %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
@@ -1286,7 +1296,7 @@ def main():
             validNewNetworks,currentMaxNodes = checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComparisons,
                                                               assemblages, typeFrequencyLowerCI, typeFrequencyUpperCI,
                                                               bootstrapCI, typeFrequencyMeanCI,solutionCount)
-            if  validNewNetworks is not False:
+            if validNewNetworks is not False:
                 newNetworks = newNetworks + validNewNetworks
                 solutionCount += len(validNewNetworks)
                 logging.debug("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),solutionCount)
