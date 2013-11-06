@@ -818,7 +818,7 @@ def setupOutput(filename, outputDirectory,inputFile, args):
         sys.exit(msg)
 
     outpairsFile = outputDirectory +inputFile[0:-4]+"-pairs.vna"
-    if args['pairwiseFile'] is not None:
+    if args['pairwisefile'] is not None:
         try:
             OUTPAIRSFILE = open(outpairsFile, 'w')
         except csv.Error as e:
@@ -986,7 +986,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
                     pVal=0.0
                     pErr=0.0
                     d = e.get
-                    if args['pairwiseFile'] is not None:
+                    if args['pairwisefile'] is not None:
                         pairname= e[0]+"#"+e[1]
                         pVal = pairwise[ pairname ]
                         pErr = pairwiseError[pairname]
@@ -1021,7 +1021,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
             for e in network.edges_iter():
                 pVal=0.0
                 pErr=0.0
-                if args['pairwiseFile'] >0 :
+                if args['pairwisefile'] >0 :
                     pairname= e[0]+"#"+e[1]
                     pVal = pairwise[ pairname ]
                     pErr = pairwiseError[ pairname ]
@@ -1081,37 +1081,35 @@ def filterSolutions(end_solutions,all_solutions,args):
         filteredarray = end_solutions ## just the largest ones (from the last round)
     return filteredarray
 
+
 def main():
 
     global scr, start
     mem=memory.Memory()
 
-    parser = argparse.ArgumentParser(description='Conduct seriation analysis')
-    parser.add_argument('--debug')
-    parser.add_argument('--bootstrapCI')
-    parser.add_argument('--bootstrapSignificance', type=float)
-    parser.add_argument('--filtered')
-    parser.add_argument('--largestonly')
-    parser.add_argument('--individualfileoutput')
-    parser.add_argument('--excel')
-    parser.add_argument('--threshold')
-    parser.add_argument('--noscreen')
-    parser.add_argument('--xyfile')
-    parser.add_argument('--pairwisefile')
-    parser.add_argument('--mst')
-    parser.add_argument('--stats')
-    parser.add_argument('--nosum')
-    parser.add_argument('--screen')
-    parser.add_argument('--allsolutions')
-    parser.add_argument('--memusage')
-    parser.add_argument('--inputfile')
-    parser.add_argument('--outputdirectory')
+    parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
+    parser.add_argument('--debug', default=None, help='Sets the DEBUG flag for massive amounts of annoated output.')
+    parser.add_argument('--bootstrapCI', default=None, help="Sets whether you want to use the bootstrap confidence intervals for the comparisons between assemblage type frequencies. Set's to on or off.")
+    parser.add_argument('--bootstrapSignificance', default=0.95, type=float, help="The significance to which the confidence intervals are calculated. Default is 0.95.")
+    parser.add_argument('--filtered',default=True,help="The script will complete by checking to see if smaller valid solutions are included in the larger sets. If not, they are added to the final set. Default is true. ")
+    parser.add_argument('--largestonly',default=None, help="If set, the results will only include the results from the last and largest successful series of solutions. Smaller solutions will be excluded. Default is false.")
+    parser.add_argument('--individualfileoutput',default=None,help="If true, a .VNA files will be created for every solution.")
+    parser.add_argument('--excel',default=None, help="Not implemented.")
+    parser.add_argument('--threshold',default=None,help="Sets the maximum difference between the frequencies of types that will be examine. This has the effect of keeping one from evaluating trivial solutions or solutions in which there is limited warrant for establishing continuity. Default is false.")
+    parser.add_argument('--noscreen',default=None, help="If true, there will be no text output (i.e., runs silently). Default is false.")
+    parser.add_argument('--xyfile',default=None,help="Enter the name of the XY file that contains the name of the assemblage and the X and Y coordinates for each.")
+    parser.add_argument('--pairwisefile',default=None, help="If you have precalculated the bootstrap comparative p-value, enter the name of the file here and it will be used as the basis of the graphical output for showing significance of comparisons. Default is false.")
+    parser.add_argument('--mst', default=None, help="If true, will produce a minimum spanning tree diagram from the set of final solutions.")
+    parser.add_argument('--stats', default=None, help="(Probably not implemented). If true, a histogram of the solutions will be shown in terms of the #s of time pairs are included. Default is false.")
+    parser.add_argument('--screen', default=None, help="Sets whether the output will be sent all to the screen or not. Default is false. When true, the screen output is all captured through curses." )
+    parser.add_argument('--allsolutions', default=None,help="If set, all of the valid solutions are produced even if they are subsets of largers solutions.")
+    parser.add_argument('--inputfile',help="<REQUIRED> Enter the name of the data file with the assemblage data to process.")
+    parser.add_argument('--outputdirectory', help="If you want the output to go someplace other than the /output directory, specify that here.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
         parser.error(str(msg))
         sys.exit()
-
 
     ##################################################################################################
     if args['screen'] is not None:
