@@ -1104,7 +1104,7 @@ def main():
     parser.add_argument('--screen', default=None, help="Sets whether the output will be sent all to the screen or not. Default is false. When true, the screen output is all captured through curses." )
     parser.add_argument('--allsolutions', default=None,help="If set, all of the valid solutions are produced even if they are subsets of largers solutions.")
     parser.add_argument('--inputfile',help="<REQUIRED> Enter the name of the data file with the assemblage data to process.")
-    parser.add_argument('--outputdirectory', help="If you want the output to go someplace other than the /output directory, specify that here.")
+    parser.add_argument('--outputdirectory',default=None, help="If you want the output to go someplace other than the /output directory, specify that here.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
