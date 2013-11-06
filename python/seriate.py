@@ -676,7 +676,8 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
     number=0
     graphCount=0
     for net in networks:
-        graphCount += 1
+        graphCount +=1
+        g = nx.Graph()
         number = net.graph['GraphID']
         for nodey in net.nodes(data=True):
             xCoordinate = 0
@@ -686,16 +687,16 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
             yCoordinate = yAssemblage[name]
             megaGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
                                size=assemblageSize[name])
-            #graphs[graphCount].add_node(fromAssemblage, label=fromAssemblage, x=xCoordinate, y=yCoordinate,
-            #                            name=fromAssemblage, size=assemblageSize[name])
-            #graphs[graphCount].add_node(toAssemblage, label=toAssemblage, x=xCoordinate, y=yCoordinate,
-            #                            name=toAssemblage, size=assemblageSize[name])
 
         count=0
         for e in net.edges_iter():   ### no need to go in order -- just look at all the other edges to see if there is an X
             d = net.get_edge_data(*e)
             fromAssemblage = e[0]
             toAssemblage = e[1]
+            g.add_node(fromAssemblage, label=fromAssemblage, x=xCoordinate, y=yCoordinate,
+                                        name=fromAssemblage, size=assemblageSize[name])
+            g.add_node(toAssemblage, label=toAssemblage, x=xCoordinate, y=yCoordinate,
+                                        name=toAssemblage, size=assemblageSize[name])
             weight = d['weight']
             distance = distanceBetweenAssemblages[fromAssemblage + "*" + toAssemblage]
             #count = megaGraph.get_edge_data(fromAssemblage,toAssemblage,'weight'
@@ -704,13 +705,13 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
                                distance=distance, color=number,
                                size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
 
-            graphs[graphCount].add_path([fromAssemblage], [toAssemblage],
+            g.add_path([fromAssemblage, toAssemblage],
                                         xy1=(xAssemblage[fromAssemblage], yAssemblage[fromAssemblage]),
                                         xy2=(xAssemblage[toAssemblage], yAssemblage[toAssemblage]),
                                         weight=weight,
                                         meanDistance=distance,
                                         size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
-
+        graphs.append(g)
     plt.rcParams['text.usetex'] = False
     plt.figure(0,figsize=(8,8))
     mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
@@ -904,8 +905,8 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
         x = 0
         y = 0
         if args['xyfile'] is not None:
-            x = xAssemblage[l]/1000000
-            y = (largestY-yAssemblage[l])/100000
+            x = float(xAssemblage[l])/1000000
+            y = (float(largestY)-float(yAssemblage[l]))/100000
             easting = xAssemblage[l]
             northing = yAssemblage[l]
         msg = l +" "+ str(assemblageSize[ l])+" "+str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
@@ -1179,8 +1180,9 @@ def main():
     if args['outputdirectory'] is not None:
         outputDirectory = args['outputdirectory']
     else:
-        out = args['inputfile']
-        outputDirectory = out[:-len(inputFile)]
+        #out = args['inputfile']
+        #outputDirectory = out[:-len(inputFile)]
+        outputDirectory = "../output/"
 
     ############################################################################################################
     logger.debug("Going to open pairwise file it is exists.")
