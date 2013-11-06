@@ -702,12 +702,12 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
                                distance=distance, color=number,
                                size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
 
-            #graphs[graphCount].add_path([fromAssemblage], [toAssemblage],
-            #                            xy1=(xAssemblage[fromAssemblage], yAssemblage[fromAssemblage]),
-            #                            xy2=(xAssemblage[toAssemblage], yAssemblage[toAssemblage]),
-            #                            weight=weight,
-            #                            meanDistance=distance,
-            #                            size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
+            graphs[graphCount].add_path([fromAssemblage], [toAssemblage],
+                                        xy1=(xAssemblage[fromAssemblage], yAssemblage[fromAssemblage]),
+                                        xy2=(xAssemblage[toAssemblage], yAssemblage[toAssemblage]),
+                                        weight=weight,
+                                        meanDistance=distance,
+                                        size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
 
     plt.rcParams['text.usetex'] = False
     plt.figure(0,figsize=(8,8))
