@@ -151,7 +151,7 @@ def openPairwiseFile( filename ):
 
 
 def openXYFile( filename ):
-    logger.debug("Opening pairwise file %", filename)
+    logger.debug("Opening pairwise file %s", filename)
     ## open the xy file
     try:
         xyf= open( filename,'r')
@@ -160,21 +160,26 @@ def openXYFile( filename ):
 
     xAssemblage={}
     yAssemblage={}
+    xyAssemblages=[]
+    distanceBetweenAssemblages={}
     reader = csv.reader(xyf, delimiter='\t', quotechar='|')
 
     for row in reader:
         label = row[0]
         xyAssemblages.append(label)
-        yAssemblage[ label ]= row[1]
-        xAssemblage[ label ]= row[2]
+        yAssemblage[label]=row[1]
+        xAssemblage[label]=row[2]
 
     assemblagePairs = all_pairs(xyAssemblages)
     ## Go through all of the combinations
     for combo in assemblagePairs:
         pairname = combo[0]+"*"+combo[1]
-        distance = math.sqrt( (xAssemblage[ combo[0] ] -xAssemblage[ combo[1]])^2 + (yAssemblage[combo[0]] -yAssemblage[combo[1]])^2)
+        xdistance = float(xAssemblage[combo[0]]) - float(xAssemblage[combo[1]])
+        xxdistance = xdistance * xdistance
+        ydistance = float(yAssemblage[combo[0]]) - float(yAssemblage[combo[1]])
+        yydistance = ydistance * ydistance
+        distance = math.sqrt( xxdistance + yydistance)
         distanceBetweenAssemblages[ pairname ] = distance
-
     largestX = max(xAssemblage.iterkeys(), key=(lambda key: xAssemblage[key]))
     largestY= max(yAssemblage.iterkeys(), key=(lambda key: yAssemblage[key]))
     return largestX,largestY,distanceBetweenAssemblages,xAssemblage,yAssemblage
@@ -1122,6 +1127,7 @@ def main():
         logger.error("You must enter a filename to continue.")
         print "You must enter a filename to continue."
         sys.exit("Quitting due to errors.")
+
     try:
         logger.debug("Going to try to open and load: %s", filename)
         maxSeriationSize, assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses = openFile(filename)
@@ -1145,7 +1151,8 @@ def main():
     if args['outputdirectory'] is not None:
         outputDirectory = args['outputdirectory']
     else:
-        outputDirectory = "../output/"
+        out = args['inputfile']
+        outputDirectory = out[:-len(inputFile)]
 
     ############################################################################################################
     if args['largestonly'] is not None:
