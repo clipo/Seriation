@@ -34,9 +34,7 @@ These algorithms are intended to automate and extend the initial, mainly manual 
 ### Authors ###
 
 Carl P. Lipo, California State University at Long Beach
-
 Mark E. Madsen, University of Washington, Seattle
-
 
 
 

@@ -531,6 +531,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                 if c == ord('q'):
                     curses.endwin()
                     curses.resetty()
+                    os.system("reset")
                     sys.exit("Quitting as requested.\n\r")
 
             ## now see if the test assemblages fits on the end.
@@ -1107,7 +1108,7 @@ def main():
             curses.endwin()
             curses.resetty()
             traceback.print_exc()           # Print the exception
-
+            os.system("reset")
     ##################################################################################################
     if args['debug'] is not None:
         ## Logging
