@@ -1,6 +1,12 @@
+#!/usr/bin/env python
+# Copyright (c) 2013.  Carl P. Lipo <clipo@csulb.edu>
+#
+# This work is licensed under the terms of the Apache Software License, Version 2.0.  See the file LICENSE for details.
 __author__ = 'carllipo'
 
-__author__ = 'carllipo'
+# a standalone script for producing a minimum spanning tree solution based on the results of the seriation analysis.
+# this requires GraphViz to be installed.
+
 import shapefile
 import csv
 import getopt
@@ -153,15 +159,15 @@ def main(argv):
                 edgeCount = 0
             node1name = node1+"_"+str(network)
             node2name = node2+"_"+str(network)
-            graphs[graphCount].add_node(node1name, label= node1, x = node1x, y = node1y, name=node1, size=node1Size )
-            graphs[graphCount].add_node(node2name, label= node2, x = node2x, y = node2y, name=node2, size=node2Size )
+            graphs[graphCount].add_node(node1name, label= node1, x = node1x, y = node1y,  size=node1Size )
+            graphs[graphCount].add_node(node2name, label= node2, x = node2x, y = node2y,  size=node2Size )
             graphs[graphCount].add_edge(node1name, node2name, xy1=(node1x, node1y), xy2=(node2x, node2y),
                                         weight=weight,
                                         meanDistance=meanDistance,
                                         pvalue=weight,pError=pError,
                                         size=(nodeSize[node1],nodeSize[node2]))
-            megaGraph.add_node(node1, x = node1x, y = node1y, name=node1, size=node1Size )
-            megaGraph.add_node(node2, x = node2x, y = node2y, name=node2, size=node2Size )
+            megaGraph.add_node(node1, x = node1x, y = node1y,  size=node1Size )
+            megaGraph.add_node(node2, x = node2x, y = node2y, size=node2Size )
             megaGraph.add_edge(node1,node2, xy1=(node1x,node1y), xy2=(node2x,node2y),
                                    weight = weight,
                                    pvalueError = pError,
