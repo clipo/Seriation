@@ -174,8 +174,10 @@ def openXYFile( filename ):
         yydistance = ydistance * ydistance
         distance = math.sqrt( xxdistance + yydistance)
         distanceBetweenAssemblages[ pairname ] = distance
-    largestX = max(xAssemblage.iterkeys(), key=(lambda key: xAssemblage[key]))
-    largestY= max(yAssemblage.iterkeys(), key=(lambda key: yAssemblage[key]))
+    largestXname = max(xAssemblage.iterkeys(), key=(lambda key: xAssemblage[key]))
+    largestYname= max(yAssemblage.iterkeys(), key=(lambda key: yAssemblage[key]))
+    largestX = xAssemblage[largestXname]
+    largestY = yAssemblage[largestYname]
     return largestX,largestY,distanceBetweenAssemblages,xAssemblage,yAssemblage
 
 
@@ -484,7 +486,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                                     typeFrequencyMeanCI,
                                     solutionCount, args):
 
-    logger.debug(" ######################Starting check for solution %s with %s nodes ######################################",nnetwork.graph['GraphID'],len(nnetwork))
+    logger.debug("######################Starting check for solution %s with %s nodes ######################################",nnetwork.graph['GraphID'],len(nnetwork))
     if args['screen'] > 0:
         scr.addstr(1,40, "STEP: Testing for addition to seriation ....      ")
         scr.refresh()
@@ -874,10 +876,10 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
         northing = 0
         easting = 0
         if args['xyfile'] is not None:
-            x = xAssemblage[l]/1000000
-            y = (largestY-yAssemblage[ l ])/100000
-            easting = xAssemblage[ l ]
-            northing = yAssemblage[ l ]
+            x = float(xAssemblage[ l ]) / 1000000.0
+            y = (float(largestY)- float(yAssemblage[l]))/100000.0
+            easting = xAssemblage[l]
+            northing = yAssemblage[l]
 
         msg = l + " "+ str(assemblageSize[ l ])+" "+ str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
         OUTFILE.write(msg)
@@ -996,9 +998,6 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
                     OUTFILE.write(text)
                 network['meanDistance'] = meanDistance
                 distanceHash[ network["GraphID"] ]= meanDistance
-                #seriationHash[ network["GraphID"] ]['meanDistance']= meanDistance
-                #seriationHash[ network["GraphID"] ]['ID']=network["GraphID"]
-                #seriationHash[ network["GraphID"] ]['size']=edgeCount
         else:  ## not just the largest, but ALL seriation solutions
             edgeCount = len(network.edges())
             groupDistance=0
@@ -1256,7 +1255,8 @@ def main():
     currentTotal = len(triples)
     solutions=[]
     networks=[]
-    all_solutions=triples
+    all_solutions=[]
+    all_solutions= all_solutions + triples
 
     while currentMaxSeriationSize < maxSeriationSize:
         currentMaxSeriationSize += 1
@@ -1331,12 +1331,14 @@ def main():
             scr.addstr(9, 0, msg)
             scr.refresh()
 
-    if len(newNetworks)>0:
-        end_solutions = newNetworks
-        all_solutions= all_solutions + newNetworks
-    else:
-        end_solutions = networks
-        all_solutions = networks
+        if len(newNetworks)>0:
+            end_solutions = newNetworks
+            for s in newNetworks:
+                all_solutions.append(s)
+            #all_solutions= list(set(all_solutions + newNetworks))
+        else:
+            end_solutions = networks
+            #all_solutions = networks
 
     logger.debug("Process complete at seriation size %d with %d solutions before filtering.",maxSeriationSize,len(end_solutions))
 
@@ -1348,15 +1350,13 @@ def main():
 
     logger.debug("Process complete at seriation size %d with %d solutions after filtering.",maxSeriationSize,len(filteredarray))
 
-    currentTotal = len(filteredarray)
-
     #################################################### OUTPUT SECTION ####################################################
     output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredarray,
              OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
     #################################################### OUTPUT SECTION ####################################################
 
     ## say goodbye and clean up the screen stuff #########################
-    finalGoodbye(start,maxNodes,currentTotal,args)
+    finalGoodbye(start,maxNodes,len(filteredarray),args)
 
 if __name__ == "__main__":
     main()
