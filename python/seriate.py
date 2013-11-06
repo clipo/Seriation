@@ -238,7 +238,7 @@ def confidence_interval(data, confidence=0.95):
   ci2 = ( 1.0 - float(confidence))*.5
   d = 1.0*np.array(data)
   low_idx = int(ci2* d.size)
-  high_idx = int((1-ci2)*d.size)
+  high_idx = int((1-ci2)*d.size)-1
   d.sort()
   return d.mean(), d[low_idx], d[high_idx]
 
@@ -323,7 +323,10 @@ def bootstrapCICalculation(assemblages, assemblageSize, bootsize=100, confidence
             upper=0.0
             lower=0.0
             mean=0.0
-            mean, lower, upper = confidence_interval(freq, confidence=float(confidenceInterval))
+            if sum(freq) > 0.0:
+                mean, lower, upper = confidence_interval(freq, confidence=float(confidenceInterval))
+            else:
+                mean=lower=upper=0
             if math.isnan(lower) is True:
                 lower=0.0
             if math.isnan(upper) is True:
