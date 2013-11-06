@@ -88,7 +88,7 @@ def openFile(filename,args):
     return len(assemblages), assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses
 
 
-def preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFrequencyLowerCI):
+def preCalculateComparisons(assemblages,typeFrequencyUpperCI,typeFrequencyLowerCI,args):
     logger.debug("Precalculating the comparisons between all pairs of assemblages...")
     pairs = all_pairs(assemblages)
     pairGraph = nx.Graph()
@@ -105,7 +105,7 @@ def preCalculateComparisons(assemblages,bootstrapCI,typeFrequencyUpperCI,typeFre
             logger.debug( "\t\tComparing Assemblage: %s  and    Assemblage: %s  ########",pair[0],pair[1])
             logger.debug( "\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,i,i,i,i,i,i)
 
-            if bootstrapCI > 0:
+            if args['bootstrapCI'] is not None:
                 upperCI_test = typeFrequencyUpperCI[pair[0]][i]
                 lowerCI_test  = typeFrequencyLowerCI[pair[0]][i]
                 upperCI_end =  typeFrequencyUpperCI[pair[1]][i]
@@ -343,7 +343,7 @@ def bootstrapCICalculation(assemblages, assemblageSize, args, bootsize=100,confi
 
 ########################################### FIND ALL THE VALID TRIPLES  ####################################
 ########################################### #################################### ###########################
-def findAllValidTriples(assemblages,bootstrapCI,typeFrequencyLowerCI, typeFrequencyUpperCI,typeFrequencyMeanCI,args):
+def findAllValidTriples(assemblages,typeFrequencyLowerCI,typeFrequencyUpperCI,typeFrequencyMeanCI,args):
     triples=[]
     error = 0
     numberOfTriplets = 0
@@ -377,7 +377,7 @@ def findAllValidTriples(assemblages,bootstrapCI,typeFrequencyLowerCI, typeFreque
             ass3 = assemblages[ permu[2] ][i]
             logger.debug( "ass1: %f ass2: %f ass3: %f",ass1,ass2,ass3)
 
-            if bootstrapCI >0 :
+            if args['bootstrapCI'] is not None:
                 low1 = typeFrequencyLowerCI[permu[0]][i]
                 low2 = typeFrequencyLowerCI[permu[1]][i]
                 low3 = typeFrequencyLowerCI[permu[2]][i]
@@ -480,7 +480,7 @@ def filter_list(full_list, excludes):
 
 
 def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComparisons, assemblages,
-                                    typeFrequencyLowerCI, typeFrequencyUpperCI, bootstrapCI,
+                                    typeFrequencyLowerCI, typeFrequencyUpperCI,
                                     typeFrequencyMeanCI,
                                     solutionCount, args):
 
@@ -582,7 +582,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                     oldVal=assemblages[compareAssemblage][i]
                     logger.debug("Compare %s with %s ", previousAssemblage,compareAssemblage)
                     logger.debug("Old value: %f  vs new value: %f",oldVal,newVal)
-                    if bootstrapCI > 0:
+                    if args['bootstrapCI'] is not None:
                         upperCI_test = typeFrequencyUpperCI[previousAssemblage][i]
                         lowerCI_test = typeFrequencyLowerCI[previousAssemblage][i]
                         upperCI_end = typeFrequencyUpperCI[compareAssemblage][i]
@@ -811,6 +811,7 @@ def finalGoodbye(start,maxNodes,currentTotal,args):
 #################################################### set up all the output files ####################################################
 def setupOutput(filename, outputDirectory,inputFile, args):
     outputFile = outputDirectory + inputFile[0:-4]+".vna"
+    OUTMSTFILE=OUTMSTDISTANCEFILE=""
     try:
         OUTFILE = open(outputFile, 'w')
     except csv.Error as e:
@@ -818,12 +819,12 @@ def setupOutput(filename, outputDirectory,inputFile, args):
         sys.exit(msg)
 
     outpairsFile = outputDirectory +inputFile[0:-4]+"-pairs.vna"
-    if args['pairwisefile'] is not None:
-        try:
-            OUTPAIRSFILE = open(outpairsFile, 'w')
-        except csv.Error as e:
-            msg = "Can't open file %s to write: %s" % outputFile, e
-            sys.exit(msg)
+    try:
+        OUTPAIRSFILE = open(outpairsFile, 'w')
+    except csv.Error as e:
+        msg = "Can't open file %s to write: %s" % outpairsFile, e
+        sys.exit(msg)
+
 
     outmstFile=  outputDirectory + inputFile[0:-4] + "-mst.vna"
     outmst2File = outputDirectory + inputFile[0:-4] + "-mst-distance.vna"
@@ -963,7 +964,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
             scr.addstr(14,1, "Now on solution: ")
             scr.addstr(14,18,str(network.graph["GraphID"]) )
             #print "now on solution: ", network["GraphID"],"\n"
-        if args['largestOnly']>0:
+        if args['largestonly'] is not None:
             if len(network.edges()) == maxEdges:
                 groupDistance=0
                 edgeCount = len(network.edges())
@@ -1222,9 +1223,8 @@ def main():
     ###########################################################################################################
     logger.debug("Now calculate the bootstrap comparisons based ")
     logger.debug("on specified confidence interval, if in the arguments.")
+
     if args['bootstrapCI'] is not None:
-        bootstrapCI = 1
-        confidenceInterval=0.95
         if args['bootstrapSignificance'] is not None:
             confidenceInterval= args['bootstrapSignificance']
         else:
@@ -1238,16 +1238,15 @@ def main():
     OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE=setupOutput(filename,outputDirectory,inputFile,args)
 
     ###########################################################################################################
-    logger.debug("Now precalculating all the combinations between pairs of assemblages. ")
+    logger.debug("Now pre-calculating all the combinations between pairs of assemblages. ")
     logger.debug("This returns a graph with all pairs and the comparisons as weights.")
-    pairGraph = preCalculateComparisons(assemblages, bootstrapCI, typeFrequencyUpperCI, typeFrequencyLowerCI)
+    pairGraph = preCalculateComparisons(assemblages,typeFrequencyUpperCI, typeFrequencyLowerCI,args)
 
     ###########################################################################################################
     logger.debug("Calculate all the valid triples.")
     triples = []
-    triples = findAllValidTriples(assemblages, pairGraph, validAssemblagesForComparisons, bootstrapCI,
-                                  typeFrequencyLowerCI, typeFrequencyUpperCI,typeFrequencyMeanCI, args)
-
+    triples = findAllValidTriples(assemblages,
+                                  typeFrequencyLowerCI,typeFrequencyUpperCI,typeFrequencyMeanCI, args)
     ###########################################################################################################
     stepcount = 0
     currentMaxSeriationSize = 2
@@ -1282,10 +1281,6 @@ def main():
             #print "Number of new Networks:", len(newNetworks)
             newNetworks=[]         # clear the array of new solutions
 
-
-        #print "Number of networks:", len(networks)
-        #print "Number of solutions:", len(solutions)
-
         stepcount += 1
         logger.debug("_______________________________________________________________________________________")
         logger.debug("Step number:  %d", currentMaxSeriationSize)
@@ -1315,7 +1310,7 @@ def main():
             ## this list is all assemblages meet the threshold requirements
             validNewNetworks,currentMaxNodes = checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComparisons,
                                                               assemblages, typeFrequencyLowerCI, typeFrequencyUpperCI,
-                                                              bootstrapCI, typeFrequencyMeanCI,solutionCount)
+                                                             typeFrequencyMeanCI,solutionCount,args)
             if validNewNetworks is not False:
                 newNetworks = newNetworks + validNewNetworks
                 solutionCount += len(validNewNetworks)
