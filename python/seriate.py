@@ -26,6 +26,7 @@ import os
 from pylab import *
 import matplotlib.pyplot as plt
 import re
+from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic as isomorphic
 
 def all_pairs(lst):
     return list((itertools.permutations(lst, 2)))
@@ -665,6 +666,13 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
     else:
         return False,0
 
+def iso(G1, glist):
+    """Quick and dirty nonisomorphism checker used to check isomorphisms."""
+    for G2 in glist:
+        if isomorphic(G1,G2):
+            return True
+    return False
+
 def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile):
     try:
         from networkx import graphviz_layout
@@ -762,20 +770,20 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
     plt.figure(1,figsize=(30,20))
     # layout graphs with positions using graphviz neato
 
-    return
     UU=nx.Graph()
     # do quick isomorphic-like check, not a true isomorphism checker
     nlist=[] # list of nonisomorphic graphs
     for G in graphs:
         # check against all nonisomorphic graphs so far
-        if not nx.iso(G, nlist):
+        if not iso(G, nlist):
             nlist.append(G)
+
     UU=nx.union_all(graphs) # union the nonisomorphic graphs
     #UU=nx.disjoint_union_all(nlist) # union the nonisomorphic graphs
-    pos=nx.spring_layout(UU,iterations=50)
+    #pos=nx.spring_layout(UU,iterations=50)
 
     #pos=nx.graphviz_layout(UU)
-    #pos=nx.graphviz_layout(UU,prog="twopi",root=0)
+    pos=nx.graphviz_layout(UU,prog="twopi",root=0)
     ##labels=nx.draw_networkx_labels(UU,pos)
     # color nodes the same in each connected subgraph
     C=nx.connected_component_subgraphs(UU)
@@ -1092,7 +1100,7 @@ def main():
     parser.add_argument('--debug', default=None, help='Sets the DEBUG flag for massive amounts of annoated output.')
     parser.add_argument('--bootstrapCI', default=None, help="Sets whether you want to use the bootstrap confidence intervals for the comparisons between assemblage type frequencies. Set's to on or off.")
     parser.add_argument('--bootstrapSignificance', default=0.95, type=float, help="The significance to which the confidence intervals are calculated. Default is 0.95.")
-    parser.add_argument('--filtered',default=True,help="The script will complete by checking to see if smaller valid solutions are included in the larger sets. If not, they are added to the final set. Default is true. ")
+    parser.add_argument('--filtered',default=1,help="The script will complete by checking to see if smaller valid solutions are included in the larger sets. If not, they are added to the final set. Default is true. ")
     parser.add_argument('--largestonly',default=None, help="If set, the results will only include the results from the last and largest successful series of solutions. Smaller solutions will be excluded. Default is false.")
     parser.add_argument('--individualfileoutput',default=None,help="If true, a .VNA files will be created for every solution.")
     parser.add_argument('--excel',default=None, help="Not implemented.")
