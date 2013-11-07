@@ -27,6 +27,7 @@ from pylab import *
 import matplotlib.pyplot as plt
 import re
 from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic as isomorphic
+import MST
 
 def all_pairs(lst):
     return list((itertools.permutations(lst, 2)))
@@ -778,7 +779,7 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
         if not iso(G, nlist):
             nlist.append(G)
 
-    UU=nx.union_all(graphs) # union the nonisomorphic graphs
+    UU=nx.disjoint_union_all(graphs) # union the nonisomorphic graphs
     #UU=nx.disjoint_union_all(nlist) # union the nonisomorphic graphs
     #pos=nx.spring_layout(UU,iterations=50)
 
@@ -1090,6 +1091,11 @@ def filterSolutions(end_solutions,all_solutions,args):
         filteredarray = end_solutions ## just the largest ones (from the last round)
     return filteredarray
 
+def checkMinimumRequirements(args):
+    try:
+        from networkx import graphviz_layout
+    except ImportError:
+        raise ImportError("This function needs Graphviz and either PyGraphviz or Pydot. Please install GraphViz from http://www.graphviz.org/")
 
 def main():
 
@@ -1110,18 +1116,24 @@ def main():
     parser.add_argument('--pairwisefile',default=None, help="If you have precalculated the bootstrap comparative p-value, enter the name of the file here and it will be used as the basis of the graphical output for showing significance of comparisons. Default is false.")
     parser.add_argument('--mst', default=None, help="If true, will produce a minimum spanning tree diagram from the set of final solutions.")
     parser.add_argument('--stats', default=None, help="(Probably not implemented). If true, a histogram of the solutions will be shown in terms of the #s of time pairs are included. Default is false.")
-    parser.add_argument('--screen', default=None, help="Sets whether the output will be sent all to the screen or not. Default is false. When true, the screen output is all captured through curses." )
-    parser.add_argument('--allsolutions', default=None,help="If set, all of the valid solutions are produced even if they are subsets of largers solutions.")
+    parser.add_argument('--screen', default=True, help="Sets whether the output will be sent all to the screen or not. Default is false. When true, the screen output is all captured through curses." )
+    parser.add_argument('--allsolutions', default=None,help="If set, all of the valid solutions are produced even if they are subsets of larger solutions.")
     parser.add_argument('--inputfile',help="<REQUIRED> Enter the name of the data file with the assemblage data to process.")
     parser.add_argument('--outputdirectory',default=None, help="If you want the output to go someplace other than the /output directory, specify that here.")
+    parser.add_argument('--shapefile',default=None,help="Produces a shapefile as part of the output. You must have specified the XYfile as well.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
         parser.error(str(msg))
         sys.exit()
 
+    checkMinimumRequirements(args)
+
+    if args['noscreen'] is not None:
+        args['screen']=None
+
     ##################################################################################################
-    if args['screen'] is not None:
+    if args['screen'] is not None and args['debug'] is None:
         ## Set up the screen display (default).
         ## the debug option should not use this since it gets messy
         try:
@@ -1148,6 +1160,7 @@ def main():
     if args['debug'] is not None:
         ## Logging
         logger.basicConfig(stream=sys.stderr, level=logger.DEBUG)
+        args['screen'] = True
     else:
         logger.basicConfig(stream=sys.stderr, level=logger.ERROR)
 
@@ -1354,7 +1367,10 @@ def main():
 
     ###########################################################################################################
     if args['mst'] is not None:
-        minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
+        outputFile = outputDirectory + inputFile[0:-4]+".vna"
+        mst = MST(outputFile,outputDirectory,args['shapefile'])
+        output = mst.createMST()
+        #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
 
     filteredarray = filterSolutions(end_solutions,all_solutions,args)
 
@@ -1368,7 +1384,8 @@ def main():
     ## say goodbye and clean up the screen stuff #########################
     finalGoodbye(start,maxNodes,len(filteredarray),args)
 
+
 if __name__ == "__main__":
     main()
 
-
+testCode= "python ./seriate.py --inputfile=../testdata/pfg.txt --xyfile=../testdata/pfgXY.txt --largestonly=1 --mst=1"
