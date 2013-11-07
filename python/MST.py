@@ -30,19 +30,19 @@ class MST():
     def __init__(self,filename,outputdirectory,shapefile):
         self.filename=filename
         self.outputdirectory=outputdirectory
-        self.shapefile=shapefile
+        self.shapefile=1
         if shapefile is not None:
             if self.outputdirectory is not None:
                 self.shapefilename = self.outputdirectory+self.filename[0:-4]+"-mst.shp"
             else:
-                self.shapefilename = self.filename[0:-4]+"-mst.shape"
+                self.shapefilename = self.filename[0:-4]+"-mst.shp"
         try:
             from networkx import graphviz_layout
         except ImportError:
             raise ImportError("This example needs Graphviz and either PyGraphviz or Pydot")
 
     def usage(self):
-        print "MST.createMST(filename,outputdirectory,shapefileFlag"
+        print "MST.createMST(filename,outputdirectory,shapefileFlag)"
 
     def iso(self,G1, glist):
         """Quick and dirty nonisomorphism checker used to check isomorphisms."""
@@ -182,9 +182,7 @@ class MST():
 
         if self.shapefile is not None:
             w = shapefile.Writer(shapefile.POLYLINE)  # 3= polylines
-            #print count, " graphs "
             c=0
-            #pp.pprint(graphs)
             for g in graphs:
                 edges = g.edges()
                 for e in edges:
@@ -195,11 +193,11 @@ class MST():
                     y1 = g[node1][node2]['xy1'][1]
                     x2 = g[node2][node1]['xy2'][0]
                     y2 = g[node2][node1]['xy2'][1]
-                    #print x1, "-", y1
-                    #print x2, "-", y2
                     w.poly(parts=[[[x1,y1],[x2,y2]]])
                 c += 1
             w.save(self.shapefilename)
+
+            time.sleep(15)
 
         plt.rcParams['text.usetex'] = False
         plt.figure(0,figsize=(8,8))
@@ -232,6 +230,7 @@ class MST():
         for s in sizes:
             #print sizes[s]
             assemblageSizes.append(sizes[s])
+            
         nx.draw_networkx_edges(mst,pos,alpha=0.3,width=widths, edge_color=colorList)
         sizes = nx.get_node_attributes(mst,'size')
         nx.draw_networkx_nodes(mst,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)

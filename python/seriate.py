@@ -1380,7 +1380,6 @@ def main():
         mst = MST.MST(outputFile,args['outputdirectory'],args['shapefile'])
         mst.createMST()
         #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
-
     ## say goodbye and clean up the screen stuff #########################
     finalGoodbye(start,maxNodes,len(filteredarray),args)
 
