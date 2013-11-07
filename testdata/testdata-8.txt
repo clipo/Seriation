@@ -4,5 +4,5 @@ Assemblage-3	0	45	5	50
 Assemblage-4	0	30	20	50
 Assemblage-5	10	20	20	50
 Assemblage-6	20	10	30	40
-Assemblage-7	30      5	35	30	
+Assemblage-7	30	5	35	30
 Assemblage-8	40	5	40	15

@@ -4,6 +4,7 @@
 # This work is licensed under the terms of the Apache Software License, Version 2.0.  See the file LICENSE for details.
 __author__ = 'carllipo'
 
+import MST
 import csv
 from datetime import datetime
 import argparse
@@ -27,7 +28,6 @@ from pylab import *
 import matplotlib.pyplot as plt
 import re
 from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic as isomorphic
-import MST
 
 def all_pairs(lst):
     return list((itertools.permutations(lst, 2)))
@@ -46,15 +46,9 @@ def openFile(filename,args):
     assemblages={}
     countOfAssemblages=0
     labels={}
-    if args['screen']>0:
+    if args['screen'] is not None:
         msg1 = "Filename: %s " % filename
         scr.addstr(1,0,msg1)
-        scr.refresh()
-
-    ## Read in the data
-    # the input of the classes -- note these are absolute counts, not frequencies
-    # might want to change that...\
-    if args['screen']:
         scr.addstr(1,40,"STEP: Read in data...")
         scr.refresh()
     try:
@@ -88,7 +82,6 @@ def openFile(filename,args):
         countOfAssemblages +=1
 
     return len(assemblages), assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses
-
 
 def preCalculateComparisons(assemblages,typeFrequencyUpperCI,typeFrequencyLowerCI,args):
     logger.debug("Precalculating the comparisons between all pairs of assemblages...")
@@ -352,13 +345,13 @@ def findAllValidTriples(assemblages,typeFrequencyLowerCI,typeFrequencyUpperCI,ty
     error = 0
     numberOfTriplets = 0
 
-    if args['screen'] > 0:
+    if args['screen'] is not None:
         scr.addstr(1,40, "STEP: Find valid triples....      ")
         scr.refresh()
     permutations =all_tuples(assemblages)
 
     for permu in permutations:
-        if args['screen'] >0:
+        if args['screen'] is not None:
             c = scr.getch()
             if c == ord('q'):
                 curses.endwin()
@@ -489,7 +482,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
                                     solutionCount, args):
 
     logger.debug("######################Starting check for solution %s with %s nodes ######################################",nnetwork.graph['GraphID'],len(nnetwork))
-    if args['screen'] > 0:
+    if args['screen'] is not None:
         scr.addstr(1,40, "STEP: Testing for addition to seriation ....      ")
         scr.refresh()
 
@@ -519,7 +512,7 @@ def checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComp
         ######################################################################################
         for testAssemblage in validAssemblages:
             logger.debug(" Now checking %s to see if we can be put next to %s",testAssemblage,endAssemblage)
-            if args['screen'] >0:
+            if args['screen'] is not None:
                 msg = "Now checking %s against %s." % (testAssemblage, endAssemblage)
                 scr.addstr(3,0, msg)
                 scr.refresh()
@@ -804,7 +797,7 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
     plt.show() # display
 
 def finalGoodbye(start,maxNodes,currentTotal,args):
-    if args['screen'] >0:
+    if args['screen'] is not None:
         curses.endwin()
         curses.resetty()
         curses.nl()
@@ -867,7 +860,7 @@ def multikeysort(items, columns):
 #################################################### OUTPUT SECTION ####################################################
 def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredArray,
              OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxEdges,args):
-    if args['screen']:
+    if args['screen'] is not None:
         scr.addstr(13,1, "Now printing output file... ")
         scr.addstr(1,40,"STEP: Output files...         ")
         scr.refresh()
@@ -876,7 +869,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
     OUTPAIRSFILE.write("*Node data\n")
     OUTPAIRSFILE.write("ID AssemblageSize X Y Easting Northing\n")
     count = 0
-    if args['screen']:
+    if args['screen'] is not None:
         scr.addstr(1,40,"STEP: Printing list of nodes....     ")
         scr.refresh()
     ## note this assumes the use of UTM coordinates (northing and easting)
@@ -905,7 +898,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
         OUTMSTFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
         OUTMSTDISTANCEFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
 
-    if args['screen']:
+    if args['screen'] is not None:
         scr.addstr(1,40,"STEP: Printing list of nodes attributes... ")
         scr.refresh()
     for l in assemblages:
@@ -926,7 +919,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
             OUTMSTDISTANCEFILE.write(msg)
 
     ## This prints out counts of the edges as they appear in ALL of the solutions
-    if args['screen']:
+    if args['screen'] is not None:
         scr.addstr(1,40,"STEP: Going through and counting pairs...     ")
         scr.refresh()
     OUTPAIRSFILE.write("*Tie data\nFrom To Edge Count\n")
@@ -948,7 +941,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
 
     ## now go through the edgeHash and print out the edges
     ## do this is sorted order of the counts. For fun.
-    if args['screen']:
+    if args['screen'] is not None:
         scr.addstr(1,40,"STEP: Doing the pair output...                ")
         scr.refresh()
 
@@ -960,7 +953,7 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
         OUTPAIRSFILE.write(msg)
 
     OUTFILE.write("*Tie data\nFrom To Edge Weight Network End pValue pError meanSolutionDistance\n")
-    if args['screen']:
+    if args['screen'] is not None:
         scr.addstr(1,40,"STEP: Eliminating duplicates...     ")
         scr.addstr(1,40,"STEP: Printing edges...     ")
         scr.refresh()
@@ -971,43 +964,49 @@ def output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAs
     ## only print unique ones...
     pairwise={}
     pairwiseError={}
-    for network in uniqueArray:
-        if args['screen']:
+    for network in filteredArray:
+        if args['screen'] is not None:
             scr.addstr(14,1, "Now on solution: ")
             scr.addstr(14,18,str(network.graph["GraphID"]) )
             #print "now on solution: ", network["GraphID"],"\n"
-        if args['largestonly'] is not None:
-            if len(network.edges()) == maxEdges:
-                groupDistance=0
-                edgeCount = len(network.edges())
-                meanDistance=0.0
-                eCount=0
-                if args['xyfile'] is not None:
-                    for e in network.edges_iter():
-                        pairname= e[0]+"*"+e[1]
-                        groupDistance += distanceBetweenAssemblages[ pairname ]
-                        eCount += 1
-
-                    meanDistance = groupDistance/eCount      ## use the average for the group for now
-                    #print "\n\rMean distance for this group is: ", meanDistance, "\n\r"
-                    network["meanDistance"]= meanDistance
-                else:
-                    meanDistance="0"
-                    network["meanDistance"]= "0"
-
+        if args['largestonly'] is not None and len(network.edges()) == maxEdges-1:
+            edgeCount = len(network.edges())
+            groupDistance=0
+            meanDistance=0.0
+            eCount=0
+            if args['xyfile'] > 0:
                 for e in network.edges_iter():
-                    pVal=0.0
-                    pErr=0.0
-                    d = e.get
-                    if args['pairwisefile'] is not None:
-                        pairname= e[0]+"#"+e[1]
-                        pVal = pairwise[ pairname ]
-                        pErr = pairwiseError[pairname]
-                    text = e[0]+" "+e[1]+" 1 "+str(edgeCount)+ " "+network["GraphID"]+ " "\
-                            +e[0]+ " End "+str(pVal)+" "+ str(pErr) + " " +str(meanDistance)+"\n"
-                    OUTFILE.write(text)
-                network['meanDistance'] = meanDistance
-                distanceHash[ network["GraphID"] ]= meanDistance
+                  pairname= e[0]+"*"+e[1]
+                  groupDistance += distanceBetweenAssemblages[ pairname ]
+                  eCount += 1
+                meanDistance = groupDistance/eCount         ##use the average distance as the metric
+            else:
+                meanDistance = "0"
+
+            ## initialize edges
+            for e in network.edges_iter():
+                pairname= e[0]+"#"+e[1]
+                pairwise[ pairname ] = 0
+                pairwiseError[ pairname ] = 0
+
+            for e in network.edges_iter():
+                pVal=0.0
+                pErr=0.0
+                if args['pairwisefile'] >0 :
+                    pairname= e[0]+"#"+e[1]
+                    pVal = pairwise[ pairname ]
+                    pErr = pairwiseError[ pairname ]
+                else:
+                    pVal = 0.0
+                    pErr = 0.0
+
+                text = e[0]+ " "+ e[1]+" 1 "+str(edgeCount)+ " "+ str(network.graph["GraphID"])+ " "+\
+                       str(pVal)+" "+ str(pErr)+ " "+str(meanDistance)+"\n"
+                OUTFILE.write(text)
+
+            network.graph["meanDistance"]=meanDistance
+            distanceHash[ text] = meanDistance
+
         else:  ## not just the largest, but ALL seriation solutions
             edgeCount = len(network.edges())
             groupDistance=0
@@ -1055,7 +1054,7 @@ def filterSolutions(end_solutions,all_solutions,args):
 
     filteredarray =[]
     if args['filtered'] is not None:  ## only get the largest set that includes ALL
-        if args['screen']:
+        if args['screen'] is not None:
             scr.addstr(1,40,"STEP: Filter to get uniques... ")
         logger.debug("--- Filtering solutions so we only end up with the unique ones.")
         logger.debug("--- Start with %d solutions.", len(end_solutions))
@@ -1083,7 +1082,7 @@ def filterSolutions(end_solutions,all_solutions,args):
 
         logger.debug("End with %d solutions.", len(filteredarray))
         filterCount= len(filteredarray)
-        if args['screen']:
+        if args['screen'] is not None:
             scr.addstr(11,1,"End with filterCount solutions.")
     elif args['allsolutions'] is not None:
         filteredarray = all_solutions  ## all possible networks
@@ -1160,9 +1159,10 @@ def main():
     if args['debug'] is not None:
         ## Logging
         logger.basicConfig(stream=sys.stderr, level=logger.DEBUG)
-        args['screen'] = True
+        args['screen']= None
     else:
         logger.basicConfig(stream=sys.stderr, level=logger.ERROR)
+        args['screen'] = True
 
     #####################################START CLOCK #############################################################
     # start the clock to track how long this run takes
@@ -1366,12 +1366,6 @@ def main():
     logger.debug("Process complete at seriation size %d with %d solutions before filtering.",maxSeriationSize,len(end_solutions))
 
     ###########################################################################################################
-    if args['mst'] is not None:
-        outputFile = outputDirectory + inputFile[0:-4]+".vna"
-        mst = MST(outputFile,outputDirectory,args['shapefile'])
-        output = mst.createMST()
-        #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
-
     filteredarray = filterSolutions(end_solutions,all_solutions,args)
 
     logger.debug("Process complete at seriation size %d with %d solutions after filtering.",maxSeriationSize,len(filteredarray))
@@ -1379,7 +1373,13 @@ def main():
     #################################################### OUTPUT SECTION ####################################################
     output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredarray,
              OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
-    #################################################### OUTPUT SECTION ####################################################
+
+    #################################################### MST SECTION ####################################################
+    if args['mst'] is not None:
+        outputFile = outputDirectory + inputFile[0:-4]+".vna"
+        mst = MST.MST(outputFile,args['outputdirectory'],args['shapefile'])
+        mst.createMST()
+        #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
 
     ## say goodbye and clean up the screen stuff #########################
     finalGoodbye(start,maxNodes,len(filteredarray),args)
