@@ -164,7 +164,7 @@ class IDSS():
             yAssemblage[label]=row[1]
             xAssemblage[label]=row[2]
 
-        assemblagePairs = all_pairs(xyAssemblages)
+        assemblagePairs = self.all_pairs(xyAssemblages)
         ## Go through all of the combinations
         for combo in assemblagePairs:
             pairname = combo[0]+"*"+combo[1]
@@ -1101,7 +1101,33 @@ class IDSS():
         if args['inputfile'] in (None,""):
             sys.exit("Inputfile is a required input value: --inputfile=../testdata/testdata.txt")
 
+    def addOptions(self,oldargs):
+        args={}
+        args['debug']=None
+        args['bootstrapCI']=None
+        args['bootstrapSignificance']=None
+        args['filtered']=None
+        args['largestonly']=None
+        args['individualfileoutput']=None
+        args['excel']=None
+        args['threshold']=None
+        args['noscreen']=None
+        args['xyfile']=None
+        args['pairwisefile']=None
+        args['mst']=None
+        args['stats']=None
+        args['screen']=None
+        args['allsolutions']=None
+        args['inputfile']=None
+        args['outputdirectory']=None
+        args['shapefile']=None
+
+        for a in oldargs:
+            args[a]=oldargs[a]
+        return args
+
     def seriate(self, args):
+        args=self.addOptions(args)
         self.checkMinimumRequirements(args)
         #####################################DEBUG OUTPUT#############################################################
         if args['debug'] != None:
@@ -1345,6 +1371,8 @@ class IDSS():
         ## say goodbye and clean up the screen stuff #########################
         self.finalGoodbye(maxNodes,len(filteredarray),args)
         return filteredarray
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')

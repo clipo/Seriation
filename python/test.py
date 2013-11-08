@@ -5,7 +5,7 @@ An example of using the IDSS module within another python program.
 Right now, the seriation module doesnt return anything useful other than True (done). But I suppose it could.
 '''''
 
-import IDSS
+from IDSS import IDSS
 
 seriation= IDSS()
 
