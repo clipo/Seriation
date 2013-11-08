@@ -31,6 +31,7 @@ class MST():
         self.filename=filename
         self.outputdirectory=outputdirectory
         self.shapefile=1
+        self.shapefilename=""
         if shapefile is not None:
             if self.outputdirectory is not None:
                 self.shapefilename = self.outputdirectory+self.filename[0:-4]+"-mst.shp"
@@ -52,7 +53,6 @@ class MST():
         return False
 
     def openFileHandles(self):
-
         ## Read in all of the data from the .vna file Reconstruct the graphs.
         try:
             file = open(self.filename)
@@ -230,7 +230,7 @@ class MST():
         for s in sizes:
             #print sizes[s]
             assemblageSizes.append(sizes[s])
-            
+
         nx.draw_networkx_edges(mst,pos,alpha=0.3,width=widths, edge_color=colorList)
         sizes = nx.get_node_attributes(mst,'size')
         nx.draw_networkx_nodes(mst,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
