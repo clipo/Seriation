@@ -36,6 +36,7 @@ class IDSS():
         self.inputfile = ""
         self.mem=memory.Memory()
         self.start = time.time()
+        logger.debug("Start time:  %s ", self.start)
         self.scr = None
 
     def all_pairs(self,lst):
@@ -48,18 +49,13 @@ class IDSS():
             useable_tuples.append(e)
         return useable_tuples
 
-    def openFile(self,filename,args):
+    def openFile(self, filename, args):
         assemblageValues={}
         assemblageSize={}
         assemblageFrequencies={}
         assemblages={}
         countOfAssemblages=0
         labels={}
-        if args['screen'] is not None:
-            msg1 = "Filename: %s " % filename
-            self.scr.addstr(1,0,msg1)
-            self.scr.addstr(1,40,"STEP: Read in data...")
-            self.scr.refresh()
         try:
             logger.debug("trying to open: %s ", filename)
             file=open(filename,'r')
@@ -109,7 +105,7 @@ class IDSS():
                 logger.debug( "\t\tComparing Assemblage: %s  and    Assemblage: %s  ########",pair[0],pair[1])
                 logger.debug( "\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,i,i,i,i,i,i)
 
-                if args['bootstrapCI'] is not None:
+                if args['bootstrapCI'] not in (None, ""):
                     upperCI_test = typeFrequencyUpperCI[pair[0]][i]
                     lowerCI_test  = typeFrequencyLowerCI[pair[0]][i]
                     upperCI_end =  typeFrequencyUpperCI[pair[1]][i]
@@ -354,13 +350,13 @@ class IDSS():
         error = 0
         numberOfTriplets = 0
 
-        if args['screen'] is not None:
+        if args['screen'] not in (None, ""):
             self.scr.addstr(1,40, "STEP: Find valid triples....      ")
             self.scr.refresh()
         permutations = self.all_tuples(assemblages)
 
         for permu in permutations:
-            if args['screen'] is not None:
+            if args['screen'] not in (None, ""):
                 c = self.scr.getch()
                 if c == ord('q'):
                     curses.endwin()
@@ -383,7 +379,7 @@ class IDSS():
                 ass3 = assemblages[ permu[2] ][i]
                 logger.debug( "ass1: %f ass2: %f ass3: %f",ass1,ass2,ass3)
 
-                if args['bootstrapCI'] is not None:
+                if args['bootstrapCI'] not in (None, ""):
                     low1 = typeFrequencyLowerCI[permu[0]][i]
                     low2 = typeFrequencyLowerCI[permu[1]][i]
                     low3 = typeFrequencyLowerCI[permu[2]][i]
@@ -457,7 +453,7 @@ class IDSS():
 
             comparison = comparison12 + comparison23
             test = re.compile('DU').search(comparison)
-            if test is not None:
+            if test not in (None, ""):
                 error +=1
 
             if error == 0:
@@ -490,7 +486,7 @@ class IDSS():
                                         solutionCount, args):
 
         logger.debug("######################Starting check for solution %s with %s nodes ######################################",nnetwork.graph['GraphID'],len(nnetwork))
-        if args['screen'] is not None:
+        if args['screen'] not in (None, ""):
             self.scr.addstr(1,40, "STEP: Testing for addition to seriation ....      ")
             self.scr.refresh()
 
@@ -520,7 +516,7 @@ class IDSS():
             ######################################################################################
             for testAssemblage in validAssemblages:
                 logger.debug(" Now checking %s to see if we can be put next to %s",testAssemblage,endAssemblage)
-                if args['screen'] is not None:
+                if args['screen'] not in (None, ""):
                     msg = "Now checking %s against %s." % (testAssemblage, endAssemblage)
                     self.scr.addstr(3,0, msg)
                     self.scr.refresh()
@@ -587,7 +583,7 @@ class IDSS():
                         oldVal=assemblages[compareAssemblage][i]
                         logger.debug("Compare %s with %s ", previousAssemblage,compareAssemblage)
                         logger.debug("Old value: %f  vs new value: %f",oldVal,newVal)
-                        if args['bootstrapCI'] is not None:
+                        if args['bootstrapCI'] not in (None, ""):
                             upperCI_test = typeFrequencyUpperCI[previousAssemblage][i]
                             lowerCI_test = typeFrequencyLowerCI[previousAssemblage][i]
                             upperCI_end = typeFrequencyUpperCI[compareAssemblage][i]
@@ -621,7 +617,7 @@ class IDSS():
                         previousAssemblage=compareAssemblage
 
                     test = re.compile('DU|DM*U').search(c)
-                    if test is not None:
+                    if test not in (None, ""):
                         logger.debug("Comparison is %s. Error!",c)
                         error +=1
 
@@ -804,8 +800,8 @@ class IDSS():
         plt.savefig(atlasFile,dpi=250)
         plt.show() # display
 
-    def finalGoodbye(self,start,maxNodes,currentTotal,args):
-        if args['screen'] is not None:
+    def finalGoodbye(self,maxNodes,currentTotal,args):
+        if args['screen'] != None:
             curses.endwin()
             curses.resetty()
             curses.nl()
@@ -818,8 +814,8 @@ class IDSS():
         print "Maximum size of seriation: %d" % maxNodes
         print "Number of solutions at last step: %d" % currentTotal
         print "Time elapsed for calculation: %d seconds" % timeElapsed
-        os.system("reset")
-
+        if args['screen'] != None:
+            os.system("reset")
 
     #################################################### set up all the output files ####################################################
     def setupOutput(self,filename, outputDirectory,inputFile, args):
@@ -842,7 +838,7 @@ class IDSS():
         outmstFile=  outputDirectory + inputFile[0:-4] + "-mst.vna"
         outmst2File = outputDirectory + inputFile[0:-4] + "-mst-distance.vna"
 
-        if args['mst'] is not None:
+        if args['mst'] not in (None, ""):
             try:
                 OUTMSTFILE = open(outmstFile, 'w')
                 OUTMSTDISTANCEFILE = open(outmst2File, 'w')
@@ -868,7 +864,7 @@ class IDSS():
     #################################################### OUTPUT SECTION ####################################################
     def output(self,assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredArray,
                  OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxEdges,args):
-        if args['screen'] is not None:
+        if args['screen'] not in (None, ""):
             self.scr.addstr(13,1, "Now printing output file... ")
             self.scr.addstr(1,40,"STEP: Output files...         ")
             self.scr.refresh()
@@ -877,7 +873,7 @@ class IDSS():
         OUTPAIRSFILE.write("*Node data\n")
         OUTPAIRSFILE.write("ID AssemblageSize X Y Easting Northing\n")
         count = 0
-        if args['screen'] is not None:
+        if args['screen'] not in (None, ""):
             self.scr.addstr(1,40,"STEP: Printing list of nodes....     ")
             self.scr.refresh()
         ## note this assumes the use of UTM coordinates (northing and easting)
@@ -886,7 +882,7 @@ class IDSS():
             y = 0
             northing = 0
             easting = 0
-            if args['xyfile'] is not None:
+            if args['xyfile'] not in (None, ""):
                 x = float(xAssemblage[ l ]) / 1000000.0
                 y = (float(largestY)- float(yAssemblage[l]))/100000.0
                 easting = xAssemblage[l]
@@ -895,18 +891,18 @@ class IDSS():
             msg = l + " "+ str(assemblageSize[ l ])+" "+ str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
             OUTFILE.write(msg)
             OUTPAIRSFILE.write(msg)
-            if args['mst'] is not None:
+            if args['mst'] not in (None, ""):
                 OUTMSTFILE.write(msg)
                 OUTMSTDISTANCEFILE.write(msg)
 
         OUTFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
         OUTPAIRSFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
 
-        if args['mst'] is not None:
+        if args['mst'] not in (None, ""):
             OUTMSTFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
             OUTMSTDISTANCEFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
 
-        if args['screen'] is not None:
+        if args['screen'] not in (None, ""):
             self.scr.addstr(1,40,"STEP: Printing list of nodes attributes... ")
             self.scr.refresh()
         for l in assemblages:
@@ -914,7 +910,7 @@ class IDSS():
             northing = 0
             x = 0
             y = 0
-            if args['xyfile'] is not None:
+            if args['xyfile'] not in (None, ""):
                 x = float(xAssemblage[l])/1000000
                 y = (float(largestY)-float(yAssemblage[l]))/100000
                 easting = xAssemblage[l]
@@ -922,16 +918,16 @@ class IDSS():
             msg = l +" "+ str(assemblageSize[ l])+" "+str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
             OUTFILE.write(msg)
             OUTPAIRSFILE.write(msg)
-            if args['mst'] >0:
+            if args['mst'] not in (None, ""):
                 OUTMSTFILE.write( msg )
                 OUTMSTDISTANCEFILE.write(msg)
 
         ## This prints out counts of the edges as they appear in ALL of the solutions
-        if args['screen'] is not None:
+        if args['screen'] not in (None, ""):
             self.scr.addstr(1,40,"STEP: Going through and counting pairs...     ")
             self.scr.refresh()
         OUTPAIRSFILE.write("*Tie data\nFrom To Edge Count\n")
-        if args['mst'] is not None:
+        if args['mst'] not in (None, ""):
             OUTMSTFILE.write( "*Tie data\nFrom To Edge End Weight ID\n")
             OUTMSTDISTANCEFILE.write("*Tie data\nFrom To Edge End Weight ID\n")
 
@@ -949,7 +945,7 @@ class IDSS():
 
         ## now go through the edgeHash and print out the edges
         ## do this is sorted order of the counts. For fun.
-        if args['screen'] is not None:
+        if args['screen'] not in (None, ""):
             self.scr.addstr(1,40,"STEP: Doing the pair output...                ")
             self.scr.refresh()
 
@@ -961,7 +957,7 @@ class IDSS():
             OUTPAIRSFILE.write(msg)
 
         OUTFILE.write("*Tie data\nFrom To Edge Weight Network End pValue pError meanSolutionDistance\n")
-        if args['screen'] is not None:
+        if args['screen'] not in (None, ""):
             self.scr.addstr(1,40,"STEP: Eliminating duplicates...     ")
             self.scr.addstr(1,40,"STEP: Printing edges...     ")
             self.scr.refresh()
@@ -973,16 +969,16 @@ class IDSS():
         pairwise={}
         pairwiseError={}
         for network in filteredArray:
-            if args['screen'] is not None:
+            if args['screen'] not in (None, ""):
                 self.scr.addstr(14,1, "Now on solution: ")
                 self.scr.addstr(14,18,str(network.graph["GraphID"]) )
                 #print "now on solution: ", network["GraphID"],"\n"
-            if args['largestonly'] is not None and len(network.edges()) == maxEdges-1:
+            if args['largestonly'] not in (None, "") and len(network.edges()) == maxEdges-1:
                 edgeCount = len(network.edges())
                 groupDistance=0
                 meanDistance=0.0
                 eCount=0
-                if args['xyfile'] > 0:
+                if args['xyfile'] not in (None, ""):
                     for e in network.edges_iter():
                       pairname= e[0]+"*"+e[1]
                       groupDistance += distanceBetweenAssemblages[ pairname ]
@@ -1000,8 +996,8 @@ class IDSS():
                 for e in network.edges_iter():
                     pVal=0.0
                     pErr=0.0
-                    if args['pairwisefile'] >0 :
-                        pairname= e[0]+"#"+e[1]
+                    if args['pairwisefile'] != None:
+                        pairname = e[0]+"#"+e[1]
                         pVal = pairwise[ pairname ]
                         pErr = pairwiseError[ pairname ]
                     else:
@@ -1019,7 +1015,7 @@ class IDSS():
                 groupDistance=0
                 meanDistance=0.0
                 eCount=0
-                if args['xyfile'] > 0:
+                if args['xyfile'] != None:
                     for e in network.edges_iter():
                       pairname= e[0]+"*"+e[1]
                       groupDistance += distanceBetweenAssemblages[ pairname ]
@@ -1037,7 +1033,7 @@ class IDSS():
                 for e in network.edges_iter():
                     pVal=0.0
                     pErr=0.0
-                    if args['pairwisefile'] >0 :
+                    if args['pairwisefile'] != None:
                         pairname= e[0]+"#"+e[1]
                         pVal = pairwise[ pairname ]
                         pErr = pairwiseError[ pairname ]
@@ -1060,8 +1056,8 @@ class IDSS():
         ################################################# FILTERING  ####################################
 
         filteredarray =[]
-        if args['filtered'] is not None:  ## only get the largest set that includes ALL
-            if args['screen'] is not None:
+        if args['filtered'] not in (None, ""):  ## only get the largest set that includes ALL
+            if args['screen'] not in (None, ""):
                 self.scr.addstr(1,40,"STEP: Filter to get uniques... ")
             logger.debug("--- Filtering solutions so we only end up with the unique ones.")
             logger.debug("--- Start with %d solutions.", len(end_solutions))
@@ -1089,48 +1085,26 @@ class IDSS():
 
             logger.debug("End with %d solutions.", len(filteredarray))
             filterCount= len(filteredarray)
-            if args['screen'] is not None:
+            if args['screen'] not in (None, ""):
                 self.scr.addstr(11,1,"End with filterCount solutions.")
-        elif args['allsolutions'] is not None:
+        elif args['allsolutions'] not in (None, ""):
             filteredarray = all_solutions  ## all possible networks
         else:
             filteredarray = end_solutions ## just the largest ones (from the last round)
         return filteredarray
 
-    def checkMinimumRequirements(self):
+    def checkMinimumRequirements(self,args):
         try:
             from networkx import graphviz_layout
         except ImportError:
             raise ImportError("This function needs Graphviz and either PyGraphviz or Pydot. Please install GraphViz from http://www.graphviz.org/")
+        if args['inputfile'] in (None,""):
+            sys.exit("Inputfile is a required input value: --inputfile=../testdata/testdata.txt")
 
     def seriate(self, args):
         self.checkMinimumRequirements(args)
-        ##################################################################################################
-        if args['screen'] is not None and args['debug'] is None:
-            ## Set up the screen display (default).
-            ## the debug option should not use this since it gets messy
-            try:
-                # Initialize curses
-                scr=curses.initscr()
-                # Turn off echoing of keys, and enter cbreak mode,
-                # where no buffering is performed on keyboard input
-                curses.noecho()
-                curses.cbreak()
-                scr.nodelay(1)
-                scr.addstr(0,0,"Iterative Seriation Program V.2.0", curses.A_BOLD)
-                scr.addstr(20,35,"Hit <q> to quit.")
-                scr.refresh()
-            except:
-                # In event of error, restore terminal to sane state.
-                scr.keypad(0)
-                curses.echo()
-                curses.nocbreak()
-                curses.endwin()
-                curses.resetty()
-                traceback.print_exc()           # Print the exception
-                os.system("reset")
         #####################################DEBUG OUTPUT#############################################################
-        if args['debug'] is not None:
+        if args['debug'] != None:
             ## Logging
             logger.basicConfig(stream=sys.stderr, level=logger.DEBUG)
             args['screen']= None
@@ -1138,11 +1112,32 @@ class IDSS():
             logger.basicConfig(stream=sys.stderr, level=logger.ERROR)
             args['screen'] = True
 
-        #####################################START CLOCK #############################################################
-        # start the clock to track how long this run takes
-        start = time.time()         # start is global
-        logger.debug("Start time:  %s ", start)
         logger.debug("Arguments: %s", args)
+
+        ##################################################################################################
+        if (args['screen'] not in (None, "")) and (args['debug'] in (None, "")):
+            ## Set up the screen display (default).
+            ## the debug option should not use this since it gets messy
+            try:
+                # Initialize curses
+                self.scr=curses.initscr()
+                # Turn off echoing of keys, and enter cbreak mode,
+                # where no buffering is performed on keyboard input
+                curses.noecho()
+                curses.cbreak()
+                self.scr.nodelay(1)
+                self.scr.addstr(0,0,"Iterative Seriation Program V.2.0", curses.A_BOLD)
+                self.scr.addstr(20,35,"Hit <q> to quit.")
+                self.scr.refresh()
+            except:
+                # In event of error, restore terminal to sane state.
+                self.scr.keypad(0)
+                curses.echo()
+                curses.nocbreak()
+                curses.endwin()
+                curses.resetty()
+                traceback.print_exc()           # Print the exception
+                os.system("reset")
 
         ######################################FILE INPUT#############################################################
         filename=args['inputfile']
@@ -1158,7 +1153,7 @@ class IDSS():
             logger.error("Cannot open %s. Error: %s", filename, e.strerror)
 
             print("Cannot open %s. Error. %s ", filename, e.strerror)
-            if args['screen'] is not None:
+            if args['screen'] not in (None, ""):
                 curses.endwin()
                 curses.resetty()
             sys.exit("Quitting due to errors.")
@@ -1171,13 +1166,13 @@ class IDSS():
             sys.exit("There was a problem with parsing the input file. Check it and try again.")
 
         ############################################################################################################
-        if args['outputdirectory'] is not None:
+        if args['outputdirectory']  not in (None, ""):
             outputDirectory = args['outputdirectory']
         else:
             outputDirectory = "../output/"
         ############################################################################################################
         logger.debug("Going to open pairwise file it is exists.")
-        if args['pairwisefile'] is not None:
+        if args['pairwisefile']  not in (None, ""):
             self.openPairwiseFile(args['pairwisefile'])
 
         ############################################################################################################
@@ -1187,7 +1182,7 @@ class IDSS():
         xAssemblage={}
         yAssemblage={}
 
-        if args['xyfile'] is not None:
+        if args['xyfile'] not in (None, ""):
             largestX,largestY,distanceBetweenAssemblages,xAssemblage,yAssemblage=self.openXYFile(args['xyfile'])
         else:
             for ass in assemblages:
@@ -1201,7 +1196,7 @@ class IDSS():
         ############################################################################################################
         logger.debug("Assume threshold is 1.0 unless its specified in arguments.")
         threshold=1.0
-        if args['threshold']>0 :
+        if args['threshold']not in (None, "") :
             threshold=float(args['threshold'])
 
         logger.debug("Going to create list of valid pairs for comparisons.")
@@ -1213,8 +1208,8 @@ class IDSS():
         logger.debug("Now calculate the bootstrap comparisons based ")
         logger.debug("on specified confidence interval, if in the arguments.")
 
-        if args['bootstrapCI'] is not None:
-            if args['bootstrapSignificance'] is not None:
+        if args['bootstrapCI'] not in (None, ""):
+            if args['bootstrapSignificance'] not in (None, ""):
                 confidenceInterval= args['bootstrapSignificance']
             else:
                 confidenceInterval=0.95
@@ -1276,14 +1271,14 @@ class IDSS():
             logger.debug("Step number:  %d", currentMaxSeriationSize)
             logger.debug("_______________________________________________________________________________________")
 
-            if args['screen']>0:
-                scr.addstr(4,0,"Step number:                                    ")
+            if args['screen'] not in (None, ""):
+                self.scr.addstr(4,0,"Step number:                                    ")
                 msg = "Step number:   %d" % currentMaxSeriationSize
-                scr.addstr(4,0,msg)
-                scr.addstr(5,0,"Number of solutions from previous step:         ")
+                self.scr.addstr(4,0,msg)
+                self.scr.addstr(5,0,"Number of solutions from previous step:         ")
                 msg= "Number of solutions from previous step: %d" % len(networks)
-                scr.addstr(5,0,msg)
-                scr.refresh()
+                self.scr.addstr(5,0,msg)
+                self.scr.refresh()
 
             logger.debug("Number of solutions from previous step: %d", len(networks))
             match = 0      ## set the current match to zero for this step (sees if there are any new solutions for step)
@@ -1309,17 +1304,17 @@ class IDSS():
                         maxNodes = currentMaxNodes
                     currentTotal = len(newNetworks)
 
-            if args['screen'] > 0:
+            if args['screen'] not in (None, ""):
                 msg = "Current Max Nodes:  %d " % maxNodes
-                scr.addstr(6, 0, msg)
+                self.scr.addstr(6, 0, msg)
                 msg = "Total number of seriation solutions and sub-solutions: %d" % solutionCount
-                scr.addstr(7, 0, msg)
-                scr.addstr(8, 43, "                                           ")
+                self.scr.addstr(7, 0, msg)
+                self.scr.addstr(8, 43, "                                           ")
                 msg = "Number of seriation solutions at this step: %d" % currentTotal
-                scr.addstr(8, 0, msg)
+                self.scr.addstr(8, 0, msg)
                 msg = "Memory used:        " + str(self.mem.memory())
-                scr.addstr(9, 0, msg)
-                scr.refresh()
+                self.scr.addstr(9, 0, msg)
+                self.scr.refresh()
 
             if len(newNetworks)>0:
                 end_solutions = newNetworks
@@ -1342,15 +1337,14 @@ class IDSS():
                  OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
 
         #################################################### MST SECTION ####################################################
-        if args['mst'] is not None:
+        if args['mst'] not in (None, ""):
             outputFile = outputDirectory + inputFile[0:-4]+".vna"
             mst = MST.MST(outputFile,args['outputdirectory'],args['shapefile'])
             mst.createMST()
             #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
         ## say goodbye and clean up the screen stuff #########################
-        self.finalGoodbye(start,maxNodes,len(filteredarray),args)
-
-
+        self.finalGoodbye(maxNodes,len(filteredarray),args)
+        return filteredarray
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
@@ -1379,15 +1373,19 @@ if __name__ == "__main__":
         sys.exit()
 
     seriation = IDSS()
-    seriation.seriate(args)
+
+    results=seriation.seriate(args)
 
 ''''
-testCode= "python ./IDSS.py --inputfile=../testdata/pfg.txt --xyfile=../testdata/pfgXY.txt --largestonly=1 --mst=1"
+From the command line:
 
-or
+python ./IDSS.py --inputfile=../testdata/pfg.txt --xyfile=../testdata/pfgXY.txt --largestonly=1 --mst=1"
+
+
+As a module:
 
 import IDSS
-seriation= IDSS()
+seriation = IDSS()
 
 args={}
 args{'inputfile'}="../testdata/testdata-5.txt"

@@ -4,10 +4,31 @@ Algorithms, implementations, manuscripts, and test cases for iterative determini
 
 These algorithms are intended to automate and extend the initial, mainly manual implementation of IDSS in Lipo (2001).
 
+commandline:
 
+python ./IDSS.py --inputfile=../testdata/pfg.txt --xyfile=../testdata/pfgXY.txt --largestonly=1 --mst=1 --screen=1
+
+as a module:
+
+import IDSS
+seriation= IDSS()
+
+args={}
+args['inputfile'] ="../testdata/pfg.txt"
+args['xyfile']="../testdata/pfgXY.txt"
+args['largestonly']=1
+args['screen']=1
+args['mst']=1
+
+seriation.seriate(args)
+
+'''''
 
 ## Directory Structure ##
 
+* python
+> Contains python modules for seriation. The perl script has been entirely rewritten into python and this is the version
+> that we are using for most of the development.
 * analysis
 > Contains R, mathematica, and other scripts aimed at analyzing the basic problem and trial algorithms,
 > before being implemented in software.  Also will contain benchmarks and performance analysis of finished

@@ -25,7 +25,7 @@ pp = pprint.PrettyPrinter(indent=4)
 dumper = Dumper.Dumper(max_depth=5)
 
 def usage():
-    print "minimumSpanningTree --file <filename.vna> --shapefile\n";
+    print "minimumSpanningTree --inputfile=<filename.vna> --shapefile=1\n";
 
 
 def iso(G1, glist):
@@ -37,7 +37,7 @@ def iso(G1, glist):
 
 def main(argv):
     try:
-        opts, args = getopt.getopt(argv, "hb:f:ds", ["help", "bootstrap=","file="])
+        opts, args = getopt.getopt(argv, "hb:f:ds", ["help", "shapefile=","inputfile="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -51,7 +51,7 @@ def main(argv):
         elif opt in ("-h", "--help"):
             usage()
             sys.exit()
-        elif opt in ("-f", "--file"):
+        elif opt in ("-f", "--inputfile"):
             inputFile = arg
             shapefilename = inputFile[0:-4]
         elif opt in ("-s", "--shapefile"):
