@@ -670,7 +670,7 @@ class IDSS():
                 return True
         return False
 
-    def minimumSpanningTree(self,networks,outputDirectory,inputFile):
+    def minimumSpanningTree(self,networks,sumGraph, outputDirectory,inputFile):
         try:
             from networkx import graphviz_layout
         except ImportError:
@@ -702,7 +702,8 @@ class IDSS():
                                             name=fromAssemblage, size=self.assemblageSize[name])
                 g.add_node(toAssemblage, label=toAssemblage, x=xCoordinate, y=yCoordinate,
                                             name=toAssemblage, size=self.assemblageSize[name])
-                weight = d['weight']
+
+                weight = d['weight']+1
                 distance = self.distanceBetweenAssemblages[fromAssemblage + "*" + toAssemblage]
                 #count = megaGraph.get_edge_data(fromAssemblage,toAssemblage,'weight'
                 count += 1
@@ -881,19 +882,33 @@ class IDSS():
                     yCoordinate = self.yAssemblage[name]
                 sumGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
                                    size=self.assemblageSize[name])
+
+            maxWeight=0
             for e in g.edges_iter():
                 d = g.get_edge_data(*e)
                 fromAssemblage = e[0]
                 toAssemblage = e[1]
                 exists = False
+                currentWeight=1
                 for e in sumGraph.edges():
                     if fromAssemblage in e and toAssemblage in e:   ## if exists
                         exists = True
-                currentWeight=1
-                if exists is True:
-                    currentWeight = d['weight']+1
+                    currentWeight=1
+                    if exists is True:
+                        currentWeight = d['weight']+1
 
+                if currentWeight > maxWeight:
+                    maxWeight=currentWeight
                 sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight)
+
+            for e in sumGraph.edges_iter():
+                d = sumGraph.get_edge_data(*e)
+                currentWeight=d['weight']
+                inverseWeight=(maxWeight+1)-currentWeight
+                fromAssemblage = e[0]
+                toAssemblage = e[1]
+                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight,inverseweight=inverseWeight )
+
         return sumGraph
 
     ## Output to file and to the screen
@@ -914,12 +929,12 @@ class IDSS():
                 northing = self.yAssemblage[nodeName]
             msg = nodeName + " "+ str(self.assemblageSize[ nodeName ])+" "+ str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
             SUMGRAPH.write(msg)
-        SUMGRAPH.write("*Tie data\nFrom To Edge Weight\n")
+        SUMGRAPH.write("*Tie data\nFrom To Edge Weight InverseWeight\n")
         edgeCount=0
         for e in sumGraph.edges_iter():
             d = sumGraph.get_edge_data(*e)
             edgeCount += 1
-            text = e[0]+ " "+ e[1]+str(edgeCount)+ " "+ str(d['weight'])+ " \n"
+            text = e[0]+ " "+ e[1]+" "+ str(edgeCount)+ " "+ str(d['weight'])+ " "+ str(d['inverseweight'])+ "\n"
             SUMGRAPH.write(text)
 
         ## Now make the graphic for the sumgraph
@@ -960,6 +975,42 @@ class IDSS():
         newfilename=self.outputDirectory+self.inputFile[0:-4]+"-sumgraph.png"
         plt.savefig(newfilename,dpi=75)
         plt.figure(1,figsize=(30,20))
+
+        mst=nx.minimum_spanning_tree(sumGraph,weight='inverseweight')
+        plt.rcParams['text.usetex'] = False
+        plt.figure(1,figsize=(8,8))
+        pos=nx.graphviz_layout(mst)
+        edgewidth=[]
+        weights = nx.get_edge_attributes(mst, 'weight')
+        for w in weights:
+            edgewidth.append(weights[w])
+
+        maxValue = max(edgewidth)
+        widths=[]
+        for w in edgewidth:
+            widths.append(((maxValue-w)+1)*5)
+
+        assemblageSizes=[]
+        sizes = nx.get_node_attributes(mst, 'size')
+        #print sizes
+        for s in sizes:
+            #print sizes[s]
+            assemblageSizes.append(sizes[s])
+        nx.draw_networkx_edges(mst,pos,alpha=0.3,width=widths)
+        sizes = nx.get_node_attributes(mst,'size')
+        nx.draw_networkx_nodes(mst,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
+        nx.draw_networkx_edges(mst,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
+        nx.draw_networkx_labels(mst,pos,fontsize=10)
+        font = {'fontname'   : 'Helvetica',
+            'color'      : 'k',
+            'fontweight' : 'bold',
+            'fontsize'   : 14}
+        plt.axis('off')
+        file=args['inputfile']
+        newfilename=self.outputDirectory+self.inputFile[0:-4]+"-mst-sumgraph.png"
+        plt.savefig(newfilename,dpi=75)
+        plt.figure(2,figsize=(30,20))
+
         # layout graphs with positions using graphviz neato
 
     #################################################### OUTPUT SECTION ####################################################
