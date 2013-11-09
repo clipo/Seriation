@@ -174,20 +174,20 @@ class IDSS():
             self.yAssemblage[label]=row[1]
             self.xAssemblage[label]=row[2]
 
-        assemblagePairs = self.all_pairs(xyAssemblages)
+        assemblagePairs = self.all_pairs(self.xyAssemblages)
         ## Go through all of the combinations
         for combo in assemblagePairs:
             pairname = combo[0]+"*"+combo[1]
-            xdistance = float(xAssemblage[combo[0]]) - float(xAssemblage[combo[1]])
+            xdistance = float(self.xAssemblage[combo[0]]) - float(self.xAssemblage[combo[1]])
             xxdistance = xdistance * xdistance
-            ydistance = float(yAssemblage[combo[0]]) - float(yAssemblage[combo[1]])
+            ydistance = float(self.yAssemblage[combo[0]]) - float(self.yAssemblage[combo[1]])
             yydistance = ydistance * ydistance
             distance = math.sqrt( xxdistance + yydistance)
             self.distanceBetweenAssemblages[ pairname ] = distance
-        largestXname = max(xAssemblage.iterkeys(), key=(lambda key: self.xAssemblage[key]))
-        largestYname= max(yAssemblage.iterkeys(), key=(lambda key: self.yAssemblage[key]))
-        self.largestX = xAssemblage[largestXname]
-        self.largestY = yAssemblage[largestYname]
+        largestXname = max(self.xAssemblage.iterkeys(), key=(lambda key: self.xAssemblage[key]))
+        largestYname= max(self.yAssemblage.iterkeys(), key=(lambda key: self.yAssemblage[key]))
+        self.largestX = self.xAssemblage[largestXname]
+        self.largestY = self.yAssemblage[largestYname]
         return True
 
 
@@ -891,11 +891,12 @@ class IDSS():
                 exists = False
                 currentWeight=1
                 for e in sumGraph.edges():
+                    dd = sumGraph.get_edge_data(*e)
                     if fromAssemblage in e and toAssemblage in e:   ## if exists
                         exists = True
                     currentWeight=1
                     if exists is True:
-                        currentWeight = d['weight']+1
+                        currentWeight = int(dd['weight']) + 1
 
                 if currentWeight > maxWeight:
                     maxWeight=currentWeight
@@ -903,7 +904,7 @@ class IDSS():
 
             for e in sumGraph.edges_iter():
                 d = sumGraph.get_edge_data(*e)
-                currentWeight=d['weight']
+                currentWeight=int(d['weight'])
                 inverseWeight=(maxWeight+1)-currentWeight
                 fromAssemblage = e[0]
                 toAssemblage = e[1]
@@ -1355,21 +1356,17 @@ class IDSS():
 
         ############################################################################################################
         logger.debug("Going to open XY file if it exists.")
-        largestX=largestY=0
-        distanceBetweenAssemblages={}
-        xAssemblage={}
-        yAssemblage={}
 
         if args['xyfile'] not in (None, ""):
             self.openXYFile(args['xyfile'])
         else:
             for ass in self.assemblages:
-                xAssemblage[ass]=0.0
-                yAssemblage[ass]=0.0
+                self.xAssemblage[ass]=0.0
+                self.yAssemblage[ass]=0.0
             allp=self.all_pairs(self.assemblages)
             for pr in allp:
                 name = pr[0]+"*"+pr[1]
-                distanceBetweenAssemblages[name]=0
+                self.distanceBetweenAssemblages[name]=0
 
         ############################################################################################################
         logger.debug("Assume threshold is 1.0 unless its specified in arguments.")
