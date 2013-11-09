@@ -180,7 +180,7 @@ class MST():
                 edgeCount += 1
             count += 1
 
-        if self.shapefile is not None:
+        if self.shapefile != None:
             w = shapefile.Writer(shapefile.POLYLINE)  # 3= polylines
             c=0
             for g in graphs:
@@ -293,7 +293,7 @@ class MST():
         return True
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='NST')
+    parser = argparse.ArgumentParser(description='MST')
     parser.add_argument('--test')
     parser.add_argument('--inputfile',default="../output/pfg.vna",help="The input .vna file.")
     parser.add_argument('--outputdirectory',default="../output/",help="If you want to specify an output directory do it here. The default is ../output/")
