@@ -251,7 +251,7 @@ class IDSS():
         return m, m-h, m+h
 
     ########################################### BOOTSTRAP CI SECTION ####################################
-    def bootstrapCICalculation(self,args, bootsize=100,confidenceInterval=0.05):
+    def bootstrapCICalculation(self,args, bootsize=1000,confidenceInterval=0.05):
 
         if args['screen']:
             self.scr.addstr(1,40, "STEP: Bootstrap CIs...        ")
