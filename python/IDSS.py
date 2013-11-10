@@ -16,7 +16,7 @@ import random
 import curses
 import numpy as np
 import scipy as sp
-from scipy import stats
+import scipy.stats
 import networkx as nx
 import traceback
 import memory
@@ -243,16 +243,15 @@ class IDSS():
             self.validComparisonsHash[ assemblage1]  = cAssemblages
         return True
 
-    def confidence_interval(self,data, confidence=0.95):
-      ci2 = ( 1.0 - float(confidence))*.5
-      d = 1.0*np.array(data)
-      low_idx = int(ci2* d.size)
-      high_idx = int((1-ci2)*d.size)-1
-      d.sort()
-      return d.mean(), d[low_idx], d[high_idx]
+    def confidence_interval(self,data, confidence=0.05):
+        a = 1.0*np.array(data)
+        n = len(a)
+        m, se = np.mean(a), scipy.stats.sem(a)
+        h = se * sp.stats.t._ppf((1+confidence)/2., n-1)
+        return m, m-h, m+h
 
     ########################################### BOOTSTRAP CI SECTION ####################################
-    def bootstrapCICalculation(self,args, bootsize=100,confidenceInterval=0.95):
+    def bootstrapCICalculation(self,args, bootsize=100,confidenceInterval=0.05):
 
         if args['screen']:
             self.scr.addstr(1,40, "STEP: Bootstrap CIs...        ")
