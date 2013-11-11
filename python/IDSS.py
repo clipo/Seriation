@@ -1494,8 +1494,8 @@ class IDSS():
 
             if len(newNetworks)>0:
                 end_solutions = newNetworks
-                for s in newNetworks:
-                    all_solutions.append(s)
+                #for s in newNetworks:
+                    #all_solutions.append(s)
                 #all_solutions= list(set(all_solutions + newNetworks))
             else:
                 end_solutions = networks
