@@ -459,7 +459,7 @@ class IDSS():
 
             if error == 0:
                 # uses NetworkX
-                net = nx.Graph(name=numberOfTriplets, GraphID=numberOfTriplets, End1=permu[0], End2=permu[2], Middle=permu[1])
+                net = nx.Graph(name=str(numberOfTriplets), GraphID=str(numberOfTriplets), End1=permu[0], End2=permu[2], Middle=permu[1])
                 net.add_node(permu[0], name=permu[0], site="end", end=1, connectedTo=permu[1] )
                 net.add_node(permu[1], name=permu[1], site="middle", end=0, connectedTo="middle")
                 net.add_node(permu[2], name=permu[2], site="end", end=1, connectedTo=permu[1])
@@ -626,7 +626,8 @@ class IDSS():
                     logger.debug( "New comparison map is: %s ", comparisonMap)
 
                     new_network = nnetwork.copy()
-                    new_network.graph["GraphID"]= solutionCount + 1
+                    new_network.graph["GraphID"]= str(solutionCount + 1)
+                    new_network.graph["name"]=str(solutionCount + 1)
                     logger.debug( "Here's the new network (before addition): %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
                     logger.debug("From %s the ends of the seriation are %d (before): %s and %s",assEnd, nnetwork.graph['GraphID'],nnetwork.graph["End1"],nnetwork.graph["End2"] )
                     path = nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"])
@@ -866,6 +867,13 @@ class IDSS():
             else:
                 return 0
         return sorted(items, cmp=comparer)
+
+    def createAtlasOfSolutions(self,filteredarray,args):
+        atlasGraph=nx.disjoint_union_all(filteredarray)
+        pos=nx.graphviz_layout(atlasGraph,prog="twopi",root=0)
+        atlasFile=self.outputDirectory + self.inputFile[0:-4]+"-new-atlas.png"
+        plt.savefig(atlasFile,dpi=250)
+        plt.show() # display
 
     def sumGraphs(self,filteredarray,args):
         sumGraph=nx.Graph()
@@ -1293,7 +1301,7 @@ class IDSS():
         logger.debug("Arguments: %s", args)
 
         ##################################################################################################
-        if (args['screen'] not in (None, "")) and (args['debug'] in (None, "")):
+        if (args['screen']!= None) and (args['debug'] == None ):
             ## Set up the screen display (default).
             ## the debug option should not use this since it gets messy
             try:
@@ -1410,7 +1418,7 @@ class IDSS():
         solutions=[]
         networks=[]
         all_solutions=[]
-        all_solutions= all_solutions + triples
+        all_solutions= all_solutions + triples  ## add the triples to the intial solution
 
         while currentMaxSeriationSize < self.maxSeriationSize:
             currentMaxSeriationSize += 1
@@ -1465,6 +1473,7 @@ class IDSS():
                 validNewNetworks,currentMaxNodes = self.checkForValidAdditionsToNetwork(nnetwork, pairGraph,solutionCount,args)
                 if validNewNetworks is not False:
                     newNetworks = newNetworks + validNewNetworks
+                    all_solutions = all_solutions + validNewNetworks
                     solutionCount += len(validNewNetworks)
                     logger.debug("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),solutionCount)
                     if currentMaxNodes > maxNodes:
@@ -1497,6 +1506,8 @@ class IDSS():
         ###########################################################################################################
         filteredarray = self.filterSolutions(end_solutions,all_solutions,args)
 
+        filteredarray = all_solutions
+
         logger.debug("Process complete at seriation size %d with %d solutions after filtering.",self.maxSeriationSize,len(filteredarray))
 
         #################################################### OUTPUT SECTION ####################################################
@@ -1504,6 +1515,7 @@ class IDSS():
 
         sumGraph=self.sumGraphs(filteredarray,args)
         self.sumGraphOutput(sumGraph,SUMGRAPH,args)
+        self.createAtlasOfSolutions(filteredarray,args)
 
         #################################################### MST SECTION ####################################################
         if args['mst'] != None:
@@ -1521,6 +1533,7 @@ class IDSS():
         return filteredarray
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
     parser.add_argument('--debug', default=None, help='Sets the DEBUG flag for massive amounts of annoated output.')
     parser.add_argument('--bootstrapCI', default=None, help="Sets whether you want to use the bootstrap confidence intervals for the comparisons between assemblage type frequencies. Set's to on or off.")
