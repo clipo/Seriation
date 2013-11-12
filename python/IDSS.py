@@ -921,6 +921,12 @@ class IDSS():
 
     ## Output to file and to the screen
     def sumGraphOutput(self,sumGraph,SUMGRAPH,args):
+
+        nodeList = sumGraph.nodes()
+        for a in self.assemblages:
+            if a not in nodeList:
+                sumGraph.add_node(name=a)
+
         SUMGRAPH.write( "*Node data\n")
         SUMGRAPH.write("ID AssemblageSize X Y Easting Northing\n")
 
@@ -1517,6 +1523,14 @@ class IDSS():
         self.sumGraphOutput(sumGraph,SUMGRAPH,args)
         self.createAtlasOfSolutions(filteredarray,args)
 
+        print "Assemblages not part of final solution:"
+        notPartOfSeriationsList=[]
+        nodeList=sumGraph.nodes()
+        for a in self.assemblages:
+            if a not in nodeList:
+                notPartOfSeriationsList.append(a)
+                print a
+                
         #################################################### MST SECTION ####################################################
         if args['mst'] != None:
             outputFile = self.outputDirectory + self.inputFile[0:-4]+".vna"
