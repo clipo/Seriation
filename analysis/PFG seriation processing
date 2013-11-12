@@ -1,0 +1,3 @@
+
+## processing notes
+python ./IDSS.py --inputfile=../testdata/pfg-cpl.txt --xyfile=../testdata/pfgXY.txt --threshold=0.30 --mst=1 --screen=1 --bootstrapCI=1 --bootstrapSignificance=0.95 --shapefile=1
