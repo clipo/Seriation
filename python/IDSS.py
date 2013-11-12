@@ -16,7 +16,7 @@ import random
 import curses
 import numpy as np
 import scipy as sp
-from scipy import stats
+import scipy.stats
 import networkx as nx
 import traceback
 import memory
@@ -34,8 +34,30 @@ class IDSS():
 
     def __init__(self):
         self.inputfile = ""
+        self.outputDirectory=""
         self.mem=memory.Memory()
         self.start = time.time()
+        self.assemblageSize={}
+        self.assemblageFrequencies={}
+        self.assemblages={}
+        self.countOfAssemblages=0
+        self.assemblageValues={}
+        self.labels={}
+        self.numberOfClasses =0
+        self.maxSeriationSize=0
+        self.xAssemblage = {}
+        self.yAssemblage = {}
+        self.xyAssemblages=[]
+        self.distanceBetweenAssemblages={}
+        self.largestX =0
+        self.largestY =0
+        self.distanceBetweenAssemblages={}
+        self.validComparisonsHash={}
+        self.typeFrequencyLowerCI = {}
+        self.typeFrequencyUpperCI = {}
+        self.typeFrequencyMeanCI = {}
+        self.pairwise={}
+        self.pairwiseError={}
         logger.debug("Start time:  %s ", self.start)
         self.scr = None
 
@@ -50,12 +72,6 @@ class IDSS():
         return useable_tuples
 
     def openFile(self, filename, args):
-        assemblageValues={}
-        assemblageSize={}
-        assemblageFrequencies={}
-        assemblages={}
-        countOfAssemblages=0
-        labels={}
         try:
             logger.debug("trying to open: %s ", filename)
             file=open(filename,'r')
@@ -69,35 +85,33 @@ class IDSS():
         for row in reader:
             row = map(str, row)
             label=row[0]
-            labels[ label ] = label
+            self.labels[ label ] = label
             row.pop(0)
-            #row=[map(int,x.split()) for x in f if x.strip()]
             row = map(float, row)
-            numberOfClasses = len(row)
-            #rowtotal = sum(row)
+            self.numberOfClasses = len(row)
             freq=[]
             rowtotal=sum(row)
             for r in row:
                 freq.append(float(float(r)/float(rowtotal)))
                 values.append(float(r))
-            assemblages[ label ] = freq
-            assemblageFrequencies[ label ]  = freq
-            assemblageValues[ label ] = values
-            assemblageSize[ label ]= rowtotal
-            countOfAssemblages +=1
+            self.assemblages[ label ] = freq
+            self.assemblageFrequencies[ label ]  = freq
+            self.assemblageValues[ label ] = values
+            self.assemblageSize[ label ]= rowtotal
+            self.countOfAssemblages +=1
+        self.maxSeriationSize=self.countOfAssemblages
+        return True
 
-        return len(assemblages), assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses
-
-    def preCalculateComparisons(self,assemblages,typeFrequencyUpperCI,typeFrequencyLowerCI,args):
+    def preCalculateComparisons(self,args):
         logger.debug("Precalculating the comparisons between all pairs of assemblages...")
-        pairs = self.all_pairs(assemblages)
+        pairs = self.all_pairs(self.assemblages)
         pairGraph = nx.Graph()
         for pair in pairs:
             pairGraph.add_node(pair[0])
             pairGraph.add_node(pair[1])
-            columns=range(len(assemblages[pair[0]]))
-            ass1 = assemblages[pair[0]]
-            ass2 = assemblages[pair[1]]
+            columns=range(len(self.assemblages[pair[0]]))
+            ass1 = self.assemblages[pair[0]]
+            ass2 = self.assemblages[pair[1]]
             comparison=""
             for i in columns:
                 val1 = ass1[i]
@@ -106,10 +120,10 @@ class IDSS():
                 logger.debug( "\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,i,i,i,i,i,i)
 
                 if args['bootstrapCI'] not in (None, ""):
-                    upperCI_test = typeFrequencyUpperCI[pair[0]][i]
-                    lowerCI_test  = typeFrequencyLowerCI[pair[0]][i]
-                    upperCI_end =  typeFrequencyUpperCI[pair[1]][i]
-                    lowerCI_end=  typeFrequencyLowerCI[pair[1]][i]
+                    upperCI_test = self.typeFrequencyUpperCI[pair[0]][i]
+                    lowerCI_test  = self.typeFrequencyLowerCI[pair[0]][i]
+                    upperCI_end =  self.typeFrequencyUpperCI[pair[1]][i]
+                    lowerCI_end=  self.typeFrequencyLowerCI[pair[1]][i]
 
                     if upperCI_test < lowerCI_end:
                         comparison +=  "D"
@@ -140,9 +154,9 @@ class IDSS():
         reader = csv.reader(pw, delimiter='\t', quotechar='|')
         for row in reader:
             pair = row[0]+"#"+row[1]
-            pairwise[pair]=row[2]
-            pairwiseError[pair]=row[3]
-
+            self.pairwise[pair]=row[2]
+            self.pairwiseError[pair]=row[3]
+        return True
 
     def openXYFile(self,filename ):
         logger.debug("Opening pairwise file %s", filename)
@@ -152,33 +166,29 @@ class IDSS():
         except csv.Error as e:
             sys.exit('file %s does not open: %s') %( filename, e)
 
-        xAssemblage={}
-        yAssemblage={}
-        xyAssemblages=[]
-        distanceBetweenAssemblages={}
         reader = csv.reader(xyf, delimiter='\t', quotechar='|')
 
         for row in reader:
             label = row[0]
-            xyAssemblages.append(label)
-            yAssemblage[label]=row[1]
-            xAssemblage[label]=row[2]
+            self.xyAssemblages.append(label)
+            self.yAssemblage[label]=row[1]
+            self.xAssemblage[label]=row[2]
 
-        assemblagePairs = self.all_pairs(xyAssemblages)
+        assemblagePairs = self.all_pairs(self.xyAssemblages)
         ## Go through all of the combinations
         for combo in assemblagePairs:
             pairname = combo[0]+"*"+combo[1]
-            xdistance = float(xAssemblage[combo[0]]) - float(xAssemblage[combo[1]])
+            xdistance = float(self.xAssemblage[combo[0]]) - float(self.xAssemblage[combo[1]])
             xxdistance = xdistance * xdistance
-            ydistance = float(yAssemblage[combo[0]]) - float(yAssemblage[combo[1]])
+            ydistance = float(self.yAssemblage[combo[0]]) - float(self.yAssemblage[combo[1]])
             yydistance = ydistance * ydistance
             distance = math.sqrt( xxdistance + yydistance)
-            distanceBetweenAssemblages[ pairname ] = distance
-        largestXname = max(xAssemblage.iterkeys(), key=(lambda key: xAssemblage[key]))
-        largestYname= max(yAssemblage.iterkeys(), key=(lambda key: yAssemblage[key]))
-        largestX = xAssemblage[largestXname]
-        largestY = yAssemblage[largestYname]
-        return largestX,largestY,distanceBetweenAssemblages,xAssemblage,yAssemblage
+            self.distanceBetweenAssemblages[ pairname ] = distance
+        largestXname = max(self.xAssemblage.iterkeys(), key=(lambda key: self.xAssemblage[key]))
+        largestYname= max(self.yAssemblage.iterkeys(), key=(lambda key: self.yAssemblage[key]))
+        self.largestX = self.xAssemblage[largestXname]
+        self.largestY = self.yAssemblage[largestYname]
+        return True
 
 
     #############################################  THRESHOLD DETERMINATION ####################################
@@ -191,11 +201,10 @@ class IDSS():
     ##
     ## Precalculate all of the max differences between types in assemblage pairs.
 
-    def thresholdDetermination(self,threshold, assemblages):
+    def thresholdDetermination(self,threshold,args):
         assemblageComparison={}
-        validComparisonsArray={}
         ##  get all the combinations of 2
-        pairs = self.all_pairs(assemblages)
+        pairs = self.all_pairs(self.assemblages)
 
         ## Go through all of the combinations
         for combo in pairs:
@@ -203,10 +212,10 @@ class IDSS():
             pairname1  = combo[0] + "*" + combo[1]
             pairname2  = combo[1] + "*" + combo[0]
             maxDifference = 0
-            assemblage1 = assemblages[combo[0]]
-            assemblage2 = assemblages[combo[1]]
+            assemblage1 = self.assemblages[combo[0]]
+            assemblage2 = self.assemblages[combo[1]]
             i=-1
-            columns= len(assemblages[combo[0]])
+            columns= len(self.assemblages[combo[0]])
             logger.debug("Number of columns: %d", columns)
             ## calculate the maximum differences between the pairs of assemblages (across all types)
             for i in (0, columns-1):
@@ -221,9 +230,9 @@ class IDSS():
             assemblageComparison[ pairname2 ] = maxDifference
 
         ############## pre calculate the valid pairs of assemblages and stuff into hash ############################
-        for assemblage1 in assemblages:
+        for assemblage1 in self.assemblages:
             cAssemblages=[]
-            for assemblage2 in assemblages:
+            for assemblage2 in self.assemblages:
                 if not assemblage1 == assemblage2:
                     testpair = assemblage1 + "*" + assemblage2
                     logger.debug("Pairs: %s and %s", assemblage1,assemblage2)
@@ -231,26 +240,18 @@ class IDSS():
                     if assemblageComparison[ testpair ] <= threshold:
                         logger.debug("Appending %s to the list of valid comparisons for %s ", assemblage1, assemblage2)
                         cAssemblages.append( assemblage2 )
-            validComparisonsArray[ assemblage1]  = cAssemblages
-        return validComparisonsArray
+            self.validComparisonsHash[ assemblage1]  = cAssemblages
+        return True
 
-    def confidence_interval(self,data, confidence=0.95):
-      ci2 = ( 1.0 - float(confidence))*.5
-      d = 1.0*np.array(data)
-      low_idx = int(ci2* d.size)
-      high_idx = int((1-ci2)*d.size)-1
-      d.sort()
-      return d.mean(), d[low_idx], d[high_idx]
+    def confidence_interval(self,data, confidence=0.05):
+        a = 1.0*np.array(data)
+        n = len(a)
+        m, se = np.mean(a), scipy.stats.sem(a)
+        h = se * sp.stats.t._ppf((1+confidence)/2., n-1)
+        return m, m-h, m+h
 
     ########################################### BOOTSTRAP CI SECTION ####################################
-    def bootstrapCICalculation(self,assemblages, assemblageSize, args, bootsize=100,confidenceInterval=0.95):
-
-        typeFrequencyLowerCI = {}
-        typeFrequencyUpperCI = {}
-        typeFrequencyMeanCI = {}
-
-        # now do ALL the pairwise assemblage comparisons
-        # go to sleep and come back later.
+    def bootstrapCICalculation(self,args, bootsize=1000,confidenceInterval=0.05):
 
         if args['screen']:
             self.scr.addstr(1,40, "STEP: Bootstrap CIs...        ")
@@ -260,10 +261,10 @@ class IDSS():
         logger.debug("Calculating bootstrap confidence intervals")
         # for each assemblage
 
-        for currentLabel in sorted( assemblages.iterkeys()):
-            assemblage =  assemblages[ currentLabel ]
-            types=len(assemblages[ currentLabel ])
-            currentAssemblageSize = assemblageSize[ currentLabel ]
+        for currentLabel in sorted( self.assemblages.iterkeys()):
+            assemblage =  self.assemblages[ currentLabel ]
+            types=len(self.assemblages[ currentLabel ])
+            currentAssemblageSize = self.assemblageSize[ currentLabel ]
 
             ## create an array of arrays - one for each type
             arrayOfStats=[]
@@ -337,15 +338,15 @@ class IDSS():
                 upperCI.append( upper )
                 meanCI.append( mean )
 
-            typeFrequencyLowerCI[ currentLabel ] = lowerCI
-            typeFrequencyUpperCI[ currentLabel ] = upperCI
-            typeFrequencyMeanCI[ currentLabel ] = meanCI
+            self.typeFrequencyLowerCI[ currentLabel ] = lowerCI
+            self.typeFrequencyUpperCI[ currentLabel ] = upperCI
+            self.typeFrequencyMeanCI[ currentLabel ] = meanCI
 
-        return typeFrequencyLowerCI, typeFrequencyUpperCI, typeFrequencyMeanCI
+        return True
 
     ########################################### FIND ALL THE VALID TRIPLES  ####################################
     ########################################### #################################### ###########################
-    def findAllValidTriples(self,assemblages,typeFrequencyLowerCI,typeFrequencyUpperCI,typeFrequencyMeanCI,args):
+    def findAllValidTriples(self,args):
         triples=[]
         error = 0
         numberOfTriplets = 0
@@ -353,7 +354,7 @@ class IDSS():
         if args['screen'] not in (None, ""):
             self.scr.addstr(1,40, "STEP: Find valid triples....      ")
             self.scr.refresh()
-        permutations = self.all_tuples(assemblages)
+        permutations = self.all_tuples(self.assemblages)
 
         for permu in permutations:
             if args['screen'] not in (None, ""):
@@ -367,28 +368,28 @@ class IDSS():
             comparison12 = ""
             comparison23 = ""
             error = 0
-            columns=len( assemblages[ permu[0] ])
+            columns=len( self.assemblages[ permu[0] ])
             logger.debug("Columns: %d", columns)
             difscore=0
             difscore2=0
             comparison12=""
             comparison23=""
             for i in range(0,columns):
-                ass1 = assemblages[ permu[0] ][i]
-                ass2 = assemblages[ permu[1] ][i]
-                ass3 = assemblages[ permu[2] ][i]
+                ass1 = self.assemblages[ permu[0] ][i]
+                ass2 = self.assemblages[ permu[1] ][i]
+                ass3 = self.assemblages[ permu[2] ][i]
                 logger.debug( "ass1: %f ass2: %f ass3: %f",ass1,ass2,ass3)
 
                 if args['bootstrapCI'] not in (None, ""):
-                    low1 = typeFrequencyLowerCI[permu[0]][i]
-                    low2 = typeFrequencyLowerCI[permu[1]][i]
-                    low3 = typeFrequencyLowerCI[permu[2]][i]
-                    high1 = typeFrequencyUpperCI[permu[0]][i]
-                    high2 = typeFrequencyUpperCI[permu[1]][i]
-                    high3 = typeFrequencyUpperCI[permu[2]][i]
-                    mean1 = typeFrequencyMeanCI[permu[0]][i]
-                    mean2 = typeFrequencyMeanCI[permu[1]][i]
-                    mean3 = typeFrequencyMeanCI[permu[2]][i]
+                    low1 = self.typeFrequencyLowerCI[permu[0]][i]
+                    low2 = self.typeFrequencyLowerCI[permu[1]][i]
+                    low3 = self.typeFrequencyLowerCI[permu[2]][i]
+                    high1 = self.typeFrequencyUpperCI[permu[0]][i]
+                    high2 = self.typeFrequencyUpperCI[permu[1]][i]
+                    high3 = self.typeFrequencyUpperCI[permu[2]][i]
+                    mean1 = self.typeFrequencyMeanCI[permu[0]][i]
+                    mean2 = self.typeFrequencyMeanCI[permu[1]][i]
+                    mean3 = self.typeFrequencyMeanCI[permu[2]][i]
 
                     # compare 1 and 2
                     if high1 < low2:
@@ -458,7 +459,7 @@ class IDSS():
 
             if error == 0:
                 # uses NetworkX
-                net = nx.Graph(name=numberOfTriplets, GraphID=numberOfTriplets, End1=permu[0], End2=permu[2], Middle=permu[1])
+                net = nx.Graph(name=str(numberOfTriplets), GraphID=str(numberOfTriplets), End1=permu[0], End2=permu[2], Middle=permu[1])
                 net.add_node(permu[0], name=permu[0], site="end", end=1, connectedTo=permu[1] )
                 net.add_node(permu[1], name=permu[1], site="middle", end=0, connectedTo="middle")
                 net.add_node(permu[2], name=permu[2], site="end", end=1, connectedTo=permu[1])
@@ -480,10 +481,7 @@ class IDSS():
         return (x for x in full_list if x not in s)
 
 
-    def checkForValidAdditionsToNetwork(self,nnetwork, pairGraph, validAssemblagesForComparisons, assemblages,
-                                        typeFrequencyLowerCI, typeFrequencyUpperCI,
-                                        typeFrequencyMeanCI,
-                                        solutionCount, args):
+    def checkForValidAdditionsToNetwork(self,nnetwork, pairGraph, solutionCount, args):
 
         logger.debug("######################Starting check for solution %s with %s nodes ######################################",nnetwork.graph['GraphID'],len(nnetwork))
         if args['screen'] not in (None, ""):
@@ -504,7 +502,7 @@ class IDSS():
 
             endAssemblage=nnetwork.graph[assEnd]
             logger.debug(">>>>>> Checking ends of seriation %d:  %s is %s", nnetwork.graph['GraphID'], assEnd,endAssemblage)
-            list1 = validAssemblagesForComparisons[ endAssemblage ]
+            list1 = self.validComparisonsHash[ endAssemblage ]
             list2 = nnetwork.nodes()
             logger.debug("List 1 (valid comparisons): %s", list1)
             logger.debug("List 2 (existing nodes): %s", list2)
@@ -566,7 +564,7 @@ class IDSS():
                 logger.debug( "\t\t\tCompare current pair with previous comparison: %s", comparison)
                 ##########################################################################
                 comparisonMap =""
-                oneToColumns=range(len(assemblages[testAssemblage]))
+                oneToColumns=range(len(self.assemblages[testAssemblage]))
                 logger.debug("Number of columns to check: %d", len(oneToColumns))
 
                 error = 0  ## set the error check to 0
@@ -576,20 +574,20 @@ class IDSS():
                     c=""
                     p=nx.shortest_path(nnetwork, nnetwork.graph[assEnd] , nnetwork.graph[otherEnd])
                     logger.debug( "Working on path: %s",p)
-                    newVal=assemblages[testAssemblage][i]
+                    newVal=self.assemblages[testAssemblage][i]
                     logger.debug("Start comparison with %s",testAssemblage)
                     previousAssemblage=testAssemblage
                     for compareAssemblage in p:
-                        oldVal=assemblages[compareAssemblage][i]
+                        oldVal=self.assemblages[compareAssemblage][i]
                         logger.debug("Compare %s with %s ", previousAssemblage,compareAssemblage)
                         logger.debug("Old value: %f  vs new value: %f",oldVal,newVal)
                         if args['bootstrapCI'] not in (None, ""):
-                            upperCI_test = typeFrequencyUpperCI[previousAssemblage][i]
-                            lowerCI_test = typeFrequencyLowerCI[previousAssemblage][i]
-                            upperCI_end = typeFrequencyUpperCI[compareAssemblage][i]
-                            lowerCI_end = typeFrequencyLowerCI[compareAssemblage][i]
-                            mean_test = typeFrequencyMeanCI[previousAssemblage][i]
-                            mean_end = typeFrequencyMeanCI[compareAssemblage][i]
+                            upperCI_test = self.typeFrequencyUpperCI[previousAssemblage][i]
+                            lowerCI_test = self.typeFrequencyLowerCI[previousAssemblage][i]
+                            upperCI_end = self.typeFrequencyUpperCI[compareAssemblage][i]
+                            lowerCI_end = self.typeFrequencyLowerCI[compareAssemblage][i]
+                            mean_test = self.typeFrequencyMeanCI[previousAssemblage][i]
+                            mean_end = self.typeFrequencyMeanCI[compareAssemblage][i]
 
                             if upperCI_test < lowerCI_end:
                                 c += "D"
@@ -628,7 +626,8 @@ class IDSS():
                     logger.debug( "New comparison map is: %s ", comparisonMap)
 
                     new_network = nnetwork.copy()
-                    new_network.graph["GraphID"]= solutionCount + 1
+                    new_network.graph["GraphID"]= str(solutionCount + 1)
+                    new_network.graph["name"]=str(solutionCount + 1)
                     logger.debug( "Here's the new network (before addition): %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
                     logger.debug("From %s the ends of the seriation are %d (before): %s and %s",assEnd, nnetwork.graph['GraphID'],nnetwork.graph["End1"],nnetwork.graph["End2"] )
                     path = nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"])
@@ -671,7 +670,7 @@ class IDSS():
                 return True
         return False
 
-    def minimumSpanningTree(self,networks,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile):
+    def minimumSpanningTree(self,networks,sumGraph, outputDirectory,inputFile):
         try:
             from networkx import graphviz_layout
         except ImportError:
@@ -689,34 +688,35 @@ class IDSS():
                 xCoordinate = 0
                 yCoordinate = 0
                 name = nodey[0]
-                xCoordinate = xAssemblage[name]
-                yCoordinate = yAssemblage[name]
+                xCoordinate = self.xAssemblage[name]
+                yCoordinate = self.yAssemblage[name]
                 megaGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
-                                   size=assemblageSize[name])
+                                   size=self.assemblageSize[name])
 
             count=0
-            for e in net.edges_iter():   ### no need to go in order -- just look at all the other edges to see if there is an X
+            for e in net.edges_iter():
                 d = net.get_edge_data(*e)
                 fromAssemblage = e[0]
                 toAssemblage = e[1]
                 g.add_node(fromAssemblage, label=fromAssemblage, x=xCoordinate, y=yCoordinate,
-                                            name=fromAssemblage, size=assemblageSize[name])
+                                            name=fromAssemblage, size=self.assemblageSize[name])
                 g.add_node(toAssemblage, label=toAssemblage, x=xCoordinate, y=yCoordinate,
-                                            name=toAssemblage, size=assemblageSize[name])
-                weight = d['weight']
-                distance = distanceBetweenAssemblages[fromAssemblage + "*" + toAssemblage]
+                                            name=toAssemblage, size=self.assemblageSize[name])
+
+                weight = d['weight']+1
+                distance = self.distanceBetweenAssemblages[fromAssemblage + "*" + toAssemblage]
                 #count = megaGraph.get_edge_data(fromAssemblage,toAssemblage,'weight'
                 count += 1
                 megaGraph.add_path([fromAssemblage, toAssemblage], weight=count,
                                    distance=distance, color=number,
-                                   size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
+                                   size=(self.assemblageSize[fromAssemblage], self.assemblageSize[toAssemblage]))
 
                 g.add_path([fromAssemblage, toAssemblage],
-                                            xy1=(xAssemblage[fromAssemblage], yAssemblage[fromAssemblage]),
-                                            xy2=(xAssemblage[toAssemblage], yAssemblage[toAssemblage]),
+                                            xy1=(self.xAssemblage[fromAssemblage], self.yAssemblage[fromAssemblage]),
+                                            xy2=(self.xAssemblage[toAssemblage], self.yAssemblage[toAssemblage]),
                                             weight=weight,
                                             meanDistance=distance,
-                                            size=(assemblageSize[fromAssemblage], assemblageSize[toAssemblage]))
+                                            size=(self.assemblageSize[fromAssemblage], self.assemblageSize[toAssemblage]))
             graphs.append(g)
         plt.rcParams['text.usetex'] = False
         plt.figure(0,figsize=(8,8))
@@ -818,8 +818,8 @@ class IDSS():
             os.system("reset")
 
     #################################################### set up all the output files ####################################################
-    def setupOutput(self,filename, outputDirectory,inputFile, args):
-        outputFile = outputDirectory + inputFile[0:-4]+".vna"
+    def setupOutput(self,args):
+        outputFile = self.outputDirectory + self.inputFile[0:-4]+".vna"
         OUTMSTFILE=OUTMSTDISTANCEFILE=""
         try:
             OUTFILE = open(outputFile, 'w')
@@ -827,7 +827,7 @@ class IDSS():
             msg = "Can't open file %s to write: %s" % outputFile, e
             sys.exit(msg)
 
-        outpairsFile = outputDirectory +inputFile[0:-4]+"-pairs.vna"
+        outpairsFile = self.outputDirectory +self.inputFile[0:-4]+"-pairs.vna"
         try:
             OUTPAIRSFILE = open(outpairsFile, 'w')
         except csv.Error as e:
@@ -835,8 +835,8 @@ class IDSS():
             sys.exit(msg)
 
 
-        outmstFile=  outputDirectory + inputFile[0:-4] + "-mst.vna"
-        outmst2File = outputDirectory + inputFile[0:-4] + "-mst-distance.vna"
+        outmstFile=  self.outputDirectory + self.inputFile[0:-4] + "-mst.vna"
+        outmst2File = self.outputDirectory + self.inputFile[0:-4] + "-mst-distance.vna"
 
         if args['mst'] not in (None, ""):
             try:
@@ -846,7 +846,14 @@ class IDSS():
                 msg = "Can't open file %s to write: %s" % outputFile, e
                 sys.exit(msg)
 
-        return OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE
+        sumgraphOutputFile = self.outputDirectory + self.inputFile[0:-4]+"-sumgraph.vna"
+        try:
+            SUMGRAPH = open(sumgraphOutputFile, 'w')
+        except csv.Error as e:
+            msg = "Can't open file %s to write: %s" % sumgraphOutputFile, e
+            sys.exit(msg)
+
+        return OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,SUMGRAPH
 
     #################################################### sort by multiple keys ####################################################
     def multikeysort(self,items, columns):
@@ -861,13 +868,227 @@ class IDSS():
                 return 0
         return sorted(items, cmp=comparer)
 
+    def createAtlasOfSolutions(self,filteredarray,args):
+        atlasGraph=nx.disjoint_union_all(filteredarray)
+        pos=nx.graphviz_layout(atlasGraph,prog="twopi",root=0)
+        atlasFile=self.outputDirectory + self.inputFile[0:-4]+"-new-atlas.png"
+        plt.savefig(atlasFile,dpi=250)
+        plt.show() # display
+
+    def sumGraphs(self,filteredarray,args):
+        sumGraph=nx.Graph()
+        ## go through all the graphs
+        for g in filteredarray:
+            ## go through all the edges for each graph
+            for node in g.nodes(data=True):
+                xCoordinate = 0
+                yCoordinate = 0
+                name = node[0]
+                if args['xyfile'] != None:
+                    xCoordinate = self.xAssemblage[name]
+                    yCoordinate = self.yAssemblage[name]
+                sumGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
+                                   size=self.assemblageSize[name])
+
+            maxWeight=0
+            for e in g.edges_iter():
+                d = g.get_edge_data(*e)
+                fromAssemblage = e[0]
+                toAssemblage = e[1]
+                exists = False
+                currentWeight=1
+                for e in sumGraph.edges():
+                    dd = sumGraph.get_edge_data(*e)
+                    if fromAssemblage in e and toAssemblage in e:   ## if exists
+                        exists = True
+                    currentWeight=1
+                    if exists is True:
+                        currentWeight = int(dd['weight']) + 1
+
+                if currentWeight > maxWeight:
+                    maxWeight=currentWeight
+                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight)
+
+            for e in sumGraph.edges_iter():
+                d = sumGraph.get_edge_data(*e)
+                currentWeight=int(d['weight'])
+                inverseWeight=(maxWeight+1)-currentWeight
+                fromAssemblage = e[0]
+                toAssemblage = e[1]
+                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight,inverseweight=inverseWeight )
+
+        return sumGraph
+
+    def continunityMaximizationSeriation(self,args):
+
+        diffGraph=nx.Graph(name="differenceGraph")
+
+        for ass in self.assemblages:
+            diffGraph.add_node(ass,name=ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass])
+
+        pairsOfAssemblages=self.all_pairs(self.assemblages)
+
+        for pair in pairsOfAssemblages:
+            diff=0
+
+            for type in range(0,self.numberOfClasses):
+                diff += abs(float(self.assemblageFrequencies[pair[0]][type]) - float(self.assemblageFrequencies[pair[1]][type]))
+            diffGraph.add_path([pair[0], pair[1]],weight=float(diff), invweight=(float(self.numberOfClasses)-diff))
+
+        mst=nx.minimum_spanning_tree(diffGraph,weight='inverseweight')
+        return mst
+
+    def graphOutput(self,graph,args):
+        plt.rcParams['text.usetex'] = False
+        plt.figure(1,figsize=(8,8))
+        pos=nx.graphviz_layout(graph)
+        edgewidth=[]
+        weights = nx.get_edge_attributes(graph,'weight')
+        for w in weights:
+            edgewidth.append(weights[w])
+
+        maxValue = max(edgewidth)
+        widths=[]
+        for w in edgewidth:
+            widths.append(((maxValue-w)+1)*5)
+
+        assemblageSizes=[]
+        sizes = nx.get_node_attributes(graph, 'size')
+        #print sizes
+        for s in sizes:
+            #print sizes[s]
+            assemblageSizes.append(sizes[s])
+        nx.draw_networkx_edges(graph,pos,alpha=0.3,width=widths)
+        sizes = nx.get_node_attributes(graph,'size')
+        nx.draw_networkx_nodes(graph,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
+        nx.draw_networkx_edges(graph,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
+        nx.draw_networkx_labels(graph,pos,fontsize=10)
+        font = {'fontname'   : 'Helvetica',
+            'color'      : 'k',
+            'fontweight' : 'bold',
+            'fontsize'   : 14}
+        plt.axis('off')
+        file=args['inputfile']
+        newfilename=self.outputDirectory+self.inputFile[0:-4]+"-mst-diffgraph.png"
+        plt.savefig(newfilename,dpi=75)
+        plt.figure(3,figsize=(30,20))
+        plt.show() # display
+
+    ## Output to file and to the screen
+    def sumGraphOutput(self,sumGraph,SUMGRAPH,args):
+
+        nodeList = sumGraph.nodes()
+        for a in self.assemblages:
+            if a not in nodeList:
+                sumGraph.add_node(a, name=a, xCoordinate=self.xAssemblage[a], yCoordinate=self.yAssemblage[a],
+                                   size=self.assemblageSize[a])
+        SUMGRAPH.write( "*Node data\n")
+        SUMGRAPH.write("ID AssemblageSize X Y Easting Northing\n")
+
+        for node in sumGraph.nodes(data=True):
+            nodeName =node[0]
+            x = 0
+            y = 0
+            northing = 0
+            easting = 0
+            if args['xyfile'] != None:
+                x = float(self.xAssemblage[ nodeName ]) / 1000000.0
+                y = (float(self.largestY)- float(self.yAssemblage[nodeName]))/100000.0
+                easting = self.xAssemblage[nodeName]
+                northing = self.yAssemblage[nodeName]
+            msg = nodeName + " "+ str(self.assemblageSize[ nodeName ])+" "+ str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
+            SUMGRAPH.write(msg)
+        SUMGRAPH.write("*Tie data\nFrom To Edge Weight InverseWeight\n")
+        edgeCount=0
+        for e in sumGraph.edges_iter():
+            d = sumGraph.get_edge_data(*e)
+            edgeCount += 1
+            text = e[0]+ " "+ e[1]+" "+ str(edgeCount)+ " "+ str(d['weight'])+ " "+ str(d['inverseweight'])+ "\n"
+            SUMGRAPH.write(text)
+
+        ## Now make the graphic for the sumgraph
+        plt.rcParams['text.usetex'] = False
+        plt.figure(0,figsize=(8,8))
+
+        os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+        #print os.environ["PATH"]
+        pos=nx.graphviz_layout(sumGraph)
+        #pos=nx.spring_layout(mst,iterations=500)
+        edgewidth=[]
+        weights = nx.get_edge_attributes(sumGraph, 'weight')
+        for w in weights:
+            edgewidth.append(weights[w])
+
+        maxValue = max(edgewidth)
+        widths=[]
+        for w in edgewidth:
+            widths.append(((maxValue-w)+1)*5)
+
+        assemblageSizes=[]
+        sizes = nx.get_node_attributes(sumGraph, 'size')
+        #print sizes
+        for s in sizes:
+            #print sizes[s]
+            assemblageSizes.append(sizes[s])
+        nx.draw_networkx_edges(sumGraph,pos,alpha=0.3,width=widths)
+        sizes = nx.get_node_attributes(sumGraph,'size')
+        nx.draw_networkx_nodes(sumGraph,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
+        nx.draw_networkx_edges(sumGraph,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
+        nx.draw_networkx_labels(sumGraph,pos,fontsize=10)
+        font = {'fontname'   : 'Helvetica',
+            'color'      : 'k',
+            'fontweight' : 'bold',
+            'fontsize'   : 14}
+        plt.axis('off')
+        file=args['inputfile']
+        newfilename=self.outputDirectory+self.inputFile[0:-4]+"-sumgraph.png"
+        plt.savefig(newfilename,dpi=75)
+        plt.figure(1,figsize=(30,20))
+
+        mst=nx.minimum_spanning_tree(sumGraph,weight='inverseweight')
+        plt.rcParams['text.usetex'] = False
+        plt.figure(1,figsize=(8,8))
+        pos=nx.graphviz_layout(mst)
+        edgewidth=[]
+        weights = nx.get_edge_attributes(mst, 'weight')
+        for w in weights:
+            edgewidth.append(weights[w])
+
+        maxValue = max(edgewidth)
+        widths=[]
+        for w in edgewidth:
+            widths.append(((maxValue-w)+1)*5)
+
+        assemblageSizes=[]
+        sizes = nx.get_node_attributes(mst, 'size')
+        #print sizes
+        for s in sizes:
+            #print sizes[s]
+            assemblageSizes.append(sizes[s])
+        nx.draw_networkx_edges(mst,pos,alpha=0.3,width=widths)
+        sizes = nx.get_node_attributes(mst,'size')
+        nx.draw_networkx_nodes(mst,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
+        nx.draw_networkx_edges(mst,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
+        nx.draw_networkx_labels(mst,pos,fontsize=10)
+        font = {'fontname'   : 'Helvetica',
+            'color'      : 'k',
+            'fontweight' : 'bold',
+            'fontsize'   : 14}
+        plt.axis('off')
+        file=args['inputfile']
+        newfilename=self.outputDirectory+self.inputFile[0:-4]+"-mst-sumgraph.png"
+        plt.savefig(newfilename,dpi=75)
+        plt.figure(2,figsize=(30,20))
+
+        # layout graphs with positions using graphviz neato
+
     #################################################### OUTPUT SECTION ####################################################
-    def output(self,assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredArray,
-                 OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxEdges,args):
+    def output(self,filteredArray,OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxEdges,args):
         if args['screen'] not in (None, ""):
             self.scr.addstr(13,1, "Now printing output file... ")
             self.scr.addstr(1,40,"STEP: Output files...         ")
             self.scr.refresh()
+
         OUTFILE.write( "*Node data\n")
         OUTFILE.write("ID AssemblageSize X Y Easting Northing\n")
         OUTPAIRSFILE.write("*Node data\n")
@@ -877,18 +1098,18 @@ class IDSS():
             self.scr.addstr(1,40,"STEP: Printing list of nodes....     ")
             self.scr.refresh()
         ## note this assumes the use of UTM coordinates (northing and easting)
-        for l in assemblages:
+        for l in self.assemblages:
             x = 0
             y = 0
             northing = 0
             easting = 0
             if args['xyfile'] not in (None, ""):
-                x = float(xAssemblage[ l ]) / 1000000.0
-                y = (float(largestY)- float(yAssemblage[l]))/100000.0
-                easting = xAssemblage[l]
-                northing = yAssemblage[l]
+                x = float(self.xAssemblage[ l ]) / 1000000.0
+                y = (float(self.largestY)- float(self.yAssemblage[l]))/100000.0
+                easting = self.xAssemblage[l]
+                northing = self.yAssemblage[l]
 
-            msg = l + " "+ str(assemblageSize[ l ])+" "+ str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
+            msg = l + " "+ str(self.assemblageSize[ l ])+" "+ str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
             OUTFILE.write(msg)
             OUTPAIRSFILE.write(msg)
             if args['mst'] not in (None, ""):
@@ -905,17 +1126,17 @@ class IDSS():
         if args['screen'] not in (None, ""):
             self.scr.addstr(1,40,"STEP: Printing list of nodes attributes... ")
             self.scr.refresh()
-        for l in assemblages:
+        for l in self.assemblages:
             easting = 0
             northing = 0
             x = 0
             y = 0
             if args['xyfile'] not in (None, ""):
-                x = float(xAssemblage[l])/1000000
-                y = (float(largestY)-float(yAssemblage[l]))/100000
-                easting = xAssemblage[l]
-                northing = yAssemblage[l]
-            msg = l +" "+ str(assemblageSize[ l])+" "+str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
+                x = float(self.xAssemblage[l])/1000000
+                y = (float(self.largestY)-float(self.yAssemblage[l]))/100000
+                easting = self.xAssemblage[l]
+                northing = self.yAssemblage[l]
+            msg = l +" "+ str(self.assemblageSize[ l])+" "+str(x)+" "+str(y)+" "+str(easting)+" "+str(northing)+"\n"
             OUTFILE.write(msg)
             OUTPAIRSFILE.write(msg)
             if args['mst'] not in (None, ""):
@@ -939,13 +1160,14 @@ class IDSS():
             for e in network.edges_iter():
                 pairname= e[0]+"*"+e[1]
                 edgeHash[ pairname ] = 0
+
             for e in network.edges_iter():
                 pairname= e[0]+"*"+e[1]
                 edgeHash[ pairname ] += 1
 
         ## now go through the edgeHash and print out the edges
         ## do this is sorted order of the counts. For fun.
-        if args['screen'] not in (None, ""):
+        if args['screen'] != None:
             self.scr.addstr(1,40,"STEP: Doing the pair output...                ")
             self.scr.refresh()
 
@@ -981,7 +1203,7 @@ class IDSS():
                 if args['xyfile'] not in (None, ""):
                     for e in network.edges_iter():
                       pairname= e[0]+"*"+e[1]
-                      groupDistance += distanceBetweenAssemblages[ pairname ]
+                      groupDistance += self.distanceBetweenAssemblages[ pairname ]
                       eCount += 1
                     meanDistance = groupDistance/eCount         ##use the average distance as the metric
                 else:
@@ -1018,7 +1240,7 @@ class IDSS():
                 if args['xyfile'] != None:
                     for e in network.edges_iter():
                       pairname= e[0]+"*"+e[1]
-                      groupDistance += distanceBetweenAssemblages[ pairname ]
+                      groupDistance += self.distanceBetweenAssemblages[ pairname ]
                       eCount += 1
                     meanDistance = groupDistance/eCount         ##use the average distance as the metric
                 else:
@@ -1040,7 +1262,6 @@ class IDSS():
                     else:
                         pVal = 0.0
                         pErr = 0.0
-
                     text = e[0]+ " "+ e[1]+" 1 "+str(edgeCount)+ " "+ str(network.graph["GraphID"])+ " "+\
                            str(pVal)+" "+ str(pErr)+ " "+str(meanDistance)+"\n"
                     OUTFILE.write(text)
@@ -1141,7 +1362,7 @@ class IDSS():
         logger.debug("Arguments: %s", args)
 
         ##################################################################################################
-        if (args['screen'] not in (None, "")) and (args['debug'] in (None, "")):
+        if (args['screen']!= None) and (args['debug'] == None ):
             ## Set up the screen display (default).
             ## the debug option should not use this since it gets messy
             try:
@@ -1174,7 +1395,7 @@ class IDSS():
 
         try:
             logger.debug("Going to try to open and load: %s", filename)
-            maxSeriationSize, assemblages, assemblageFrequencies,assemblageValues,assemblageSize,numberOfClasses = self.openFile(filename,args)
+            self.openFile(filename,args)
         except IOError as e:
             logger.error("Cannot open %s. Error: %s", filename, e.strerror)
 
@@ -1184,18 +1405,18 @@ class IDSS():
                 curses.resetty()
             sys.exit("Quitting due to errors.")
 
-        inputFile=""
+
         try:
             inputparts =map(str,args['inputfile'].split("/"))
-            inputFile= inputparts[len(inputparts)-1]
+            self.inputFile= inputparts[len(inputparts)-1]
         except:
             sys.exit("There was a problem with parsing the input file. Check it and try again.")
 
         ############################################################################################################
         if args['outputdirectory']  not in (None, ""):
-            outputDirectory = args['outputdirectory']
+            self.outputDirectory = args['outputdirectory']
         else:
-            outputDirectory = "../output/"
+            self.outputDirectory = "../output/"
         ############################################################################################################
         logger.debug("Going to open pairwise file it is exists.")
         if args['pairwisefile']  not in (None, ""):
@@ -1203,60 +1424,51 @@ class IDSS():
 
         ############################################################################################################
         logger.debug("Going to open XY file if it exists.")
-        largestX=largestY=0
-        distanceBetweenAssemblages={}
-        xAssemblage={}
-        yAssemblage={}
 
         if args['xyfile'] not in (None, ""):
-            largestX,largestY,distanceBetweenAssemblages,xAssemblage,yAssemblage=self.openXYFile(args['xyfile'])
+            self.openXYFile(args['xyfile'])
         else:
-            for ass in assemblages:
-                xAssemblage[ass]=0.0
-                yAssemblage[ass]=0.0
-            allp=self.all_pairs(assemblages)
+            for ass in self.assemblages:
+                self.xAssemblage[ass]=0.0
+                self.yAssemblage[ass]=0.0
+            allp=self.all_pairs(self.assemblages)
             for pr in allp:
                 name = pr[0]+"*"+pr[1]
-                distanceBetweenAssemblages[name]=0
+                self.distanceBetweenAssemblages[name]=0
 
         ############################################################################################################
         logger.debug("Assume threshold is 1.0 unless its specified in arguments.")
         threshold=1.0
-        if args['threshold']not in (None, "") :
+        if args['threshold'] != None :
             threshold=float(args['threshold'])
 
         logger.debug("Going to create list of valid pairs for comparisons.")
-        validAssemblagesForComparisons = self.thresholdDetermination(threshold, assemblages)
-        typeFrequencyLowerCI={}
-        typeFrequencyUpperCI={}
-        typeFrequencyMeanCI ={}
+        self.thresholdDetermination(threshold,args)
+
         ###########################################################################################################
         logger.debug("Now calculate the bootstrap comparisons based ")
         logger.debug("on specified confidence interval, if in the arguments.")
 
-        if args['bootstrapCI'] not in (None, ""):
+        if args['bootstrapCI'] != None:
             if args['bootstrapSignificance'] not in (None, ""):
                 confidenceInterval= args['bootstrapSignificance']
             else:
                 confidenceInterval=0.95
-            typeFrequencyLowerCI, typeFrequencyUpperCI, typeFrequencyMeanCI= self.bootstrapCICalculation(assemblages,
-                                                                                assemblageSize,args, 100,
-                                                                                float(confidenceInterval))
+            self.bootstrapCICalculation(args, 100, float(confidenceInterval))
 
         ###########################################################################################################
         ### setup the output files. Do this now so that if it fails, its not AFTER all the seriation stuff
-        OUTFILE, OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE=self.setupOutput(filename,outputDirectory,inputFile,args)
+        OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,SUMGRAPH=self.setupOutput(args)
 
         ###########################################################################################################
         logger.debug("Now pre-calculating all the combinations between pairs of assemblages. ")
         logger.debug("This returns a graph with all pairs and the comparisons as weights.")
-        pairGraph = self.preCalculateComparisons(assemblages,typeFrequencyUpperCI, typeFrequencyLowerCI,args)
+        pairGraph = self.preCalculateComparisons(args)
 
         ###########################################################################################################
         logger.debug("Calculate all the valid triples.")
         triples = []
-        triples = self.findAllValidTriples(assemblages,
-                                      typeFrequencyLowerCI,typeFrequencyUpperCI,typeFrequencyMeanCI, args)
+        triples = self.findAllValidTriples(args)
         ###########################################################################################################
         stepcount = 0
         currentMaxSeriationSize = 2
@@ -1267,9 +1479,9 @@ class IDSS():
         solutions=[]
         networks=[]
         all_solutions=[]
-        all_solutions= all_solutions + triples
+        all_solutions= all_solutions + triples  ## add the triples to the intial solution
 
-        while currentMaxSeriationSize < maxSeriationSize:
+        while currentMaxSeriationSize < self.maxSeriationSize:
             currentMaxSeriationSize += 1
             ### first time through copy the triples, else get the previous new ones.
             #print "current step: ", currentMaxSeriationSize
@@ -1319,11 +1531,10 @@ class IDSS():
                 ## find the ends
                 ## given the ends, find the valid set of assemblages that can be potentially added
                 ## this list is all assemblages meet the threshold requirements
-                validNewNetworks,currentMaxNodes = self.checkForValidAdditionsToNetwork(nnetwork, pairGraph, validAssemblagesForComparisons,
-                                                                  assemblages, typeFrequencyLowerCI, typeFrequencyUpperCI,
-                                                                 typeFrequencyMeanCI,solutionCount,args)
+                validNewNetworks,currentMaxNodes = self.checkForValidAdditionsToNetwork(nnetwork, pairGraph,solutionCount,args)
                 if validNewNetworks is not False:
                     newNetworks = newNetworks + validNewNetworks
+                    all_solutions = all_solutions + validNewNetworks
                     solutionCount += len(validNewNetworks)
                     logger.debug("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),solutionCount)
                     if currentMaxNodes > maxNodes:
@@ -1344,35 +1555,55 @@ class IDSS():
 
             if len(newNetworks)>0:
                 end_solutions = newNetworks
-                for s in newNetworks:
-                    all_solutions.append(s)
+                #for s in newNetworks:
+                    #all_solutions.append(s)
                 #all_solutions= list(set(all_solutions + newNetworks))
             else:
                 end_solutions = networks
                 #all_solutions = networks
 
-        logger.debug("Process complete at seriation size %d with %d solutions before filtering.",maxSeriationSize,len(end_solutions))
+        logger.debug("Process complete at seriation size %d with %d solutions before filtering.",self.maxSeriationSize,len(end_solutions))
 
         ###########################################################################################################
         filteredarray = self.filterSolutions(end_solutions,all_solutions,args)
 
-        logger.debug("Process complete at seriation size %d with %d solutions after filtering.",maxSeriationSize,len(filteredarray))
+        filteredarray = all_solutions
+
+        logger.debug("Process complete at seriation size %d with %d solutions after filtering.",self.maxSeriationSize,len(filteredarray))
 
         #################################################### OUTPUT SECTION ####################################################
-        self.output(assemblages,assemblageSize,distanceBetweenAssemblages,xAssemblage,yAssemblage,largestX,largestY,filteredarray,
-                 OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
+        self.output(filteredarray,OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
+
+        # experimental
+        #graph=self.continunityMaximizationSeriation(args)
+        #self.graphOutput(graph,args)
+
+        sumGraph=self.sumGraphs(filteredarray,args)
+        self.sumGraphOutput(sumGraph,SUMGRAPH,args)
+        self.createAtlasOfSolutions(filteredarray,args)
+
+        print "Assemblages not part of final solution:"
+        notPartOfSeriationsList=[]
+        nodeList=sumGraph.nodes()
+        for a in self.assemblages:
+            if a not in nodeList:
+                notPartOfSeriationsList.append(a)
+                print a
 
         #################################################### MST SECTION ####################################################
-        if args['mst'] not in (None, ""):
-            outputFile = outputDirectory + inputFile[0:-4]+".vna"
-            mst = MST.MST(outputFile,args['outputdirectory'],args['shapefile'])
+        if args['mst'] != None:
+            outputFile = self.outputDirectory + self.inputFile[0:-4]+".vna"
+            # Need to have the shapefile flag and the XY file in order to create a valid shapefile.
+            if args['shapefile'] != None and args['xyfile'] != None:
+                shapefile = 1
+            else:
+                shapefile= None
+            mst = MST.MST(outputFile,self.outputDirectory,shapefile)
             mst.createMST()
             #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
         ## say goodbye and clean up the screen stuff #########################
         self.finalGoodbye(maxNodes,len(filteredarray),args)
-        return filteredarray
-
-
+        return filteredarray, notPartOfSeriationsList
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
@@ -1402,7 +1633,7 @@ if __name__ == "__main__":
 
     seriation = IDSS()
 
-    results=seriation.seriate(args)
+    results,exceptions=seriation.seriate(args)
 
 ''''
 From the command line:
