@@ -919,14 +919,69 @@ class IDSS():
 
         return sumGraph
 
+    def continunityMaximizationSeriation(self,args):
+
+        diffGraph=nx.Graph(name="differenceGraph")
+
+        for ass in self.assemblages:
+            diffGraph.add_node(ass,name=ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass])
+
+        pairsOfAssemblages=self.all_pairs(self.assemblages)
+
+        for pair in pairsOfAssemblages:
+            diff=0
+
+            for type in range(0,self.numberOfClasses):
+                diff += abs(float(self.assemblageFrequencies[pair[0]][type]) - float(self.assemblageFrequencies[pair[1]][type]))
+            diffGraph.add_path([pair[0], pair[1]],weight=float(diff), invweight=(float(self.numberOfClasses)-diff))
+
+        mst=nx.minimum_spanning_tree(diffGraph,weight='inverseweight')
+        return mst
+
+    def graphOutput(self,graph,args):
+        plt.rcParams['text.usetex'] = False
+        plt.figure(1,figsize=(8,8))
+        pos=nx.graphviz_layout(graph)
+        edgewidth=[]
+        weights = nx.get_edge_attributes(graph,'weight')
+        for w in weights:
+            edgewidth.append(weights[w])
+
+        maxValue = max(edgewidth)
+        widths=[]
+        for w in edgewidth:
+            widths.append(((maxValue-w)+1)*5)
+
+        assemblageSizes=[]
+        sizes = nx.get_node_attributes(graph, 'size')
+        #print sizes
+        for s in sizes:
+            #print sizes[s]
+            assemblageSizes.append(sizes[s])
+        nx.draw_networkx_edges(graph,pos,alpha=0.3,width=widths)
+        sizes = nx.get_node_attributes(graph,'size')
+        nx.draw_networkx_nodes(graph,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
+        nx.draw_networkx_edges(graph,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
+        nx.draw_networkx_labels(graph,pos,fontsize=10)
+        font = {'fontname'   : 'Helvetica',
+            'color'      : 'k',
+            'fontweight' : 'bold',
+            'fontsize'   : 14}
+        plt.axis('off')
+        file=args['inputfile']
+        newfilename=self.outputDirectory+self.inputFile[0:-4]+"-mst-diffgraph.png"
+        plt.savefig(newfilename,dpi=75)
+        plt.figure(3,figsize=(30,20))
+        plt.show() # display
+
     ## Output to file and to the screen
     def sumGraphOutput(self,sumGraph,SUMGRAPH,args):
 
         nodeList = sumGraph.nodes()
         for a in self.assemblages:
             if a not in nodeList:
-                sumGraph.add_node(name=a)
-
+                sumGraph.add_node(a, name=a, xCoordinate=self.xAssemblage[a], yCoordinate=self.yAssemblage[a],
+                                   size=self.assemblageSize[a])
         SUMGRAPH.write( "*Node data\n")
         SUMGRAPH.write("ID AssemblageSize X Y Easting Northing\n")
 
@@ -1519,6 +1574,10 @@ class IDSS():
         #################################################### OUTPUT SECTION ####################################################
         self.output(filteredarray,OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
 
+        # experimental
+        #graph=self.continunityMaximizationSeriation(args)
+        #self.graphOutput(graph,args)
+
         sumGraph=self.sumGraphs(filteredarray,args)
         self.sumGraphOutput(sumGraph,SUMGRAPH,args)
         self.createAtlasOfSolutions(filteredarray,args)
@@ -1530,7 +1589,7 @@ class IDSS():
             if a not in nodeList:
                 notPartOfSeriationsList.append(a)
                 print a
-                
+
         #################################################### MST SECTION ####################################################
         if args['mst'] != None:
             outputFile = self.outputDirectory + self.inputFile[0:-4]+".vna"
@@ -1544,10 +1603,9 @@ class IDSS():
             #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
         ## say goodbye and clean up the screen stuff #########################
         self.finalGoodbye(maxNodes,len(filteredarray),args)
-        return filteredarray
+        return filteredarray, notPartOfSeriationsList
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
     parser.add_argument('--debug', default=None, help='Sets the DEBUG flag for massive amounts of annoated output.')
     parser.add_argument('--bootstrapCI', default=None, help="Sets whether you want to use the bootstrap confidence intervals for the comparisons between assemblage type frequencies. Set's to on or off.")
@@ -1575,7 +1633,7 @@ if __name__ == "__main__":
 
     seriation = IDSS()
 
-    results=seriation.seriate(args)
+    results,exceptions=seriation.seriate(args)
 
 ''''
 From the command line:
