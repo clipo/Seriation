@@ -7,7 +7,7 @@ Right now, the seriation module doesnt return anything useful other than True (d
 
 from IDSS import IDSS
 
-seriation= IDSS()
+seriation = IDSS()
 
 args={}
 args['inputfile'] ="../testdata/pfg.txt"

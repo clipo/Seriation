@@ -14,6 +14,7 @@ import itertools
 import math
 import random
 import curses
+from itertools import chain
 import numpy as np
 import scipy as sp
 import scipy.stats
@@ -29,6 +30,14 @@ import matplotlib.pyplot as plt
 import re
 from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic as isomorphic
 
+class AutoVivification(dict):
+    """Implementation of perl's autovivification feature."""
+    def __getitem__(self, item):
+        try:
+            return dict.__getitem__(self, item)
+        except KeyError:
+            value = self[item] = type(self)()
+            return value
 
 class IDSS():
 
@@ -919,6 +928,12 @@ class IDSS():
 
         return sumGraph
 
+    def calculateSumOfDifferences(self,assemblage1,assemblage2,args):
+        diff=0
+        for type in range(0,self.numberOfClasses):
+                diff += abs(float(self.assemblageFrequencies[assemblage1][type]) - float(self.assemblageFrequencies[assemblage2][type]))
+        return diff
+
     def continunityMaximizationSeriation(self,args):
 
         diffGraph=nx.Graph(name="differenceGraph")
@@ -926,17 +941,96 @@ class IDSS():
         for ass in self.assemblages:
             diffGraph.add_node(ass,name=ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass])
 
-        pairsOfAssemblages=self.all_pairs(self.assemblages)
+        assDiff={}
+        ## first set up the differences
 
-        for pair in pairsOfAssemblages:
+        ### set up hash
+        for a in self.assemblages:
+            assDiff[a]={}
+
+        for a in self.assemblages:
             diff=0
+            for b in self.assemblages:
+                if a is not b:
+                    for type in range(0,self.numberOfClasses):
+                        diff += abs(float(self.assemblageFrequencies[a][type]) - float(self.assemblageFrequencies[b][type]))
+                    assDiff[a][b]=diff
 
-            for type in range(0,self.numberOfClasses):
-                diff += abs(float(self.assemblageFrequencies[pair[0]][type]) - float(self.assemblageFrequencies[pair[1]][type]))
-            diffGraph.add_path([pair[0], pair[1]],weight=float(diff), invweight=(float(self.numberOfClasses)-diff))
+        ## now start with each assemblage and see where it goes
 
-        mst=nx.minimum_spanning_tree(diffGraph,weight='inverseweight')
-        return mst
+        ## create a starting graph for each of assemblage put into an array
+
+        graphList=[]
+        numGraphs=0
+        for a in self.assemblages:
+            numGraphs +=1
+            g = nx.Graph(id=numGraphs,End1=a, End2=a)
+            g.add_node(a,name=a, xCoordinate=self.xAssemblage[a], yCoordinate=self.xAssemblage[a],
+                            size=self.assemblageSize[a])
+            graphList.append(g)
+
+        ## special case for the first time through
+        for g in graphList:
+            minMatch = 10000000
+            currentMinimumMatch=""
+            nodelist = g.nodes()
+            for node in nodelist:
+                for b in self.assemblages:
+                    if b not in g.nodes():
+                        diff = self.calculateSumOfDifferences(node,b,args)
+                    if diff < minMatch:
+                        minMatch = diff
+                        currentMinimumMatch=b
+            g.add_node(currentMinimumMatch, name=currentMinimumMatch, xCoordinate=self.xAssemblage[currentMinimumMatch],
+                       yCoordinate=self.xAssemblage[currentMinimumMatch], size=self.assemblageSize[currentMinimumMatch])
+            g.add_path([node, currentMinimumMatch], weight=minMatch, inverseweight=(1/minMatch ))
+            g.graph['End2']=node
+
+        ## Now go through list looking at each one and increasing as long as I can. Add graphs when there are equivalent solutions
+        for g in graphList:
+            for assEnd in ("End1","End2"):
+                if assEnd=="End1":
+                    otherEnd="End2"
+                else:
+                    otherEnd="End1"
+
+                endAssemblage=g.graph[assEnd]
+                minMatch = 10000000
+                currentMinimumMatch=""
+
+                match=False
+                for a in self.validComparisonsHash[endAssemblage]:
+                    for b in self.assemblages:
+                        if a is not b and endAssemblage not in g.nodes():
+                            diff = self.calculateSumOfDifferences(a,b,args)
+                            if diff < minMatch:
+                                match=True
+                                minMatch = b
+                                currentMinimumMatch = a
+
+                for a in self.validComparisonsHash[endAssemblage]:
+                    ## find out if there are others that have the same minimum value
+                    for b in self.assemblages:
+                        if a is not b and endAssemblage not in g.nodes() and b is not currentMinimumMatch:
+                            diff = self.calculateSumOfDifferences(a,b,args)
+                            if minMatch == diff:
+                                new_network = g.copy()
+                                new_network.add_node(b, name=b, xCoordinate=self.xAssemblage[b], yCoordinate=self.xAssemblage[b],
+                                size=self.assemblageSize[b])
+                                new_network.add_path([endAssemblage, b], weight=minMatch, inverseweight=( 1/minMatch ))
+                                new_network.graph[assEnd]= b
+                                graphList.append(new_network)
+                                numGraphs += 1
+
+                if match == True:
+                    g.add_node(currentMinimumMatch, name=currentMinimumMatch, xCoordinate=self.xAssemblage[currentMinimumMatch],
+                           yCoordinate=self.xAssemblage[currentMinimumMatch],
+                            size=self.assemblageSize[currentMinimumMatch])
+                    g.add_path([endAssemblage, b], weight=minMatch, inverseweight=(1/minMatch ))
+                    g.graph[assEnd]= currentMinimumMatch
+
+        return graphList
+
 
     def graphOutput(self,graph,args):
         plt.rcParams['text.usetex'] = False
@@ -975,8 +1069,7 @@ class IDSS():
         plt.show() # display
 
     ## Output to file and to the screen
-    def sumGraphOutput(self,sumGraph,SUMGRAPH,args):
-
+    def sumGraphOutput(self,sumGraph,SUMGRAPH,sumgraphfilename, args):
         nodeList = sumGraph.nodes()
         for a in self.assemblages:
             if a not in nodeList:
@@ -1076,7 +1169,7 @@ class IDSS():
             'fontsize'   : 14}
         plt.axis('off')
         file=args['inputfile']
-        newfilename=self.outputDirectory+self.inputFile[0:-4]+"-mst-sumgraph.png"
+        newfilename=self.outputDirectory+sumgraphfilename
         plt.savefig(newfilename,dpi=75)
         plt.figure(2,figsize=(30,20))
 
@@ -1575,11 +1668,12 @@ class IDSS():
         self.output(filteredarray,OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
 
         # experimental
-        #graph=self.continunityMaximizationSeriation(args)
-        #self.graphOutput(graph,args)
+        #array=self.continunityMaximizationSeriation(args)
+        #sGraph=self.sumGraphs(array,args)
+        #self.sumGraphOutput(array,SUMGRAPH,self.inputFile[0:-4]+"-mst-minimum-sumgraph.png", args)
 
         sumGraph=self.sumGraphs(filteredarray,args)
-        self.sumGraphOutput(sumGraph,SUMGRAPH,args)
+        self.sumGraphOutput(sumGraph,SUMGRAPH,self.inputFile[0:-4]+"-mst-sumgraph.png",args)
         self.createAtlasOfSolutions(filteredarray,args)
 
         print "Assemblages not part of final solution:"
