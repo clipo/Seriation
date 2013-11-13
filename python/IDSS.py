@@ -1643,7 +1643,8 @@ python ./IDSS.py --inputfile=../testdata/pfg.txt --xyfile=../testdata/pfgXY.txt 
 
 As a module:
 
-import IDSS
+from IDSS import IDSS
+
 seriation = IDSS()
 
 args={}
