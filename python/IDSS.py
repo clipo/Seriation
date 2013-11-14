@@ -1081,6 +1081,9 @@ class IDSS():
 
             g.add_node(currentMinimumMatch, xCoordinate=self.xAssemblage[currentMinimumMatch],
                        yCoordinate=self.xAssemblage[currentMinimumMatch], size=self.assemblageSize[currentMinimumMatch])
+            if minMatch==0:
+                minMatch=10000000
+
             g.add_path([node, currentMinimumMatch], weight=minMatch, inverseweight=(1/minMatch ))
             g.graph['End2']=currentMinimumMatch
 
@@ -1119,6 +1122,8 @@ class IDSS():
                                     new_network = g.copy()
                                     new_network.add_node(b, xCoordinate=self.xAssemblage[b], yCoordinate=self.xAssemblage[a],
                                     size=self.assemblageSize[a])
+                                    if minMatch==0:
+                                        minMatch=10000000
                                     new_network.add_path([endAssemblage, a], weight=minMatch, inverseweight=(1/minMatch ))
                                     new_network.graph[assEnd]= a
                                     graphList.append(new_network)
@@ -1127,6 +1132,8 @@ class IDSS():
                     g.add_node(currentMinimumMatch, xCoordinate=self.xAssemblage[currentMinimumMatch],
                                yCoordinate=self.xAssemblage[currentMinimumMatch],
                                 size=self.assemblageSize[currentMinimumMatch])
+                    if minMatch==0:
+                        minMatch=10000000
                     g.add_path([matchEndAssemblage, currentMinimumMatch], weight=minMatch, inverseweight=(1/minMatch ))
                     g.graph[matchEnd]= currentMinimumMatch
 
@@ -1663,28 +1670,27 @@ class IDSS():
 
         frequencyArray=[]
         continuityArray=[]
+        maxNodes=3
 
-        if args['frequency'] is not None:
+        if args['frequency'] not in (None,False,0):
+
             ###########################################################################################################
             logger.debug("Calculate all the valid triples.")
-            triples = []
             triples = self.findAllValidTriples(args)
             ###########################################################################################################
             stepcount = 0
             currentMaxSeriationSize = 2
             newNetworks=[]
             solutionCount=len(triples)
-            maxNodes=3
+
             currentTotal = len(triples)
             solutions=[]
-            networks=[]
             all_solutions=[]
             all_solutions= all_solutions + triples  ## add the triples to the intial solution
 
             while currentMaxSeriationSize < self.maxSeriationSize:
                 currentMaxSeriationSize += 1
                 ### first time through copy the triples, else get the previous new ones.
-                #print "current step: ", currentMaxSeriationSize
                 if currentMaxSeriationSize==3:  ## first time through. Just copy the triples to the working arrays
                     networks = triples
                     solutions = triples # clear the
@@ -1775,7 +1781,7 @@ class IDSS():
             #self.createAtlasOfSolutions(frequencyArray,args)
 
             #################################################### MST SECTION ####################################################
-            if args['mst'] != None:
+            if args['mst'] not in (None,False,0):
                 outputFile = self.outputDirectory + self.inputFile[0:-4]+".vna"
                 # Need to have the shapefile flag and the XY file in order to create a valid shapefile.
                 if args['shapefile'] != None and args['xyfile'] != None:
@@ -1795,7 +1801,7 @@ class IDSS():
                     notPartOfSeriationsList.append(a)
                     print a
 
-        if args['continuity'] is not None:
+        if args['continuity'] not in (None,False,0):
             # experimental
             continuityArray=self.continunityMaximizationSeriation(args)
             #self.outputGraphArray(array,args)
@@ -1803,7 +1809,7 @@ class IDSS():
             self.graphOutput(sGraph,self.inputFile[0:-4]+"-minimum-sumgraph.png", args)
             self.MST(sGraph,self.inputFile[0:-4]+"-mst-of-min.png",args)
 
-        if args['graphs'] is not None:
+        if args['graphs'] not in (None,False,0):
             plt.show() # display
 
         ## say goodbye and clean up the screen stuff #########################
@@ -1832,8 +1838,8 @@ if __name__ == "__main__":
     parser.add_argument('--outputdirectory',default=None, help="If you want the output to go someplace other than the /output directory, specify that here.")
     parser.add_argument('--shapefile',default=None,help="Produces a shapefile as part of the output. You must have specified the XYfile as well.")
     parser.add_argument('--graphs',default=None,help="If true, the program will display the graphs that are created. If not, the graphs are just saved as .png files.")
-    parser.add_argument('--frequency',default=True,help="Conduct a standard frequency seriation analysis. Default is true.")
-    parser.add_argument('--continuity',default=True,help="Conduct a continuity seriation analysis. Default is true.")
+    parser.add_argument('--frequency',default=None,help="Conduct a standard frequency seriation analysis. Default is None.")
+    parser.add_argument('--continuity',default=None,help="Conduct a continuity seriation analysis. Default is None.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
