@@ -884,6 +884,35 @@ class IDSS():
         plt.savefig(atlasFile,dpi=250)
         plt.show() # display
 
+
+    def createAtlas(self,filteredarray,args):
+
+        # remove isolated nodes, only connected graphs are left
+        U=nx.Graph() # graph for union of all graphs in atlas
+        for G in filteredarray:
+            U=nx.disjoint_union(U,G)
+        # list of graphs of all connected components
+        C=nx.connected_component_subgraphs(U)
+
+        UU=nx.Graph()
+        # do quick isomorphic-like check, not a true isomorphism checker
+        nlist=[] # list of nonisomorphic graphs
+        for G in C:
+            # check against all nonisomorphic graphs so far
+            if not self.iso(G,nlist):
+                nlist.append(G)
+                UU=nx.disjoint_union(UU,G) # union the nonisomorphic graphs
+        return UU
+
+    def outputGraphArray(self,array,args):
+        num=0
+        for g in array:
+            num +=1
+            pos=nx.graphviz_layout(g,prog="twopi",root=0)
+            gfile=self.outputDirectory + self.inputFile[0:-4]+"-min-sol-"+str(num)+".png"
+            plt.savefig(gfile,dpi=250)
+
+
     def sumGraphs(self,filteredarray,args):
         sumGraph=nx.Graph()
         ## go through all the graphs
@@ -936,10 +965,10 @@ class IDSS():
 
     def continunityMaximizationSeriation(self,args):
 
-        diffGraph=nx.Graph(name="differenceGraph")
+        diffGraph=nx.Graph()
 
         for ass in self.assemblages:
-            diffGraph.add_node(ass,name=ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass])
+            diffGraph.add_node(ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass])
 
         assDiff={}
         ## first set up the differences
@@ -965,7 +994,7 @@ class IDSS():
         for a in self.assemblages:
             numGraphs +=1
             g = nx.Graph(id=numGraphs,End1=a, End2=a)
-            g.add_node(a,name=a, xCoordinate=self.xAssemblage[a], yCoordinate=self.xAssemblage[a],
+            g.add_node(a, xCoordinate=self.xAssemblage[a], yCoordinate=self.xAssemblage[a],
                             size=self.assemblageSize[a])
             graphList.append(g)
 
@@ -981,7 +1010,7 @@ class IDSS():
                     if diff < minMatch:
                         minMatch = diff
                         currentMinimumMatch=b
-            g.add_node(currentMinimumMatch, name=currentMinimumMatch, xCoordinate=self.xAssemblage[currentMinimumMatch],
+            g.add_node(currentMinimumMatch,  xCoordinate=self.xAssemblage[currentMinimumMatch],
                        yCoordinate=self.xAssemblage[currentMinimumMatch], size=self.assemblageSize[currentMinimumMatch])
             g.add_path([node, currentMinimumMatch], weight=minMatch, inverseweight=(1/minMatch ))
             g.graph['End2']=node
@@ -999,7 +1028,7 @@ class IDSS():
                 currentMinimumMatch=""
 
                 match=False
-                for a in self.validComparisonsHash[endAssemblage]:
+                for a in self.assemblages:
                     for b in self.assemblages:
                         if a is not b and endAssemblage not in g.nodes():
                             diff = self.calculateSumOfDifferences(a,b,args)
@@ -1008,14 +1037,14 @@ class IDSS():
                                 minMatch = b
                                 currentMinimumMatch = a
 
-                for a in self.validComparisonsHash[endAssemblage]:
+                for a in self.assemblages:
                     ## find out if there are others that have the same minimum value
                     for b in self.assemblages:
                         if a is not b and endAssemblage not in g.nodes() and b is not currentMinimumMatch:
                             diff = self.calculateSumOfDifferences(a,b,args)
                             if minMatch == diff:
                                 new_network = g.copy()
-                                new_network.add_node(b, name=b, xCoordinate=self.xAssemblage[b], yCoordinate=self.xAssemblage[b],
+                                new_network.add_node(b, xCoordinate=self.xAssemblage[b], yCoordinate=self.xAssemblage[b],
                                 size=self.assemblageSize[b])
                                 new_network.add_path([endAssemblage, b], weight=minMatch, inverseweight=( 1/minMatch ))
                                 new_network.graph[assEnd]= b
@@ -1023,7 +1052,7 @@ class IDSS():
                                 numGraphs += 1
 
                 if match == True:
-                    g.add_node(currentMinimumMatch, name=currentMinimumMatch, xCoordinate=self.xAssemblage[currentMinimumMatch],
+                    g.add_node(currentMinimumMatch,  xCoordinate=self.xAssemblage[currentMinimumMatch],
                            yCoordinate=self.xAssemblage[currentMinimumMatch],
                             size=self.assemblageSize[currentMinimumMatch])
                     g.add_path([endAssemblage, b], weight=minMatch, inverseweight=(1/minMatch ))
@@ -1069,11 +1098,56 @@ class IDSS():
         plt.show() # display
 
     ## Output to file and to the screen
+    def graphOutput(self,sumGraph,sumgraphfilename, args):
+
+        ## Now make the graphic for set of graphs
+        plt.rcParams['text.usetex'] = False
+        plt.figure(0,figsize=(8,8))
+
+        os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+        #print os.environ["PATH"]
+        pos=nx.graphviz_layout(sumGraph)
+        #pos=nx.spring_layout(mst,iterations=500)
+        edgewidth=[]
+        weights = nx.get_edge_attributes(sumGraph, 'weight')
+        for w in weights:
+            edgewidth.append(weights[w])
+
+        maxValue = max(edgewidth)
+        widths=[]
+        for w in edgewidth:
+            widths.append(((maxValue-w)+1)*5)
+
+        assemblageSizes=[]
+        sizes = nx.get_node_attributes(sumGraph, 'size')
+        #print sizes
+        for s in sizes:
+            #print sizes[s]
+            assemblageSizes.append(sizes[s])
+        nx.draw_networkx_edges(sumGraph,pos,alpha=0.3,width=widths)
+        sizes = nx.get_node_attributes(sumGraph,'size')
+        nx.draw_networkx_nodes(sumGraph,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
+        nx.draw_networkx_edges(sumGraph,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
+        nx.draw_networkx_labels(sumGraph,pos,fontsize=10)
+        font = {'fontname'   : 'Helvetica',
+            'color'      : 'k',
+            'fontweight' : 'bold',
+            'fontsize'   : 14}
+        plt.axis('off')
+        file=args['inputfile']
+        newfilename=self.outputDirectory+sumgraphfilename
+        plt.savefig(newfilename,dpi=75)
+        plt.figure(4,figsize=(30,20))
+
+
+
+
+    ## Output to file and to the screen
     def sumGraphOutput(self,sumGraph,SUMGRAPH,sumgraphfilename, args):
         nodeList = sumGraph.nodes()
         for a in self.assemblages:
             if a not in nodeList:
-                sumGraph.add_node(a, name=a, xCoordinate=self.xAssemblage[a], yCoordinate=self.yAssemblage[a],
+                sumGraph.add_node(a,  xCoordinate=self.xAssemblage[a], yCoordinate=self.yAssemblage[a],
                                    size=self.assemblageSize[a])
         SUMGRAPH.write( "*Node data\n")
         SUMGRAPH.write("ID AssemblageSize X Y Easting Northing\n")
@@ -1136,11 +1210,11 @@ class IDSS():
         file=args['inputfile']
         newfilename=self.outputDirectory+self.inputFile[0:-4]+"-sumgraph.png"
         plt.savefig(newfilename,dpi=75)
-        plt.figure(1,figsize=(30,20))
+        plt.figure(4,figsize=(30,20))
 
         mst=nx.minimum_spanning_tree(sumGraph,weight='inverseweight')
         plt.rcParams['text.usetex'] = False
-        plt.figure(1,figsize=(8,8))
+        plt.figure(5,figsize=(8,8))
         pos=nx.graphviz_layout(mst)
         edgewidth=[]
         weights = nx.get_edge_attributes(mst, 'weight')
@@ -1172,6 +1246,7 @@ class IDSS():
         newfilename=self.outputDirectory+sumgraphfilename
         plt.savefig(newfilename,dpi=75)
         plt.figure(2,figsize=(30,20))
+
 
         # layout graphs with positions using graphviz neato
 
@@ -1668,13 +1743,14 @@ class IDSS():
         self.output(filteredarray,OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
 
         # experimental
-        #array=self.continunityMaximizationSeriation(args)
-        #sGraph=self.sumGraphs(array,args)
-        #self.sumGraphOutput(array,SUMGRAPH,self.inputFile[0:-4]+"-mst-minimum-sumgraph.png", args)
+        array=self.continunityMaximizationSeriation(args)
+        #self.outputGraphArray(array,args)
+        #sGraph=self.createAtlas(array,args)
+        #self.graphOutput(sGraph,self.inputFile[0:-4]+"-mst-minimum-sumgraph.png", args)
 
         sumGraph=self.sumGraphs(filteredarray,args)
         self.sumGraphOutput(sumGraph,SUMGRAPH,self.inputFile[0:-4]+"-mst-sumgraph.png",args)
-        self.createAtlasOfSolutions(filteredarray,args)
+        #self.createAtlasOfSolutions(filteredarray,args)
 
         print "Assemblages not part of final solution:"
         notPartOfSeriationsList=[]
