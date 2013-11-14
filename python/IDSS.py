@@ -679,11 +679,45 @@ class IDSS():
                 return True
         return False
 
+    def MST(self, sGraph,filename,args):
+        plt.rcParams['text.usetex'] = False
+        plt.figure(filename,figsize=(8,8))
+        M=nx.minimum_spanning_tree(sGraph)
+        os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+        #pos=nx.graphviz_layout(M)
+        pos=nx.graphviz_layout(M,prog="twopi",root=0)
+        edgewidth=[]
+        weights = nx.get_edge_attributes(M, 'weight')
+        for w in weights:
+            edgewidth.append(weights[w])
+        maxValue = max(edgewidth)
+        widths=[]
+        for w in edgewidth:
+            widths.append(((maxValue-w)+1)*5)
+        assemblageSizes=[]
+        sizes = nx.get_node_attributes(M, 'size')
+        for s in sizes:
+            assemblageSizes.append(sizes[s])
+        nx.draw_networkx_edges(M,pos,alpha=0.3,width=widths)
+        sizes = nx.get_node_attributes(M,'size')
+        nx.draw_networkx_nodes(M,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
+        nx.draw_networkx_edges(M,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
+        nx.draw_networkx_labels(M,pos,fontsize=10)
+        font = {'fontname'   : 'Helvetica',
+            'color'      : 'k',
+            'fontweight' : 'bold',
+            'fontsize'   : 10}
+        plt.axis('off')
+        plt.savefig(filename,dpi=75)
+
     def minimumSpanningTree(self,networks,sumGraph, outputDirectory,inputFile):
         try:
             from networkx import graphviz_layout
         except ImportError:
             raise ImportError("This function needs Graphviz and either PyGraphviz or Pydot")
+
+        newfilename=outputDirectory+inputFile[0:-4]+"-mst.png"
+        plt.figure(newfilename,figsize=(8,8))
 
         graphs=[]
         megaGraph = nx.Graph()
@@ -728,12 +762,9 @@ class IDSS():
                                             size=(self.assemblageSize[fromAssemblage], self.assemblageSize[toAssemblage]))
             graphs.append(g)
         plt.rcParams['text.usetex'] = False
-        plt.figure(0,figsize=(8,8))
         mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
         os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
-        #print os.environ["PATH"]
         pos=nx.graphviz_layout(mst)
-        #pos=nx.spring_layout(mst,iterations=500)
         edgewidth=[]
         weights = nx.get_edge_attributes(mst, 'weight')
         for w in weights:
@@ -766,17 +797,14 @@ class IDSS():
         font = {'fontname'   : 'Helvetica',
             'color'      : 'k',
             'fontweight' : 'bold',
-            'fontsize'   : 14}
-        edgelist = list(mst) # make a list of the edges
-        #print edgelist
-        #nx.draw(mst)
-        #plt.savefig("path.png")
-        plt.axis('off')
-        newfilename=outputDirectory+inputFile[0:-4]+"-mst.png"
-        plt.savefig(newfilename,dpi=75)
-        plt.figure(1,figsize=(30,20))
-        # layout graphs with positions using graphviz neato
+            'fontsize'   : 10}
 
+        plt.axis('off')
+        plt.savefig(newfilename,dpi=75)
+
+
+        atlasFile=outputDirectory+inputFile[0:-4]+"-atlas.png"
+        plt.figure(atlasFile,figsize=(8,8))
         UU=nx.Graph()
         # do quick isomorphic-like check, not a true isomorphism checker
         nlist=[] # list of nonisomorphic graphs
@@ -786,12 +814,7 @@ class IDSS():
                 nlist.append(G)
 
         UU=nx.disjoint_union_all(graphs) # union the nonisomorphic graphs
-        #UU=nx.disjoint_union_all(nlist) # union the nonisomorphic graphs
-        #pos=nx.spring_layout(UU,iterations=50)
-
-        #pos=nx.graphviz_layout(UU)
         pos=nx.graphviz_layout(UU,prog="twopi",root=0)
-        ##labels=nx.draw_networkx_labels(UU,pos)
         # color nodes the same in each connected subgraph
         C=nx.connected_component_subgraphs(UU)
         for g in C:
@@ -805,9 +828,8 @@ class IDSS():
                 alpha=.2,
                 font_size=7,
             )
-        atlasFile=outputDirectory+inputFile[0:-4]+"-atlas.png"
         plt.savefig(atlasFile,dpi=250)
-        plt.show() # display
+
 
     def finalGoodbye(self,maxNodes,currentTotal,args):
         if args['screen'] != None:
@@ -906,14 +928,41 @@ class IDSS():
 
     def outputGraphArray(self,array,args):
         num=0
+        os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+
         for g in array:
             num +=1
             pos=nx.graphviz_layout(g,prog="twopi",root=0)
             gfile=self.outputDirectory + self.inputFile[0:-4]+"-min-sol-"+str(num)+".png"
-            plt.savefig(gfile,dpi=250)
+            edgewidth=[]
+            weights = nx.get_edge_attributes(g, 'weight')
+            for w in weights:
+                edgewidth.append(weights[w])
 
+            maxValue = max(edgewidth)
+            widths=[]
+            for w in edgewidth:
+                widths.append(((maxValue-w)+1)*5)
 
-    def sumGraphs(self,filteredarray,args):
+            assemblageSizes=[]
+            sizes = nx.get_node_attributes(g, 'size')
+            #print sizes
+            for s in sizes:
+                assemblageSizes.append(sizes[s])
+            nx.draw_networkx_edges(g,pos,alpha=0.3,width=widths)
+            sizes = nx.get_node_attributes(g,'size')
+            nx.draw_networkx_nodes(g,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
+            nx.draw_networkx_edges(g,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
+            nx.draw_networkx_labels(g,pos,fontsize=10)
+            font = {'fontname'   : 'Helvetica',
+                'color'      : 'k',
+                'fontweight' : 'bold',
+                'fontsize'   : 10}
+            plt.axis('off')
+            plt.savefig(gfile,dpi=75)
+            plt.figure(gfile,figsize=(8,8))
+
+    def sumGraphsByWeight(self,filteredarray,args):
         sumGraph=nx.Graph()
         ## go through all the graphs
         for g in filteredarray:
@@ -957,6 +1006,50 @@ class IDSS():
 
         return sumGraph
 
+    def sumGraphsByCount(self,filteredarray,args):
+        sumGraph=nx.Graph()
+        ## go through all the graphs
+        for g in filteredarray:
+            ## go through all the edges for each graph
+            for node in g.nodes(data=True):
+                xCoordinate = 0
+                yCoordinate = 0
+                name = node[0]
+                if args['xyfile'] != None:
+                    xCoordinate = self.xAssemblage[name]
+                    yCoordinate = self.yAssemblage[name]
+                sumGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
+                                   size=self.assemblageSize[name])
+
+            maxWeight=0
+            for e in g.edges_iter():
+                d = g.get_edge_data(*e)
+                fromAssemblage = e[0]
+                toAssemblage = e[1]
+                exists = False
+                currentWeight=1
+                for e in sumGraph.edges():
+                    dd = sumGraph.get_edge_data(*e)
+                    if fromAssemblage in e and toAssemblage in e:   ## if exists
+                        exists = True
+                    currentWeight=1
+                    if exists is True:
+                        currentWeight += 1
+
+                if currentWeight > maxWeight:
+                    maxWeight=currentWeight
+                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight)
+
+            for e in sumGraph.edges_iter():
+                d = sumGraph.get_edge_data(*e)
+                currentWeight=int(d['weight'])
+                inverseWeight=(maxWeight+1)-currentWeight
+                fromAssemblage = e[0]
+                toAssemblage = e[1]
+                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight,inverseweight=inverseWeight )
+
+        return sumGraph
+
     def calculateSumOfDifferences(self,assemblage1,assemblage2,args):
         diff=0
         for type in range(0,self.numberOfClasses):
@@ -965,38 +1058,13 @@ class IDSS():
 
     def continunityMaximizationSeriation(self,args):
 
-        diffGraph=nx.Graph()
-
-        for ass in self.assemblages:
-            diffGraph.add_node(ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass])
-
-        assDiff={}
-        ## first set up the differences
-
-        ### set up hash
-        for a in self.assemblages:
-            assDiff[a]={}
-
-        for a in self.assemblages:
-            diff=0
-            for b in self.assemblages:
-                if a is not b:
-                    for type in range(0,self.numberOfClasses):
-                        diff += abs(float(self.assemblageFrequencies[a][type]) - float(self.assemblageFrequencies[b][type]))
-                    assDiff[a][b]=diff
-
-        ## now start with each assemblage and see where it goes
-
-        ## create a starting graph for each of assemblage put into an array
-
         graphList=[]
         numGraphs=0
-        for a in self.assemblages:
+        for ass in self.assemblages:
             numGraphs +=1
-            g = nx.Graph(id=numGraphs,End1=a, End2=a)
-            g.add_node(a, xCoordinate=self.xAssemblage[a], yCoordinate=self.xAssemblage[a],
-                            size=self.assemblageSize[a])
-            graphList.append(g)
+            g=nx.Graph(startAssemblage=ass, End1=ass)
+            g.add_node(ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass],yCoordinate=self.yAssemblage[ass])
+            graphList.append(g)   ## create a starting graph for each of assemblage put into an array
 
         ## special case for the first time through
         for g in graphList:
@@ -1005,107 +1073,72 @@ class IDSS():
             nodelist = g.nodes()
             for node in nodelist:
                 for b in self.assemblages:
-                    if b not in g.nodes():
+                    if b is not node:
                         diff = self.calculateSumOfDifferences(node,b,args)
-                    if diff < minMatch:
-                        minMatch = diff
-                        currentMinimumMatch=b
-            g.add_node(currentMinimumMatch,  xCoordinate=self.xAssemblage[currentMinimumMatch],
+                        if diff < minMatch:
+                            minMatch = diff
+                            currentMinimumMatch=b
+
+            g.add_node(currentMinimumMatch, xCoordinate=self.xAssemblage[currentMinimumMatch],
                        yCoordinate=self.xAssemblage[currentMinimumMatch], size=self.assemblageSize[currentMinimumMatch])
             g.add_path([node, currentMinimumMatch], weight=minMatch, inverseweight=(1/minMatch ))
-            g.graph['End2']=node
+            g.graph['End2']=currentMinimumMatch
 
         ## Now go through list looking at each one and increasing as long as I can. Add graphs when there are equivalent solutions
         for g in graphList:
-            for assEnd in ("End1","End2"):
-                if assEnd=="End1":
-                    otherEnd="End2"
-                else:
-                    otherEnd="End1"
-
-                endAssemblage=g.graph[assEnd]
+            for assemblage in self.assemblages:
                 minMatch = 10000000
                 currentMinimumMatch=""
-
+                matchEnd=""
+                matchEndAssemblage=""
                 match=False
-                for a in self.assemblages:
-                    for b in self.assemblages:
-                        if a is not b and endAssemblage not in g.nodes():
-                            diff = self.calculateSumOfDifferences(a,b,args)
+                for assEnd in ("End1","End2"):
+                    if assEnd=="End1":
+                        otherEnd="End2"
+                    else:
+                        otherEnd="End1"
+
+                    endAssemblage=g.graph[assEnd]
+
+
+                    for a in self.assemblages:
+                        if a not in g.nodes():
+                            diff = self.calculateSumOfDifferences(endAssemblage,a,args)
                             if diff < minMatch:
                                 match=True
-                                minMatch = b
+                                minMatch = diff
                                 currentMinimumMatch = a
+                                matchEnd=assEnd
+                                matchEndAssemblage=endAssemblage
 
-                for a in self.assemblages:
-                    ## find out if there are others that have the same minimum value
-                    for b in self.assemblages:
-                        if a is not b and endAssemblage not in g.nodes() and b is not currentMinimumMatch:
-                            diff = self.calculateSumOfDifferences(a,b,args)
-                            if minMatch == diff:
-                                new_network = g.copy()
-                                new_network.add_node(b, xCoordinate=self.xAssemblage[b], yCoordinate=self.xAssemblage[b],
-                                size=self.assemblageSize[b])
-                                new_network.add_path([endAssemblage, b], weight=minMatch, inverseweight=( 1/minMatch ))
-                                new_network.graph[assEnd]= b
-                                graphList.append(new_network)
-                                numGraphs += 1
-
-                if match == True:
-                    g.add_node(currentMinimumMatch,  xCoordinate=self.xAssemblage[currentMinimumMatch],
-                           yCoordinate=self.xAssemblage[currentMinimumMatch],
-                            size=self.assemblageSize[currentMinimumMatch])
-                    g.add_path([endAssemblage, b], weight=minMatch, inverseweight=(1/minMatch ))
-                    g.graph[assEnd]= currentMinimumMatch
+                    for a in self.assemblages:
+                        ## find out if there are others that have the same minimum value
+                            if a not in g.nodes() and a is not currentMinimumMatch:
+                                diff = self.calculateSumOfDifferences(a,endAssemblage,args)
+                                if minMatch == diff:
+                                    new_network = g.copy()
+                                    new_network.add_node(b, xCoordinate=self.xAssemblage[b], yCoordinate=self.xAssemblage[a],
+                                    size=self.assemblageSize[a])
+                                    new_network.add_path([endAssemblage, a], weight=minMatch, inverseweight=(1/minMatch ))
+                                    new_network.graph[assEnd]= a
+                                    graphList.append(new_network)
+                                    numGraphs += 1
+                if match is True:
+                    g.add_node(currentMinimumMatch, xCoordinate=self.xAssemblage[currentMinimumMatch],
+                               yCoordinate=self.xAssemblage[currentMinimumMatch],
+                                size=self.assemblageSize[currentMinimumMatch])
+                    g.add_path([matchEndAssemblage, currentMinimumMatch], weight=minMatch, inverseweight=(1/minMatch ))
+                    g.graph[matchEnd]= currentMinimumMatch
 
         return graphList
 
-
-    def graphOutput(self,graph,args):
-        plt.rcParams['text.usetex'] = False
-        plt.figure(1,figsize=(8,8))
-        pos=nx.graphviz_layout(graph)
-        edgewidth=[]
-        weights = nx.get_edge_attributes(graph,'weight')
-        for w in weights:
-            edgewidth.append(weights[w])
-
-        maxValue = max(edgewidth)
-        widths=[]
-        for w in edgewidth:
-            widths.append(((maxValue-w)+1)*5)
-
-        assemblageSizes=[]
-        sizes = nx.get_node_attributes(graph, 'size')
-        #print sizes
-        for s in sizes:
-            #print sizes[s]
-            assemblageSizes.append(sizes[s])
-        nx.draw_networkx_edges(graph,pos,alpha=0.3,width=widths)
-        sizes = nx.get_node_attributes(graph,'size')
-        nx.draw_networkx_nodes(graph,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
-        nx.draw_networkx_edges(graph,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
-        nx.draw_networkx_labels(graph,pos,fontsize=10)
-        font = {'fontname'   : 'Helvetica',
-            'color'      : 'k',
-            'fontweight' : 'bold',
-            'fontsize'   : 14}
-        plt.axis('off')
-        file=args['inputfile']
-        newfilename=self.outputDirectory+self.inputFile[0:-4]+"-mst-diffgraph.png"
-        plt.savefig(newfilename,dpi=75)
-        plt.figure(3,figsize=(30,20))
-        plt.show() # display
-
     ## Output to file and to the screen
     def graphOutput(self,sumGraph,sumgraphfilename, args):
-
         ## Now make the graphic for set of graphs
         plt.rcParams['text.usetex'] = False
-        plt.figure(0,figsize=(8,8))
-
+        newfilename=self.outputDirectory+sumgraphfilename
+        plt.figure(newfilename,figsize=(8,8))
         os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
-        #print os.environ["PATH"]
         pos=nx.graphviz_layout(sumGraph)
         #pos=nx.spring_layout(mst,iterations=500)
         edgewidth=[]
@@ -1132,14 +1165,9 @@ class IDSS():
         font = {'fontname'   : 'Helvetica',
             'color'      : 'k',
             'fontweight' : 'bold',
-            'fontsize'   : 14}
+            'fontsize'   : 10}
         plt.axis('off')
-        file=args['inputfile']
-        newfilename=self.outputDirectory+sumgraphfilename
         plt.savefig(newfilename,dpi=75)
-        plt.figure(4,figsize=(30,20))
-
-
 
 
     ## Output to file and to the screen
@@ -1174,13 +1202,12 @@ class IDSS():
             SUMGRAPH.write(text)
 
         ## Now make the graphic for the sumgraph
+        newfilename=self.outputDirectory+self.inputFile[0:-4]+"-sumgraph.png"
+        plt.figure(newfilename,figsize=(8,8))
         plt.rcParams['text.usetex'] = False
-        plt.figure(0,figsize=(8,8))
-
         os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
-        #print os.environ["PATH"]
         pos=nx.graphviz_layout(sumGraph)
-        #pos=nx.spring_layout(mst,iterations=500)
+
         edgewidth=[]
         weights = nx.get_edge_attributes(sumGraph, 'weight')
         for w in weights:
@@ -1205,16 +1232,17 @@ class IDSS():
         font = {'fontname'   : 'Helvetica',
             'color'      : 'k',
             'fontweight' : 'bold',
-            'fontsize'   : 14}
+            'fontsize'   : 10}
         plt.axis('off')
-        file=args['inputfile']
-        newfilename=self.outputDirectory+self.inputFile[0:-4]+"-sumgraph.png"
         plt.savefig(newfilename,dpi=75)
-        plt.figure(4,figsize=(30,20))
 
+
+        newfilename=self.outputDirectory+sumgraphfilename
+        plt.figure(newfilename,figsize=(8,8))
         mst=nx.minimum_spanning_tree(sumGraph,weight='inverseweight')
+
         plt.rcParams['text.usetex'] = False
-        plt.figure(5,figsize=(8,8))
+
         pos=nx.graphviz_layout(mst)
         edgewidth=[]
         weights = nx.get_edge_attributes(mst, 'weight')
@@ -1240,12 +1268,9 @@ class IDSS():
         font = {'fontname'   : 'Helvetica',
             'color'      : 'k',
             'fontweight' : 'bold',
-            'fontsize'   : 14}
+            'fontsize'   : 10}
         plt.axis('off')
-        file=args['inputfile']
-        newfilename=self.outputDirectory+sumgraphfilename
         plt.savefig(newfilename,dpi=75)
-        plt.figure(2,figsize=(30,20))
 
 
         # layout graphs with positions using graphviz neato
@@ -1510,6 +1535,9 @@ class IDSS():
         args['inputfile']=None
         args['outputdirectory']=None
         args['shapefile']=None
+        args['frequency']=None
+        args['continuity']=None
+        args['graphs']=None
 
         for a in oldargs:
             args[a]=oldargs[a]
@@ -1633,147 +1661,155 @@ class IDSS():
         logger.debug("This returns a graph with all pairs and the comparisons as weights.")
         pairGraph = self.preCalculateComparisons(args)
 
-        ###########################################################################################################
-        logger.debug("Calculate all the valid triples.")
-        triples = []
-        triples = self.findAllValidTriples(args)
-        ###########################################################################################################
-        stepcount = 0
-        currentMaxSeriationSize = 2
-        newNetworks=[]
-        solutionCount=len(triples)
-        maxNodes=3
-        currentTotal = len(triples)
-        solutions=[]
-        networks=[]
-        all_solutions=[]
-        all_solutions= all_solutions + triples  ## add the triples to the intial solution
+        frequencyArray=[]
+        continuityArray=[]
 
-        while currentMaxSeriationSize < self.maxSeriationSize:
-            currentMaxSeriationSize += 1
-            ### first time through copy the triples, else get the previous new ones.
-            #print "current step: ", currentMaxSeriationSize
-            if currentMaxSeriationSize==3:  ## first time through. Just copy the triples to the working arrays
-                networks = triples
-                solutions = triples # clear the
-            else:
-                i = 0
-                logger.debug("Currently have %d solutions at step %d", len(newNetworks),currentMaxSeriationSize)
-                if len(newNetworks)==0:
-                    # there were no networks the previous times so nothing to do.
-                    break
-                logger.debug("These solutions are ---  ")
-                for sol in newNetworks:
-                    logger.debug("solution %d: %s", i, nx.shortest_path(sol, sol.graph["End1"] , sol.graph["End2"]))
-                    i += 1
-                networks=[]
-                networks += newNetworks  # copy the array of previous new ones for this round
-                solutions.append(newNetworks ) # append the new list to the previous one
-                #print "Number of new Networks:", len(newNetworks)
-                newNetworks=[]         # clear the array of new solutions
+        if args['frequency'] is not None:
+            ###########################################################################################################
+            logger.debug("Calculate all the valid triples.")
+            triples = []
+            triples = self.findAllValidTriples(args)
+            ###########################################################################################################
+            stepcount = 0
+            currentMaxSeriationSize = 2
+            newNetworks=[]
+            solutionCount=len(triples)
+            maxNodes=3
+            currentTotal = len(triples)
+            solutions=[]
+            networks=[]
+            all_solutions=[]
+            all_solutions= all_solutions + triples  ## add the triples to the intial solution
 
-            stepcount += 1
-            logger.debug("_______________________________________________________________________________________")
-            logger.debug("Step number:  %d", currentMaxSeriationSize)
-            logger.debug("_______________________________________________________________________________________")
+            while currentMaxSeriationSize < self.maxSeriationSize:
+                currentMaxSeriationSize += 1
+                ### first time through copy the triples, else get the previous new ones.
+                #print "current step: ", currentMaxSeriationSize
+                if currentMaxSeriationSize==3:  ## first time through. Just copy the triples to the working arrays
+                    networks = triples
+                    solutions = triples # clear the
+                else:
+                    i = 0
+                    logger.debug("Currently have %d solutions at step %d", len(newNetworks),currentMaxSeriationSize)
+                    if len(newNetworks)==0:
+                        # there were no networks the previous times so nothing to do.
+                        break
+                    logger.debug("These solutions are ---  ")
+                    for sol in newNetworks:
+                        logger.debug("solution %d: %s", i, nx.shortest_path(sol, sol.graph["End1"] , sol.graph["End2"]))
+                        i += 1
+                    networks=[]
+                    networks += newNetworks  # copy the array of previous new ones for this round
+                    solutions.append(newNetworks ) # append the new list to the previous one
+                    #print "Number of new Networks:", len(newNetworks)
+                    newNetworks=[]         # clear the array of new solutions
 
-            if args['screen'] not in (None, ""):
-                self.scr.addstr(4,0,"Step number:                                    ")
-                msg = "Step number:   %d" % currentMaxSeriationSize
-                self.scr.addstr(4,0,msg)
-                self.scr.addstr(5,0,"Number of solutions from previous step:         ")
-                msg= "Number of solutions from previous step: %d" % len(networks)
-                self.scr.addstr(5,0,msg)
-                self.scr.refresh()
+                stepcount += 1
+                logger.debug("_______________________________________________________________________________________")
+                logger.debug("Step number:  %d", currentMaxSeriationSize)
+                logger.debug("_______________________________________________________________________________________")
 
-            logger.debug("Number of solutions from previous step: %d", len(networks))
-            match = 0      ## set the current match to zero for this step (sees if there are any new solutions for step)
-            ## look through the set of existing valid networks.
-            validNewNetworks=[]
+                if args['screen'] not in (None, ""):
+                    self.scr.addstr(4,0,"Step number:                                    ")
+                    msg = "Step number:   %d" % currentMaxSeriationSize
+                    self.scr.addstr(4,0,msg)
+                    self.scr.addstr(5,0,"Number of solutions from previous step:         ")
+                    msg= "Number of solutions from previous step: %d" % len(networks)
+                    self.scr.addstr(5,0,msg)
+                    self.scr.refresh()
 
-            ##pool.map(seriationCheck, networks)
-            for nnetwork in networks:
-                logger.debug("-----------------------------------------------------------------------------------")
-                logger.debug("Network: %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
-                logger.debug("-----------------------------------------------------------------------------------")
-                ## find the ends
-                ## given the ends, find the valid set of assemblages that can be potentially added
-                ## this list is all assemblages meet the threshold requirements
-                validNewNetworks,currentMaxNodes = self.checkForValidAdditionsToNetwork(nnetwork, pairGraph,solutionCount,args)
-                if validNewNetworks is not False:
-                    newNetworks = newNetworks + validNewNetworks
-                    all_solutions = all_solutions + validNewNetworks
-                    solutionCount += len(validNewNetworks)
-                    logger.debug("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),solutionCount)
-                    if currentMaxNodes > maxNodes:
-                        maxNodes = currentMaxNodes
-                    currentTotal = len(newNetworks)
+                logger.debug("Number of solutions from previous step: %d", len(networks))
+                match = 0      ## set the current match to zero for this step (sees if there are any new solutions for step)
+                ## look through the set of existing valid networks.
+                validNewNetworks=[]
 
-            if args['screen'] not in (None, ""):
-                msg = "Current Max Nodes:  %d " % maxNodes
-                self.scr.addstr(6, 0, msg)
-                msg = "Total number of seriation solutions and sub-solutions: %d" % solutionCount
-                self.scr.addstr(7, 0, msg)
-                self.scr.addstr(8, 43, "                                           ")
-                msg = "Number of seriation solutions at this step: %d" % currentTotal
-                self.scr.addstr(8, 0, msg)
-                msg = "Memory used:        " + str(self.mem.memory())
-                self.scr.addstr(9, 0, msg)
-                self.scr.refresh()
+                ##pool.map(seriationCheck, networks)
+                for nnetwork in networks:
+                    logger.debug("-----------------------------------------------------------------------------------")
+                    logger.debug("Network: %s", nx.shortest_path(nnetwork, nnetwork.graph["End1"] , nnetwork.graph["End2"]))
+                    logger.debug("-----------------------------------------------------------------------------------")
+                    ## find the ends
+                    ## given the ends, find the valid set of assemblages that can be potentially added
+                    ## this list is all assemblages meet the threshold requirements
+                    validNewNetworks,currentMaxNodes = self.checkForValidAdditionsToNetwork(nnetwork, pairGraph,solutionCount,args)
+                    if validNewNetworks is not False:
+                        newNetworks = newNetworks + validNewNetworks
+                        all_solutions = all_solutions + validNewNetworks
+                        solutionCount += len(validNewNetworks)
+                        logger.debug("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),solutionCount)
+                        if currentMaxNodes > maxNodes:
+                            maxNodes = currentMaxNodes
+                        currentTotal = len(newNetworks)
 
-            if len(newNetworks)>0:
-                end_solutions = newNetworks
-                #for s in newNetworks:
-                    #all_solutions.append(s)
-                #all_solutions= list(set(all_solutions + newNetworks))
-            else:
-                end_solutions = networks
-                #all_solutions = networks
+                if args['screen'] not in (None, ""):
+                    msg = "Current Max Nodes:  %d " % maxNodes
+                    self.scr.addstr(6, 0, msg)
+                    msg = "Total number of seriation solutions and sub-solutions: %d" % solutionCount
+                    self.scr.addstr(7, 0, msg)
+                    self.scr.addstr(8, 43, "                                           ")
+                    msg = "Number of seriation solutions at this step: %d" % currentTotal
+                    self.scr.addstr(8, 0, msg)
+                    msg = "Memory used:        " + str(self.mem.memory())
+                    self.scr.addstr(9, 0, msg)
+                    self.scr.refresh()
 
-        logger.debug("Process complete at seriation size %d with %d solutions before filtering.",self.maxSeriationSize,len(end_solutions))
+                if len(newNetworks)>0:
+                    end_solutions = newNetworks
+                else:
+                    end_solutions = networks
 
-        ###########################################################################################################
-        filteredarray = self.filterSolutions(end_solutions,all_solutions,args)
+            logger.debug("Process complete at seriation size %d with %d solutions before filtering.",self.maxSeriationSize,len(end_solutions))
 
-        filteredarray = all_solutions
+            ###########################################################################################################
+            frequencyArray = self.filterSolutions(end_solutions,all_solutions,args)
 
-        logger.debug("Process complete at seriation size %d with %d solutions after filtering.",self.maxSeriationSize,len(filteredarray))
+            #filteredarray = all_solutions
 
-        #################################################### OUTPUT SECTION ####################################################
-        self.output(filteredarray,OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
+            logger.debug("Process complete at seriation size %d with %d solutions after filtering.",self.maxSeriationSize,len(frequencyArray))
 
-        # experimental
-        array=self.continunityMaximizationSeriation(args)
-        #self.outputGraphArray(array,args)
-        #sGraph=self.createAtlas(array,args)
-        #self.graphOutput(sGraph,self.inputFile[0:-4]+"-mst-minimum-sumgraph.png", args)
+            #################################################### OUTPUT SECTION ####################################################
+            self.output(frequencyArray,OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
 
-        sumGraph=self.sumGraphs(filteredarray,args)
-        self.sumGraphOutput(sumGraph,SUMGRAPH,self.inputFile[0:-4]+"-mst-sumgraph.png",args)
-        #self.createAtlasOfSolutions(filteredarray,args)
+            sumGraph=self.sumGraphsByWeight(frequencyArray,args)
+            self.sumGraphOutput(sumGraph,SUMGRAPH,self.inputFile[0:-4]+"-mst-sumgraph.png",args)
+            #self.createAtlasOfSolutions(frequencyArray,args)
 
-        print "Assemblages not part of final solution:"
-        notPartOfSeriationsList=[]
-        nodeList=sumGraph.nodes()
-        for a in self.assemblages:
-            if a not in nodeList:
-                notPartOfSeriationsList.append(a)
-                print a
+            #################################################### MST SECTION ####################################################
+            if args['mst'] != None:
+                outputFile = self.outputDirectory + self.inputFile[0:-4]+".vna"
+                # Need to have the shapefile flag and the XY file in order to create a valid shapefile.
+                if args['shapefile'] != None and args['xyfile'] != None:
+                    shapefile = 1
+                else:
+                    shapefile= None
+                mst = MST.MST(outputFile,self.outputDirectory,shapefile)
+                mst.createMST()
+                #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
+            #################################################### MST SECTION ####################################################
 
-        #################################################### MST SECTION ####################################################
-        if args['mst'] != None:
-            outputFile = self.outputDirectory + self.inputFile[0:-4]+".vna"
-            # Need to have the shapefile flag and the XY file in order to create a valid shapefile.
-            if args['shapefile'] != None and args['xyfile'] != None:
-                shapefile = 1
-            else:
-                shapefile= None
-            mst = MST.MST(outputFile,self.outputDirectory,shapefile)
-            mst.createMST()
-            #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
+            print "Assemblages not part of final solution:"
+            notPartOfSeriationsList=[]
+            nodeList=sumGraph.nodes()
+            for a in self.assemblages:
+                if a not in nodeList:
+                    notPartOfSeriationsList.append(a)
+                    print a
+
+        if args['continuity'] is not None:
+            # experimental
+            continuityArray=self.continunityMaximizationSeriation(args)
+            #self.outputGraphArray(array,args)
+            sGraph=self.sumGraphsByCount(continuityArray,args)
+            self.graphOutput(sGraph,self.inputFile[0:-4]+"-minimum-sumgraph.png", args)
+            self.MST(sGraph,self.inputFile[0:-4]+"-mst-of-min.png",args)
+
+        if args['graphs'] is not None:
+            plt.show() # display
+
         ## say goodbye and clean up the screen stuff #########################
-        self.finalGoodbye(maxNodes,len(filteredarray),args)
-        return filteredarray, notPartOfSeriationsList
+        self.finalGoodbye(maxNodes,len(frequencyArray),len(continuityArray), args)
+
+        return frequencyArray, continuityArray, notPartOfSeriationsList
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
@@ -1795,6 +1831,9 @@ if __name__ == "__main__":
     parser.add_argument('--inputfile',help="<REQUIRED> Enter the name of the data file with the assemblage data to process.")
     parser.add_argument('--outputdirectory',default=None, help="If you want the output to go someplace other than the /output directory, specify that here.")
     parser.add_argument('--shapefile',default=None,help="Produces a shapefile as part of the output. You must have specified the XYfile as well.")
+    parser.add_argument('--graphs',default=None,help="If true, the program will display the graphs that are created. If not, the graphs are just saved as .png files.")
+    parser.add_argument('--frequency',default=True,help="Conduct a standard frequency seriation analysis. Default is true.")
+    parser.add_argument('--continuity',default=True,help="Conduct a continuity seriation analysis. Default is true.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
@@ -1803,12 +1842,12 @@ if __name__ == "__main__":
 
     seriation = IDSS()
 
-    results,exceptions=seriation.seriate(args)
+    frequencyResults,continuityResults,exceptionList=seriation.seriate(args)
 
 ''''
 From the command line:
 
-python ./IDSS.py --inputfile=../testdata/pfg.txt --xyfile=../testdata/pfgXY.txt --largestonly=1 --mst=1"
+python ./IDSS.py --inputfile=../testdata/pfg.txt --xyfile=../testdata/pfgXY.txt --largestonly=1 --mst=1 --graphs=1"
 
 
 As a module:
@@ -1821,7 +1860,8 @@ args={}
 args{'inputfile'}="../testdata/testdata-5.txt"
 args{'screen'}=1
 args{'debug'}=1
+args('graphs'}=1
 
-seriation.seriate(args)
+frequencyResults,continuityResults,exceptions = seriation.seriate(args)
 
 '''''
