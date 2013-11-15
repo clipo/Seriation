@@ -5,6 +5,7 @@
 __author__ = 'carllipo'
 
 import MST
+import shapefile
 import csv
 from datetime import datetime
 import argparse
@@ -680,12 +681,13 @@ class IDSS():
         return False
 
     def MST(self, sGraph,filename,args):
+
         plt.rcParams['text.usetex'] = False
         plt.figure(filename,figsize=(8,8))
         M=nx.minimum_spanning_tree(sGraph)
         os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
-        #pos=nx.graphviz_layout(M)
-        pos=nx.graphviz_layout(M,prog="twopi",root=0)
+        pos=nx.graphviz_layout(M)
+        #pos=nx.graphviz_layout(M,prog="twopi",root=args['graphroot'])
         edgewidth=[]
         weights = nx.get_edge_attributes(M, 'weight')
         for w in weights:
@@ -709,6 +711,8 @@ class IDSS():
             'fontsize'   : 10}
         plt.axis('off')
         plt.savefig(filename,dpi=75)
+        if args['shapefile'] is not None and args['xyfile'] is not None:
+            self.createShapefile(M,filename+".shp",args)
 
     def minimumSpanningTree(self,networks,sumGraph, outputDirectory,inputFile):
         try:
@@ -801,7 +805,8 @@ class IDSS():
 
         plt.axis('off')
         plt.savefig(newfilename,dpi=75)
-
+        if args['shapefile'] is not None and args['xyfile'] is not None:
+            self.createShapefile(mst,outputDirectory+inputFile[0:-4]+"-mst.shp",args)
 
         atlasFile=outputDirectory+inputFile[0:-4]+"-atlas.png"
         plt.figure(atlasFile,figsize=(8,8))
@@ -814,7 +819,7 @@ class IDSS():
                 nlist.append(G)
 
         UU=nx.disjoint_union_all(graphs) # union the nonisomorphic graphs
-        pos=nx.graphviz_layout(UU,prog="twopi",root=0)
+        pos=nx.graphviz_layout(UU,prog="twopi",root=args['graphroot'])
         # color nodes the same in each connected subgraph
         C=nx.connected_component_subgraphs(UU)
         for g in C:
@@ -831,7 +836,7 @@ class IDSS():
         plt.savefig(atlasFile,dpi=250)
 
 
-    def finalGoodbye(self,maxNodes,currentTotal,args):
+    def finalGoodbye(self,maxNodes,frequencyTotal,continuityTotal,args):
         if args['screen'] != None:
             curses.endwin()
             curses.resetty()
@@ -843,7 +848,8 @@ class IDSS():
         timeElapsed = timeNow-self.start
         print "Seriation complete."
         print "Maximum size of seriation: %d" % maxNodes
-        print "Number of solutions at last step: %d" % currentTotal
+        print "Number of frequency seriation solutions at last step: %d" % frequencyTotal
+        print "Number of continuity seriation solutions at end: %d " % continuityTotal
         print "Time elapsed for calculation: %d seconds" % timeElapsed
         if args['screen'] != None:
             os.system("reset")
@@ -899,16 +905,30 @@ class IDSS():
                 return 0
         return sorted(items, cmp=comparer)
 
+    def createShapefile(self,graph,shapefilename,args):
+        w = shapefile.Writer(shapefile.POLYLINE)  # 3= polylines
+        xCoordinates=nx.get_node_attributes(graph,"xCoordinate")
+        yCoordinates=nx.get_node_attributes(graph,"yCoordinate")
+        for e in graph.edges_iter():
+            d = graph.get_edge_data(*e)
+            node1 = e[0]
+            node2 = e[1]
+            x1 = float(xCoordinates[node1])
+            y1 = float(yCoordinates[node1])
+            x2 = float(xCoordinates[node2])
+            y2 = float(yCoordinates[node2])
+
+            w.poly(parts=[[[x1,y1],[x2,y2]]])
+        w.save(shapefilename)
+
     def createAtlasOfSolutions(self,filteredarray,args):
         atlasGraph=nx.disjoint_union_all(filteredarray)
-        pos=nx.graphviz_layout(atlasGraph,prog="twopi",root=0)
+        pos=nx.graphviz_layout(atlasGraph,prog="twopi",root=args['graphroot'])
         atlasFile=self.outputDirectory + self.inputFile[0:-4]+"-new-atlas.png"
         plt.savefig(atlasFile,dpi=250)
         plt.show() # display
 
-
     def createAtlas(self,filteredarray,args):
-
         # remove isolated nodes, only connected graphs are left
         U=nx.Graph() # graph for union of all graphs in atlas
         for G in filteredarray:
@@ -929,10 +949,9 @@ class IDSS():
     def outputGraphArray(self,array,args):
         num=0
         os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
-
         for g in array:
             num +=1
-            pos=nx.graphviz_layout(g,prog="twopi",root=0)
+            pos=nx.graphviz_layout(g,prog="twopi",root=['graphroot'])
             gfile=self.outputDirectory + self.inputFile[0:-4]+"-min-sol-"+str(num)+".png"
             edgewidth=[]
             weights = nx.get_edge_attributes(g, 'weight')
@@ -1057,14 +1076,20 @@ class IDSS():
         return diff
 
     def continunityMaximizationSeriation(self,args):
-
         graphList=[]
         numGraphs=0
-        for ass in self.assemblages:
+        if args['continuityroot'] is not None:
             numGraphs +=1
-            g=nx.Graph(startAssemblage=ass, End1=ass)
-            g.add_node(ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass],yCoordinate=self.yAssemblage[ass])
+            g=nx.Graph(startAssemblage=args['continuityroot'], End1=args['continuityroot'])
+            g.add_node(args['continuityroot'],size=self.assemblageSize[args['continuityroot']],
+                       xCoordinate=self.xAssemblage[args['continuityroot']],yCoordinate=self.yAssemblage[args['continuityroot']])
             graphList.append(g)   ## create a starting graph for each of assemblage put into an array
+        else:
+            for ass in self.assemblages:
+                numGraphs +=1
+                g=nx.Graph(startAssemblage=ass, End1=ass)
+                g.add_node(ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass],yCoordinate=self.yAssemblage[ass])
+                graphList.append(g)   ## create a starting graph for each of assemblage put into an array
 
         ## special case for the first time through
         for g in graphList:
@@ -1101,8 +1126,11 @@ class IDSS():
                     else:
                         otherEnd="End1"
 
-                    endAssemblage=g.graph[assEnd]
+                    ## only go from one side if you use declare a root
+                    if args['continuityroot'] is not None:
+                        assEnd=="End2"
 
+                    endAssemblage=g.graph[assEnd]
 
                     for a in self.assemblages:
                         if a not in g.nodes():
@@ -1144,9 +1172,12 @@ class IDSS():
         ## Now make the graphic for set of graphs
         plt.rcParams['text.usetex'] = False
         newfilename=self.outputDirectory+sumgraphfilename
+        if args['shapefile'] is not None and args['xyfile'] is not None:
+            self.createShapefile(sumGraph,newfilename+".shp",args)
         plt.figure(newfilename,figsize=(8,8))
         os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
         pos=nx.graphviz_layout(sumGraph)
+        #pos=nx.graphviz_layout(sumGraph,prog="twopi",root=['graphroot'])
         #pos=nx.spring_layout(mst,iterations=500)
         edgewidth=[]
         weights = nx.get_edge_attributes(sumGraph, 'weight')
@@ -1213,6 +1244,7 @@ class IDSS():
         plt.figure(newfilename,figsize=(8,8))
         plt.rcParams['text.usetex'] = False
         os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+        #pos=nx.graphviz_layout(sumGraph,prog="twopi",root=['graphroot'])
         pos=nx.graphviz_layout(sumGraph)
 
         edgewidth=[]
@@ -1242,7 +1274,8 @@ class IDSS():
             'fontsize'   : 10}
         plt.axis('off')
         plt.savefig(newfilename,dpi=75)
-
+        if args['shapefile'] is not None and args['xyfile'] is not None:
+            self.createShapefile(sumGraph,self.outputDirectory+self.inputFile[0:-4]+"-sumgraph.shp",args)
 
         newfilename=self.outputDirectory+sumgraphfilename
         plt.figure(newfilename,figsize=(8,8))
@@ -1251,6 +1284,7 @@ class IDSS():
         plt.rcParams['text.usetex'] = False
 
         pos=nx.graphviz_layout(mst)
+        #pos=nx.graphviz_layout(mst,prog="twopi",root=['graphroot'])
         edgewidth=[]
         weights = nx.get_edge_attributes(mst, 'weight')
         for w in weights:
@@ -1278,7 +1312,8 @@ class IDSS():
             'fontsize'   : 10}
         plt.axis('off')
         plt.savefig(newfilename,dpi=75)
-
+        if args['shapefile'] is not None and args['xyfile'] is not None:
+            self.createShapefile(mst,self.outputDirectory+sumgraphfilename+".shp",args)
 
         # layout graphs with positions using graphviz neato
 
@@ -1545,6 +1580,8 @@ class IDSS():
         args['frequency']=None
         args['continuity']=None
         args['graphs']=None
+        args['graphroot']=None
+        args['continuityroot']=None
 
         for a in oldargs:
             args[a]=oldargs[a]
@@ -1673,7 +1710,6 @@ class IDSS():
         maxNodes=3
 
         if args['frequency'] not in (None,False,0):
-
             ###########################################################################################################
             logger.debug("Calculate all the valid triples.")
             triples = self.findAllValidTriples(args)
@@ -1840,6 +1876,8 @@ if __name__ == "__main__":
     parser.add_argument('--graphs',default=None,help="If true, the program will display the graphs that are created. If not, the graphs are just saved as .png files.")
     parser.add_argument('--frequency',default=None,help="Conduct a standard frequency seriation analysis. Default is None.")
     parser.add_argument('--continuity',default=None,help="Conduct a continuity seriation analysis. Default is None.")
+    parser.add_argument('--graphroot',default=None,help="The root of the graph figures (i.e., name of assemblage you want to treat as one end in the graphs.")
+    parser.add_argument('--continuityroot',default=None,help="If you have a outgroup or root of the graph, set that here.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
