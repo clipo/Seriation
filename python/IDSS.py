@@ -42,6 +42,9 @@ class AutoVivification(dict):
 
 class IDSS():
 
+    color=[ "b","r","m","y","k","w",(0.976,0.333,0.518),(0.643,0.416,0.894),
+            (0.863,0.66,0.447),(0.824, 0.412, 0.118) ]
+
     def __init__(self):
         self.inputfile = ""
         self.outputDirectory=""
@@ -71,6 +74,9 @@ class IDSS():
         logger.debug("Start time:  %s ", self.start)
         self.scr = None
 
+    def saveGraph(self,graph,filename,args):
+        nx.write_gml(graph,filename)
+
     def all_pairs(self,lst):
         return list((itertools.permutations(lst, 2)))
 
@@ -90,7 +96,6 @@ class IDSS():
             sys.exit('file %s does not open: %s') %( filename, e)
 
         reader = csv.reader(file, delimiter='\t', quotechar='|')
-
         values=[]
         for row in reader:
             row = map(str, row)
@@ -685,6 +690,7 @@ class IDSS():
         plt.rcParams['text.usetex'] = False
         plt.figure(filename,figsize=(8,8))
         M=nx.minimum_spanning_tree(sGraph)
+
         os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
         pos=nx.graphviz_layout(M)
         #pos=nx.graphviz_layout(M,prog="twopi",root=args['graphroot'])
@@ -711,6 +717,7 @@ class IDSS():
             'fontsize'   : 10}
         plt.axis('off')
         plt.savefig(filename,dpi=75)
+        self.saveGraph(sGraph,filename+".gml",args)
         if args['shapefile'] is not None and args['xyfile'] is not None:
             self.createShapefile(M,filename+".shp",args)
 
@@ -807,7 +814,7 @@ class IDSS():
         plt.savefig(newfilename,dpi=75)
         if args['shapefile'] is not None and args['xyfile'] is not None:
             self.createShapefile(mst,outputDirectory+inputFile[0:-4]+"-mst.shp",args)
-
+        self.saveGraph(mst,newfilename+".gml",args)
         atlasFile=outputDirectory+inputFile[0:-4]+"-atlas.png"
         plt.figure(atlasFile,figsize=(8,8))
         UU=nx.Graph()
@@ -834,6 +841,7 @@ class IDSS():
                 font_size=7,
             )
         plt.savefig(atlasFile,dpi=250)
+        self.saveGraph(UU,atlasFile+".gml",args)
 
 
     def finalGoodbye(self,maxNodes,frequencyTotal,continuityTotal,args):
@@ -953,6 +961,8 @@ class IDSS():
             num +=1
             pos=nx.graphviz_layout(g,prog="twopi",root=['graphroot'])
             gfile=self.outputDirectory + self.inputFile[0:-4]+"-min-sol-"+str(num)+".png"
+            filename=self.outputDirectory + self.inputFile[0:-4]+"-min-sol-"+str(num)+".gml"
+            self.saveGraph(g,filename,args)
             edgewidth=[]
             weights = nx.get_edge_attributes(g, 'weight')
             for w in weights:
@@ -1172,6 +1182,8 @@ class IDSS():
         ## Now make the graphic for set of graphs
         plt.rcParams['text.usetex'] = False
         newfilename=self.outputDirectory+sumgraphfilename
+        gmlfilename=self.outputDirectory+sumgraphfilename+".gml"
+        self.saveGraph(sumGraph,gmlfilename,args)
         if args['shapefile'] is not None and args['xyfile'] is not None:
             self.createShapefile(sumGraph,newfilename+".shp",args)
         plt.figure(newfilename,figsize=(8,8))
@@ -1206,10 +1218,13 @@ class IDSS():
             'fontsize'   : 10}
         plt.axis('off')
         plt.savefig(newfilename,dpi=75)
+        self.saveGraph(sumGraph,newfilename+".gml",args)
 
 
     ## Output to file and to the screen
     def sumGraphOutput(self,sumGraph,SUMGRAPH,sumgraphfilename, args):
+
+
         nodeList = sumGraph.nodes()
         for a in self.assemblages:
             if a not in nodeList:
@@ -1241,6 +1256,7 @@ class IDSS():
 
         ## Now make the graphic for the sumgraph
         newfilename=self.outputDirectory+self.inputFile[0:-4]+"-sumgraph.png"
+        self.saveGraph(sumGraph,newfilename+".gml",args)
         plt.figure(newfilename,figsize=(8,8))
         plt.rcParams['text.usetex'] = False
         os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
@@ -1312,6 +1328,7 @@ class IDSS():
             'fontsize'   : 10}
         plt.axis('off')
         plt.savefig(newfilename,dpi=75)
+        self.saveGraph(mst,newfilename+".gml",args)
         if args['shapefile'] is not None and args['xyfile'] is not None:
             self.createShapefile(mst,self.outputDirectory+sumgraphfilename+".shp",args)
 
