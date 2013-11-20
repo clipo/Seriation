@@ -5,11 +5,16 @@ import sys
 import resource
 
 class Memory():
+    def __init__(self):
+        self.previousMemory=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000
+        return
+
     def memory(self):
         return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000
 
-def __init__():
-    return
+    def memoryChange(self):
+        return (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000) - self.previousMemory
+
 
 def main():
     mem=Memory()

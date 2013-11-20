@@ -180,7 +180,7 @@ class MST():
                 edgeCount += 1
             count += 1
 
-        if self.shapefile != None:
+        if self.shapefile is not None:
             w = shapefile.Writer(shapefile.POLYLINE)  # 3= polylines
             c=0
             for g in graphs:

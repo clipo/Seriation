@@ -717,7 +717,7 @@ def minimumSpanningTree(networks,xAssemblage,yAssemblage,distanceBetweenAssembla
     plt.rcParams['text.usetex'] = False
     plt.figure(0,figsize=(8,8))
     mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
-    os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+    os.environ["PATH"] += ":/usr/local/bin:"
     #print os.environ["PATH"]
     pos=nx.graphviz_layout(mst)
     #pos=nx.spring_layout(mst,iterations=500)
@@ -1335,7 +1335,7 @@ def main():
                                                               assemblages, typeFrequencyLowerCI, typeFrequencyUpperCI,
                                                              typeFrequencyMeanCI,solutionCount,args)
             if validNewNetworks is not False:
-                newNetworks = newNetworks + validNewNetworks
+                newNetworks += validNewNetworks
                 solutionCount += len(validNewNetworks)
                 logger.debug("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),solutionCount)
                 if currentMaxNodes > maxNodes:

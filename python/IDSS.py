@@ -461,7 +461,7 @@ class IDSS():
                     else:
 
                         logger.debug("\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f" % ass1,ass2,ass3)
-                        print "\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f \n\r" , ass1,ass2,ass3
+                        print "\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f \n\r" % ass1,ass2,ass3
                         print "I must quit. Debugging required.\n\r"
                         sys.exit()
 
@@ -691,7 +691,7 @@ class IDSS():
         plt.figure(filename,figsize=(8,8))
         M=nx.minimum_spanning_tree(sGraph)
 
-        os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+        os.environ["PATH"] += ":/usr/local/bin:"
         pos=nx.graphviz_layout(M)
         #pos=nx.graphviz_layout(M,prog="twopi",root=args['graphroot'])
         edgewidth=[]
@@ -774,7 +774,7 @@ class IDSS():
             graphs.append(g)
         plt.rcParams['text.usetex'] = False
         mst=nx.minimum_spanning_tree(megaGraph,weight='weight')
-        os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+        os.environ["PATH"] += ":/usr/local/bin:"
         pos=nx.graphviz_layout(mst)
         edgewidth=[]
         weights = nx.get_edge_attributes(mst, 'weight')
@@ -845,7 +845,7 @@ class IDSS():
 
 
     def finalGoodbye(self,maxNodes,frequencyTotal,continuityTotal,args):
-        if args['screen'] != None:
+        if args['screen'] is not None:
             curses.endwin()
             curses.resetty()
             curses.nl()
@@ -859,7 +859,7 @@ class IDSS():
         print "Number of frequency seriation solutions at last step: %d" % frequencyTotal
         print "Number of continuity seriation solutions at end: %d " % continuityTotal
         print "Time elapsed for calculation: %d seconds" % timeElapsed
-        if args['screen'] != None:
+        if args['screen'] is not None:
             os.system("reset")
 
     #################################################### set up all the output files ####################################################
@@ -956,7 +956,7 @@ class IDSS():
 
     def outputGraphArray(self,array,args):
         num=0
-        os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+        os.environ["PATH"] += ":/usr/local/bin:"
         for g in array:
             num +=1
             pos=nx.graphviz_layout(g,prog="twopi",root=['graphroot'])
@@ -1000,7 +1000,7 @@ class IDSS():
                 xCoordinate = 0
                 yCoordinate = 0
                 name = node[0]
-                if args['xyfile'] != None:
+                if args['xyfile'] is not None:
                     xCoordinate = self.xAssemblage[name]
                     yCoordinate = self.yAssemblage[name]
                 sumGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
@@ -1044,7 +1044,7 @@ class IDSS():
                 xCoordinate = 0
                 yCoordinate = 0
                 name = node[0]
-                if args['xyfile'] != None:
+                if args['xyfile'] is not None:
                     xCoordinate = self.xAssemblage[name]
                     yCoordinate = self.yAssemblage[name]
                 sumGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
@@ -1187,7 +1187,7 @@ class IDSS():
         if args['shapefile'] is not None and args['xyfile'] is not None:
             self.createShapefile(sumGraph,newfilename+".shp",args)
         plt.figure(newfilename,figsize=(8,8))
-        os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+        os.environ["PATH"] += ":/usr/local/bin:"
         pos=nx.graphviz_layout(sumGraph)
         #pos=nx.graphviz_layout(sumGraph,prog="twopi",root=['graphroot'])
         #pos=nx.spring_layout(mst,iterations=500)
@@ -1239,7 +1239,7 @@ class IDSS():
             y = 0
             northing = 0
             easting = 0
-            if args['xyfile'] != None:
+            if args['xyfile'] is not None:
                 x = float(self.xAssemblage[ nodeName ]) / 1000000.0
                 y = (float(self.largestY)- float(self.yAssemblage[nodeName]))/100000.0
                 easting = self.xAssemblage[nodeName]
@@ -1259,7 +1259,7 @@ class IDSS():
         self.saveGraph(sumGraph,newfilename+".gml",args)
         plt.figure(newfilename,figsize=(8,8))
         plt.rcParams['text.usetex'] = False
-        os.environ["PATH"]=os.environ["PATH"]+":/usr/local/bin:"
+        os.environ["PATH"] += ":/usr/local/bin:"
         #pos=nx.graphviz_layout(sumGraph,prog="twopi",root=['graphroot'])
         pos=nx.graphviz_layout(sumGraph)
 
@@ -1419,7 +1419,7 @@ class IDSS():
 
         ## now go through the edgeHash and print out the edges
         ## do this is sorted order of the counts. For fun.
-        if args['screen'] != None:
+        if args['screen'] is not None:
             self.scr.addstr(1,40,"STEP: Doing the pair output...                ")
             self.scr.refresh()
 
@@ -1470,7 +1470,7 @@ class IDSS():
                 for e in network.edges_iter():
                     pVal=0.0
                     pErr=0.0
-                    if args['pairwisefile'] != None:
+                    if args['pairwisefile'] is not None:
                         pairname = e[0]+"#"+e[1]
                         pVal = pairwise[ pairname ]
                         pErr = pairwiseError[ pairname ]
@@ -1489,7 +1489,7 @@ class IDSS():
                 groupDistance=0
                 meanDistance=0.0
                 eCount=0
-                if args['xyfile'] != None:
+                if args['xyfile'] is not None:
                     for e in network.edges_iter():
                       pairname= e[0]+"*"+e[1]
                       groupDistance += self.distanceBetweenAssemblages[ pairname ]
@@ -1507,7 +1507,7 @@ class IDSS():
                 for e in network.edges_iter():
                     pVal=0.0
                     pErr=0.0
-                    if args['pairwisefile'] != None:
+                    if args['pairwisefile'] is not None:
                         pairname= e[0]+"#"+e[1]
                         pVal = pairwise[ pairname ]
                         pErr = pairwiseError[ pairname ]
@@ -1575,31 +1575,12 @@ class IDSS():
             sys.exit("Inputfile is a required input value: --inputfile=../testdata/testdata.txt")
 
     def addOptions(self,oldargs):
-        args={}
-        args['debug']=None
-        args['bootstrapCI']=None
-        args['bootstrapSignificance']=None
-        args['filtered']=None
-        args['largestonly']=None
-        args['individualfileoutput']=None
-        args['excel']=None
-        args['threshold']=None
-        args['noscreen']=None
-        args['xyfile']=None
-        args['pairwisefile']=None
-        args['mst']=None
-        args['stats']=None
-        args['screen']=None
-        args['allsolutions']=None
-        args['inputfile']=None
-        args['outputdirectory']=None
-        args['shapefile']=None
-        args['frequency']=None
-        args['continuity']=None
-        args['graphs']=None
-        args['graphroot']=None
-        args['continuityroot']=None
 
+        args={'debug':None ,'bootstrapCI':None,'bootstrapSignificance':None,
+              'filtered':None,'largestonly':None,'individualfileoutput':None,
+              'excel':None,'threshold':None,'noscreen':None,'xyfile':None,'pairwisefile':None,'mst':None,
+              'stats':None,'screen':None,'allsolutions':None,'inputfile':None,'outputdirectory':None,
+              'shapefile':None,'frequency':None,'continuity':None,'graphs':None,'graphroot':None,'continuityroot':None}
         for a in oldargs:
             args[a]=oldargs[a]
         return args
@@ -1608,7 +1589,7 @@ class IDSS():
         args=self.addOptions(args)
         self.checkMinimumRequirements(args)
         #####################################DEBUG OUTPUT#############################################################
-        if args['debug'] != None:
+        if args['debug'] is not None:
             ## Logging
             logger.basicConfig(stream=sys.stderr, level=logger.DEBUG)
             args['screen']= None
@@ -1619,7 +1600,7 @@ class IDSS():
         logger.debug("Arguments: %s", args)
 
         ##################################################################################################
-        if (args['screen']!= None) and (args['debug'] == None ):
+        if (args['screen'] is not None) and (args['debug'] is None ):
             ## Set up the screen display (default).
             ## the debug option should not use this since it gets messy
             try:
@@ -1696,7 +1677,7 @@ class IDSS():
         ############################################################################################################
         logger.debug("Assume threshold is 1.0 unless its specified in arguments.")
         threshold=1.0
-        if args['threshold'] != None :
+        if args['threshold'] is not None :
             threshold=float(args['threshold'])
 
         logger.debug("Going to create list of valid pairs for comparisons.")
@@ -1706,7 +1687,7 @@ class IDSS():
         logger.debug("Now calculate the bootstrap comparisons based ")
         logger.debug("on specified confidence interval, if in the arguments.")
 
-        if args['bootstrapCI'] != None:
+        if args['bootstrapCI'] is not None:
             if args['bootstrapSignificance'] not in (None, ""):
                 confidenceInterval= args['bootstrapSignificance']
             else:
@@ -1792,8 +1773,8 @@ class IDSS():
                     ## this list is all assemblages meet the threshold requirements
                     validNewNetworks,currentMaxNodes = self.checkForValidAdditionsToNetwork(nnetwork, pairGraph,solutionCount,args)
                     if validNewNetworks is not False:
-                        newNetworks = newNetworks + validNewNetworks
-                        all_solutions = all_solutions + validNewNetworks
+                        newNetworks += validNewNetworks
+                        all_solutions += validNewNetworks
                         solutionCount += len(validNewNetworks)
                         logger.debug("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),solutionCount)
                         if currentMaxNodes > maxNodes:
@@ -1837,7 +1818,7 @@ class IDSS():
             if args['mst'] not in (None,False,0):
                 outputFile = self.outputDirectory + self.inputFile[0:-4]+".vna"
                 # Need to have the shapefile flag and the XY file in order to create a valid shapefile.
-                if args['shapefile'] != None and args['xyfile'] != None:
+                if args['shapefile'] is not None and args['xyfile'] is not None:
                     shapefile = 1
                 else:
                     shapefile= None
