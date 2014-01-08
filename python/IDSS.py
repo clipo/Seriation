@@ -925,7 +925,6 @@ class IDSS():
             y1 = float(yCoordinates[node1])
             x2 = float(xCoordinates[node2])
             y2 = float(yCoordinates[node2])
-
             w.poly(parts=[[[x1,y1],[x2,y2]]])
         w.save(shapefilename)
 
@@ -1125,11 +1124,15 @@ class IDSS():
         ## Now go through list looking at each one and increasing as long as I can. Add graphs when there are equivalent solutions
         for g in graphList:
             for assemblage in self.assemblages:
-                minMatch = 10000000
+                minMatch = {1000000,1000000}
                 currentMinimumMatch=""
-                matchEnd=""
-                matchEndAssemblage=""
+                matchEnd={}
+                matchEndAssemblage={}   ## this will contain the end assemblages and the differences
                 match=False
+                smallestMatchEnd=""
+                matchedToEndAssemblage=[]
+
+                ## examine both ends to see which is the smallest summed difference.
                 for assEnd in ("End1","End2"):
                     if assEnd=="End1":
                         otherEnd="End2"
@@ -1140,33 +1143,59 @@ class IDSS():
                     if args['continuityroot'] is not None:
                         assEnd=="End2"
 
+                    ## set the current end assemblages
                     endAssemblage=g.graph[assEnd]
 
                     for a in self.assemblages:
                         if a not in g.nodes():
                             diff = self.calculateSumOfDifferences(endAssemblage,a,args)
-                            if diff < minMatch:
+                            if diff < minMatch[assEnd]:
                                 match=True
-                                minMatch = diff
-                                currentMinimumMatch = a
+                                minMatch[assEnd] = diff
+                                currentMinimumMatch[assEnd] = a
                                 matchEnd=assEnd
-                                matchEndAssemblage=endAssemblage
+                                matchEndAssemblage[assEnd]=endAssemblage
 
-                    for a in self.assemblages:
-                        ## find out if there are others that have the same minimum value
-                            if a not in g.nodes() and a is not currentMinimumMatch:
-                                diff = self.calculateSumOfDifferences(a,endAssemblage,args)
-                                if minMatch == diff:
-                                    new_network = g.copy()
-                                    new_network.add_node(b, xCoordinate=self.xAssemblage[b], yCoordinate=self.xAssemblage[a],
-                                    size=self.assemblageSize[a])
-                                    if minMatch==0:
-                                        minMatch=10000000
-                                    new_network.add_path([endAssemblage, a], weight=minMatch, inverseweight=(1/minMatch ))
-                                    new_network.graph[assEnd]= a
-                                    graphList.append(new_network)
-                                    numGraphs += 1
-                if match is True:
+
+                ## at this point we should have the minimum distance match for each end.
+                ## we then need to compare each end to find which one is the smallest
+                ## three possibilities -- end1, end2 and both (i.e., the diff is the same)
+
+                if minMatch['End1'] < minMatch['End2']:
+                    smallestMatchEnd='End1'
+                    smallestDiff = minMatch['End1']
+                    matchedToEndAssemblage.append(matchEndAssemblage['End1'])
+
+                elif minMatch['End2']< minMatch['End1']:
+                    smallestMatchEnd='End2'
+                    smallestDiff = minMatch['End2']
+                    matchedToEndAssemblage.append(matchEndAssemblage['End2'])
+                else:
+                    smallestMatchEnd='Both'
+                    smallestDiff = minMatch['End1']
+                    matchedToEndAssemblage.append(matchEndAssemblage['End1'])
+                    matchedToEndAssemblage.append(matchEndAssemblage['End2'])
+
+                ## find out if there are others that have the same minimum value
+                for a in self.assemblages:
+                        if a not in g.nodes() and a is not endAssemblage and a not in matchedToEndAssemblage :
+                            diff = self.calculateSumOfDifferences(a,endAssemblage,args)
+                            if diff == smallestDiff:
+                                ## add this as a matched equivalent assembalge. We will then deal with more than one match
+                                matchedToEndAssemblage.append(a)
+                ##### FIX!!! #######################
+                if len(matchedToEndAssemblage)>1:
+                    for match in matchedToEndAssemblage:
+                        new_network = g.copy()
+                        new_network.add_node(match, xCoordinate=self.xAssemblage[match], yCoordinate=self.xAssemblage[match],
+                        size=self.assemblageSize[match])
+                        if minMatch==0:
+                            minMatch=10000000
+                        new_network.add_path([endAssemblage, match], weight=minMatch, inverseweight=(1/minMatch ))
+                        new_network.graph[assEnd]= a
+                        graphList.append(new_network)
+                        numGraphs += 1
+                elif len(matchedToEndAssemblage)==1:
                     g.add_node(currentMinimumMatch, xCoordinate=self.xAssemblage[currentMinimumMatch],
                                yCoordinate=self.xAssemblage[currentMinimumMatch],
                                 size=self.assemblageSize[currentMinimumMatch])
