@@ -1127,7 +1127,7 @@ class IDSS():
                 globalMinMatch = 100000
                 endMinMatch={"End1":10000,"End2":10000}
                 currentMinimumMatch={}
-                matchEnd={}
+                matchEnd=""
                 matchEndAssemblage={}   ## this will contain the end assemblages and the differences
                 match=False
                 smallestMatchEnd=[]
@@ -1150,9 +1150,9 @@ class IDSS():
                     for a in self.assemblages:
                         if a not in g.nodes():
                             diff = self.calculateSumOfDifferences(endAssemblage,a,args)
-                            if diff < globalMinMatch:
+                            if diff < endMinMatch[assEnd]:
                                 match=True
-                                globalMinMatch = diff
+                                endMinMatch[assEnd] = diff
                                 currentMinimumMatch[assEnd] = a
                                 matchEnd=assEnd
                                 matchEndAssemblage[assEnd]=endAssemblage
@@ -1161,14 +1161,17 @@ class IDSS():
                 ## we then need to compare each end to find which one is the smallest
                 ## three possibilities -- end1, end2 and both (i.e., the diff is the same)
 
-                if minMatch['End1'] < minMatch['End2']:
+                if endMinMatch['End1'] < endMinMatch['End2']:
+                    globalMinMatch=endMinMatch['End1']
                     smallestMatchEnd.append('End1')
                     assemblagesMatchedToEnd.append(matchEndAssemblage['End1'])
 
-                elif minMatch['End2']< minMatch['End1']:
+                elif endMinMatch['End2']< endMinMatch['End1']:
+                    globalMinMatch=endMinMatch['End2']
                     smallestMatchEnd.append('End2')
                     assemblagesMatchedToEnd.append(matchEndAssemblage['End2'])
                 else:
+                    globalMinMatch=endMinMatch['End1']
                     smallestMatchEnd.append('End1')
                     smallestMatchEnd.append('End2')
                     assemblagesMatchedToEnd.append(matchEndAssemblage['End1'])
