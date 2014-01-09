@@ -1737,6 +1737,7 @@ class IDSS():
         frequencyArray=[]
         continuityArray=[]
         maxNodes=3
+        notPartOfSeriationsList=[]
 
         if args['frequency'] not in (None,False,0):
             ###########################################################################################################
@@ -1859,7 +1860,6 @@ class IDSS():
             #################################################### MST SECTION ####################################################
 
             print "Assemblages not part of final solution:"
-            notPartOfSeriationsList=[]
             nodeList=sumGraph.nodes()
             for a in self.assemblages:
                 if a not in nodeList:
