@@ -1124,12 +1124,13 @@ class IDSS():
         ## Now go through list looking at each one and increasing as long as I can. Add graphs when there are equivalent solutions
         for g in graphList:
             for assemblage in self.assemblages:
-                minMatch = {1000000,1000000}
-                currentMinimumMatch=""
+                globalMinMatch = 100000
+                endMinMatch={"End1":10000,"End2":10000}
+                currentMinimumMatch={}
                 matchEnd={}
                 matchEndAssemblage={}   ## this will contain the end assemblages and the differences
                 match=False
-                smallestMatchEnd=""
+                smallestMatchEnd=[]
                 assemblagesMatchedToEnd=[]
 
                 ## examine both ends to see which is the smallest summed difference.
@@ -1149,9 +1150,9 @@ class IDSS():
                     for a in self.assemblages:
                         if a not in g.nodes():
                             diff = self.calculateSumOfDifferences(endAssemblage,a,args)
-                            if diff < minMatch[assEnd]:
+                            if diff < globalMinMatch:
                                 match=True
-                                minMatch[assEnd] = diff
+                                globalMinMatch = diff
                                 currentMinimumMatch[assEnd] = a
                                 matchEnd=assEnd
                                 matchEndAssemblage[assEnd]=endAssemblage
@@ -1162,17 +1163,14 @@ class IDSS():
 
                 if minMatch['End1'] < minMatch['End2']:
                     smallestMatchEnd.append('End1')
-                    smallestDiff = minMatch['End1']
                     assemblagesMatchedToEnd.append(matchEndAssemblage['End1'])
 
                 elif minMatch['End2']< minMatch['End1']:
                     smallestMatchEnd.append('End2')
-                    smallestDiff = minMatch['End2']
                     assemblagesMatchedToEnd.append(matchEndAssemblage['End2'])
                 else:
                     smallestMatchEnd.append('End1')
                     smallestMatchEnd.append('End2')
-                    smallestDiff = minMatch['End1']
                     assemblagesMatchedToEnd.append(matchEndAssemblage['End1'])
                     assemblagesMatchedToEnd.append(matchEndAssemblage['End2'])
 
@@ -1180,7 +1178,7 @@ class IDSS():
                 for a in self.assemblages:
                     if a not in g.nodes() and a is not endAssemblage and a not in assemblagesMatchedToEnd:
                         diff = self.calculateSumOfDifferences(a,endAssemblage,args)
-                        if diff == smallestDiff:
+                        if diff == globalMinMatch:
                             ## add this as a matched equivalent assemblage. We will then deal with more than one match
                             assemblagesMatchedToEnd.append(a)
 
@@ -1193,17 +1191,17 @@ class IDSS():
                             g.add_node(match, xCoordinate=self.xAssemblage[match],
                                yCoordinate=self.xAssemblage[match],
                                 size=self.assemblageSize[match])
-                            if minMatch==0:
-                                minMatch=10000000
-                            g.add_path([matchEndAssemblage[endAss], match], weight=minMatch, inverseweight=(1/minMatch ))
+                            if globalMinMatch==0:
+                                globalMinMatch=10000000
+                            g.add_path([matchEndAssemblage[endAss], match], weight=globalMinMatch, inverseweight=(1/globalMinMatch ))
                         ## if there are more than one we need to copy first before adding node
                         else:
                             new_network = g.copy()
                             new_network.add_node(match, xCoordinate=self.xAssemblage[match],
                                                  yCoordinate=self.xAssemblage[match],size=self.assemblageSize[match])
-                            if minMatch==0:
-                                minMatch=10000000
-                            new_network.add_path([matchEndAssemblage[endAss], match], weight=minMatch, inverseweight=(1/minMatch ))
+                            if globalMinMatch==0:
+                                globalMinMatch=10000000
+                            new_network.add_path([matchEndAssemblage[endAss], match], weight=globalMinMatch, inverseweight=(1/globalMinMatch ))
                             graphList.append(new_network)
                             numGraphs += 1
         return graphList
