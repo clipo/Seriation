@@ -1655,7 +1655,7 @@ class IDSS():
                 traceback.print_exc()           # Print the exception
                 os.system("reset")
 
-        if args['continuity'] is None and args['frequency'] is None:
+        if args['continuity'] in (None,False,0) and args['frequency'] in (None,False,0):
             sys.exit("You must specify --continuity=1 and/or frequency=1 to set the kind(s) of seriations you would like.")
 
         ######################################FILE INPUT#############################################################
