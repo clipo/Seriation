@@ -957,13 +957,13 @@ class IDSS():
             if not self.iso(G, nlist):
                 nlist.append(G)
 
-        atlas=self.createAtlas(filteredarray,args)
-        #UU=nx.union_all(nlist)
-        #atlasGraph=nx.disjoint_union_all(filteredarray)
-        pos=nx.graphviz_layout(atlas,prog="twopi")
+        #atlas=self.createAtlas(filteredarray,args)
+        ##UU=nx.union_all(nlist)
+        atlasGraph=nx.disjoint_union_all(filteredarray)
+        pos=nx.graphviz_layout(atlasGraph,prog="neato")
         #pos=nx.graphviz_layout(UU,prog="twopi",root=0)
         #C=nx.connected_component_subgraphs(atlas)
-        C=nx.connected_component_subgraphs(atlas)
+        C=nx.connected_component_subgraphs(atlasGraph)
         for g in C:
             c=[random()]*nx.number_of_nodes(g)
 
