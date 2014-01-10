@@ -1195,40 +1195,45 @@ class IDSS():
                                 endMinMatch[assEnd] = diff
                                 currentMinimumMatch[assEnd] = assemblage
                                 matchEndAssemblage[assEnd]=endAssemblage
+                                matchEnd=assEnd
 
-                    ## at this point we should have the minimum distance match for each end.
-                    ## we then need to compare each end to find which one is the smallest
-                    ## three possibilities -- end1, end2 and both (i.e., the diff is the same)
-                    smallestMatchEnd=[]
-                    assemblagesMatchedToEnd=[]
-                    #print "endminmatch-end1: ", endMinMatch['End1'], "  endminmatch-end2: ", endMinMatch['End2']
-                    if endMinMatch['End1'] < endMinMatch['End2']:
-                        globalMinMatch=endMinMatch['End1']
-                        smallestMatchEnd.append('End1')
-                        assemblagesMatchedToEnd.append(currentMinimumMatch['End1'])
-                        #print "new match is to end1:  ", currentMinimumMatch['End1']
+                ## at this point we should have the minimum distance match for each end.
+                ## we then need to compare each end to find which one is the smallest
+                ## three possibilities -- end1, end2 and both (i.e., the diff is the same)
+                smallestMatchEnd=[]
+                assemblagesMatchedToEnd=[]
+                #print "endminmatch-end1: ", endMinMatch['End1'], "  endminmatch-end2: ", endMinMatch['End2']
+                if endMinMatch['End1'] < endMinMatch['End2']:
+                    globalMinMatch=endMinMatch['End1']
+                    smallestMatchEnd.append('End1')
+                    assemblagesMatchedToEnd.append(currentMinimumMatch['End1'])
+                    #print "new match is to end1:  ", currentMinimumMatch['End1']
 
-                    elif endMinMatch['End2']< endMinMatch['End1']:
-                        globalMinMatch=endMinMatch['End2']
-                        smallestMatchEnd.append('End2')
-                        assemblagesMatchedToEnd.append(currentMinimumMatch['End2'])
-                        #print "new match is to end2:  ", currentMinimumMatch['End1']
-                    else:
-                        globalMinMatch=endMinMatch['End1']
-                        smallestMatchEnd.append('End1')
-                        smallestMatchEnd.append('End2')
-                        assemblagesMatchedToEnd.append(currentMinimumMatch['End1'])
-                        assemblagesMatchedToEnd.append(currentMinimumMatch['End2'])
-                        #print "matches BOTH ends:  ", currentMinimumMatch['End1']
+                elif endMinMatch['End2']< endMinMatch['End1']:
+                    globalMinMatch=endMinMatch['End2']
+                    smallestMatchEnd.append('End2')
+                    assemblagesMatchedToEnd.append(currentMinimumMatch['End2'])
+                    #print "new match is to end2:  ", currentMinimumMatch['End1']
+                elif endMinMatch['End1']<10 and endMinMatch['End2']<10:
+                    #print endMinMatch['End2'], "<--", endMinMatch['End1']
+                    #print "matchEnd: ", matchEnd
+                    #print currentMinimumMatch['End1'], "---", currentMinimumMatch['End2']
+                    globalMinMatch=endMinMatch['End1']
+                    smallestMatchEnd.append('End1')
+                    smallestMatchEnd.append('End2')
+                    assemblagesMatchedToEnd.append(currentMinimumMatch[matchEnd])
+                #else:
+                    #exit("Error: matched null values in continuity seriation.")
+                    #print "matches BOTH ends:  ", currentMinimumMatch['End1']
 
-                    #print "Assemblages Matched To End: ", assemblagesMatchedToEnd
-                    ## find out if there are others that have the same minimum value
-                    for b in self.assemblages:
-                        if b not in current_graph.nodes()  and b not in assemblagesMatchedToEnd:
-                            diff = self.calculateSumOfDifferences(b,endAssemblage,args)
-                            if diff == globalMinMatch:
-                                ## add this as a matched equivalent assemblage. We will then deal with more than one match
-                                assemblagesMatchedToEnd.append(b)
+                #print "Assemblages Matched To End: ", assemblagesMatchedToEnd
+                ## find out if there are others that have the same minimum value
+                for b in self.assemblages:
+                    if b not in current_graph.nodes()  and b not in assemblagesMatchedToEnd:
+                        diff = self.calculateSumOfDifferences(b,endAssemblage,args)
+                        if diff == globalMinMatch:
+                            ## add this as a matched equivalent assemblage. We will then deal with more than one match
+                            assemblagesMatchedToEnd.append(b)
                 loop=1
                 firstOne=True
 
