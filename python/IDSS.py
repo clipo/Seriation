@@ -972,7 +972,7 @@ class IDSS():
              )
         atlasFile=self.outputDirectory + self.inputFile[0:-4]+"-"+str(type)+"-atlas.png"
         plt.savefig(atlasFile,dpi=250)
-        plt.show() # display
+        #plt.show() # display
 
     def createAtlas(self,filteredarray,args):
         # remove isolated nodes, only connected graphs are left
@@ -1277,6 +1277,7 @@ class IDSS():
     ## Output to file and to the screen
     def graphOutput(self,sumGraph,sumgraphfilename, args):
         ## Now make the graphic for set of graphs
+        plt.figure(sumgraphfilename,figsize=(8,8))
         plt.rcParams['text.usetex'] = False
         newfilename=self.outputDirectory+sumgraphfilename
         gmlfilename=self.outputDirectory+sumgraphfilename+".gml"
@@ -1315,6 +1316,7 @@ class IDSS():
         plt.axis('off')
         plt.savefig(newfilename,dpi=75)
         self.saveGraph(sumGraph,newfilename+".gml",args)
+        #plt.show()
 
 
     ## Output to file and to the screen
@@ -1965,7 +1967,8 @@ class IDSS():
             #################################################### MinMax Graph ############################################
 
             minMaxGraph = self.createMinMaxGraph(sumGraph,args)
-            self.graphOutput(minMaxGraph,self.outputDirectory+self.inputFile[0:-4]+"-minmax.png",args)
+            if args['graphs'] not in (None,False,0):
+                self.graphOutput(minMaxGraph,self.outputDirectory+self.inputFile[0:-4]+"-minmax.png",args)
 
             #################################################### MST SECTION ####################################################
             if args['mst'] not in (None,False,0):
@@ -2001,6 +2004,7 @@ class IDSS():
             self.graphOutput(minMaxGraph,self.inputFile[0:-4]+"-continuity-minmax.png",args)
             if args['atlas'] not in (None,False,0):
                 self.createAtlasOfSolutions(continuityArray,"continuity",args)
+
         if args['graphs'] not in (None,False,0):
             plt.show() # display
 
