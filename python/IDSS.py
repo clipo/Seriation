@@ -939,14 +939,50 @@ class IDSS():
             w.poly(parts=[[[x1,y1],[x2,y2]]])
         w.save(shapefilename)
 
-    def createAtlasOfSolutions(self,filteredarray,args):
-        atlasGraph=nx.disjoint_union_all(filteredarray)
-        pos=nx.graphviz_layout(atlasGraph,prog="twopi",root=args['graphroot'])
-        atlasFile=self.outputDirectory + self.inputFile[0:-4]+"-new-atlas.png"
+    def iso(self, G1, glist):
+        """Quick and dirty nonisomorphism checker used to check isomorphisms."""
+        for G2 in glist:
+            if isomorphic(G1,G2):
+                return True
+        return False
+
+    def createAtlasOfSolutions(self,filteredarray,type, args):
+        plt.figure(5,figsize=(8,8))
+
+        UU=nx.Graph()
+        # do quick isomorphic-like check, not a true isomorphism checker
+        nlist=[] # list of nonisomorphic graphs
+        for G in filteredarray:
+            # check against all nonisomorphic graphs so far
+            if not self.iso(G, nlist):
+                nlist.append(G)
+
+        atlas=self.createAtlas(filteredarray,args)
+        #UU=nx.union_all(nlist)
+        #atlasGraph=nx.disjoint_union_all(filteredarray)
+        pos=nx.graphviz_layout(atlas,prog="twopi")
+        #pos=nx.graphviz_layout(UU,prog="twopi",root=0)
+        #C=nx.connected_component_subgraphs(atlas)
+        C=nx.connected_component_subgraphs(atlas)
+        for g in C:
+            c=[random()]*nx.number_of_nodes(g)
+
+            nx.draw(g,
+             pos,
+             node_size=40,
+             node_color=c,
+             vmin=0.0,
+             vmax=1.0,
+             alpha=.2,
+             font_size=7,
+             with_labels=True
+             )
+        atlasFile=self.outputDirectory + self.inputFile[0:-4]+"-"+str(type)+"-atlas.png"
         plt.savefig(atlasFile,dpi=250)
         plt.show() # display
 
     def createAtlas(self,filteredarray,args):
+
         # remove isolated nodes, only connected graphs are left
         U=nx.Graph() # graph for union of all graphs in atlas
         for G in filteredarray:
@@ -1897,7 +1933,8 @@ class IDSS():
 
             sumGraph=self.sumGraphsByWeight(frequencyArray,args)
             self.sumGraphOutput(sumGraph,SUMGRAPH,self.inputFile[0:-4]+"-mst-sumgraph.png",args)
-            #self.createAtlasOfSolutions(frequencyArray,args)
+            if args['atlas'] not in (None,False,0):
+                self.createAtlasOfSolutions(frequencyArray,"frequency",args)
 
             #################################################### MinMax Graph ############################################
 
@@ -1936,7 +1973,8 @@ class IDSS():
             self.MST(sGraph,self.inputFile[0:-4]+"-mst-of-min.png",args)
             minMaxGraph = self.createMinMaxGraph(sGraph,args)
             self.graphOutput(minMaxGraph,self.inputFile[0:-4]+"-continuity-minmax.png",args)
-
+            if args['atlas'] not in (None,False,0):
+                self.createAtlasOfSolutions(continuityArray,"continuity",args)
         if args['graphs'] not in (None,False,0):
             plt.show() # display
 
@@ -1970,6 +2008,7 @@ if __name__ == "__main__":
     parser.add_argument('--continuity',default=None,help="Conduct a continuity seriation analysis. Default is None.")
     parser.add_argument('--graphroot',default=None,help="The root of the graph figures (i.e., name of assemblage you want to treat as one end in the graphs.")
     parser.add_argument('--continuityroot',default=None,help="If you have a outgroup or root of the graph, set that here.")
+    parser.add_argument('--atlas',default=None,help="If you want to have a figure that shows all of the results independently, set that here.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
