@@ -99,22 +99,23 @@ class IDSS():
         reader = csv.reader(file, delimiter='\t', quotechar='|')
         values=[]
         for row in reader:
-            row = map(str, row)
-            label=row[0]
-            self.labels[ label ] = label
-            row.pop(0)
-            row = map(float, row)
-            self.numberOfClasses = len(row)
-            freq=[]
-            rowtotal=sum(row)
-            for r in row:
-                freq.append(float(float(r)/float(rowtotal)))
-                values.append(float(r))
-            self.assemblages[ label ] = freq
-            self.assemblageFrequencies[ label ]  = freq
-            self.assemblageValues[ label ] = values
-            self.assemblageSize[ label ]= rowtotal
-            self.countOfAssemblages +=1
+            if len(row)>1:
+                row = map(str, row)
+                label=row[0]
+                self.labels[ label ] = label
+                row.pop(0)
+                row = map(float, row)
+                self.numberOfClasses = len(row)
+                freq=[]
+                rowtotal=sum(row)
+                for r in row:
+                    freq.append(float(float(r)/float(rowtotal)))
+                    values.append(float(r))
+                self.assemblages[ label ] = freq
+                self.assemblageFrequencies[ label ]  = freq
+                self.assemblageValues[ label ] = values
+                self.assemblageSize[ label ]= rowtotal
+                self.countOfAssemblages +=1
         self.maxSeriationSize=self.countOfAssemblages
         return True
 
@@ -133,8 +134,8 @@ class IDSS():
         pairs = self.all_pairs(self.assemblages)
         pairGraph = nx.Graph()
         for pair in pairs:
-            pairGraph.add_node(pair[0])
-            pairGraph.add_node(pair[1])
+            pairGraph.add_node(pair[0], name=pair[0])
+            pairGraph.add_node(pair[1], name=pair[1])
             columns=range(len(self.assemblages[pair[0]]))
             ass1 = self.assemblages[pair[0]]
             ass2 = self.assemblages[pair[1]]
@@ -755,7 +756,7 @@ class IDSS():
                 name = nodey[0]
                 xCoordinate = self.xAssemblage[name]
                 yCoordinate = self.yAssemblage[name]
-                megaGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
+                megaGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
                                    size=self.assemblageSize[name])
 
             count=0
@@ -956,17 +957,12 @@ class IDSS():
             # check against all nonisomorphic graphs so far
             if not self.iso(G, nlist):
                 nlist.append(G)
-
-        #atlas=self.createAtlas(filteredarray,args)
-        ##UU=nx.union_all(nlist)
         atlasGraph=nx.disjoint_union_all(filteredarray)
         pos=nx.graphviz_layout(atlasGraph,prog="neato")
-        #pos=nx.graphviz_layout(UU,prog="twopi",root=0)
-        #C=nx.connected_component_subgraphs(atlas)
         C=nx.connected_component_subgraphs(atlasGraph)
         for g in C:
             c=[random()]*nx.number_of_nodes(g)
-
+            nodes, names = zip(*nx.get_node_attributes(g, 'name').items())
             nx.draw(g,
              pos,
              node_size=40,
@@ -975,7 +971,8 @@ class IDSS():
              vmax=1.0,
              alpha=.2,
              font_size=7,
-             with_labels=True
+             with_labels=True,
+             labels = names
              )
         atlasFile=self.outputDirectory + self.inputFile[0:-4]+"-"+str(type)+"-atlas.png"
         plt.savefig(atlasFile,dpi=250)
@@ -1048,7 +1045,7 @@ class IDSS():
                 if args['xyfile'] is not None:
                     xCoordinate = self.xAssemblage[name]
                     yCoordinate = self.yAssemblage[name]
-                sumGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
+                sumGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
                                    size=self.assemblageSize[name])
 
             maxWeight=0
@@ -1092,7 +1089,7 @@ class IDSS():
                 if args['xyfile'] is not None:
                     xCoordinate = self.xAssemblage[name]
                     yCoordinate = self.yAssemblage[name]
-                sumGraph.add_node(name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
+                sumGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
                                    size=self.assemblageSize[name])
 
             maxWeight=0
@@ -1139,7 +1136,7 @@ class IDSS():
         for ass in self.assemblages:
             numGraphs +=1
             g=nx.Graph(startAssemblage=ass, End1=ass)
-            g.add_node(ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass],yCoordinate=self.yAssemblage[ass])
+            g.add_node(ass,name=ass, size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass],yCoordinate=self.yAssemblage[ass])
             minMatch=10
             newNeighbor=""
             ## now find the smallest neighbor from the rest of the assemblages.
@@ -1150,9 +1147,10 @@ class IDSS():
                         minMatch = diff
                         newNeighbor=potentialNeighbor
 
-            g.add_node(newNeighbor, xCoordinate=self.xAssemblage[newNeighbor],
+            g.add_node(newNeighbor, name=newNeighbor, xCoordinate=self.xAssemblage[newNeighbor],
                        yCoordinate=self.xAssemblage[newNeighbor], size=self.assemblageSize[newNeighbor])
-
+            if minMatch==0:  ## prevent divide by zero errors
+                minMatch=10
             g.add_path([ass, newNeighbor], weight=minMatch, inverseweight=(1/minMatch ))
 
             g.graph['End2']=newNeighbor
@@ -1213,7 +1211,7 @@ class IDSS():
                             diff = self.calculateSumOfDifferences(b,endAssemblage,args)
                             if diff == globalMinMatch:
                                 ## add this as a matched equivalent assemblage. We will then deal with more than one match
-                                assemblagesMatchedToEnd.append(a)
+                                assemblagesMatchedToEnd.append(b)
                     loop=1
                     firstOne=True
 
@@ -1223,7 +1221,7 @@ class IDSS():
                             # for the first time we need to simply add it to the right end but after this we copy...
                             if firstOne == True:
                                 firstOne=False
-                                current_graph.add_node(match, xCoordinate=self.xAssemblage[match],
+                                current_graph.add_node(match, name=match, xCoordinate=self.xAssemblage[match],
                                    yCoordinate=self.xAssemblage[match],
                                     size=self.assemblageSize[match])
                                 if globalMinMatch==0:
@@ -1236,7 +1234,7 @@ class IDSS():
                                 loop += 1
                                 #print "Loop: ", loop
                                 new_network = original_network.copy()
-                                new_network.add_node(match, xCoordinate=self.xAssemblage[match],
+                                new_network.add_node(match, name=match, xCoordinate=self.xAssemblage[match],
                                                      yCoordinate=self.xAssemblage[match],size=self.assemblageSize[match])
                                 if globalMinMatch==0:
                                     globalMinMatch=10
@@ -1296,7 +1294,7 @@ class IDSS():
         nodeList = sumGraph.nodes()
         for a in self.assemblages:
             if a not in nodeList:
-                sumGraph.add_node(a,  xCoordinate=self.xAssemblage[a], yCoordinate=self.yAssemblage[a],
+                sumGraph.add_node(a, name=a, xCoordinate=self.xAssemblage[a], yCoordinate=self.yAssemblage[a],
                                    size=self.assemblageSize[a])
         SUMGRAPH.write( "*Node data\n")
         SUMGRAPH.write("ID AssemblageSize X Y Easting Northing\n")
@@ -1618,10 +1616,10 @@ class IDSS():
             ass1,ass2=key.split("*")
             #print ass1, "-", ass2, "---",value
             if ass1  not in output_graph.nodes():
-                output_graph.add_node(ass1, xCoordinate=self.xAssemblage[ass1],
+                output_graph.add_node(ass1,name=ass1, xCoordinate=self.xAssemblage[ass1],
                                         yCoordinate=self.xAssemblage[ass1],size=self.assemblageSize[ass1])
             if ass2 not in output_graph.nodes():
-                output_graph.add_node(ass2, xCoordinate=self.xAssemblage[ass2],
+                output_graph.add_node(ass2, name=ass2, xCoordinate=self.xAssemblage[ass2],
                                         yCoordinate=self.xAssemblage[ass2],size=self.assemblageSize[ass2])
             if nx.has_path(output_graph,ass1,ass2) == False or matchOnThisLevel==True:
                 matchOnThisLevel=True   ## setting this true allows us to match the condition that at least one match was
