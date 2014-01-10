@@ -947,7 +947,7 @@ class IDSS():
         return False
 
     def createAtlasOfSolutions(self,filteredarray,type, args):
-        plt.figure(5,figsize=(8,8))
+        plt.figure(self.inputFile[0:-4]+"-"+str(type)+"-atlas.png",figsize=(8,8))
 
         UU=nx.Graph()
         # do quick isomorphic-like check, not a true isomorphism checker
@@ -982,7 +982,6 @@ class IDSS():
         plt.show() # display
 
     def createAtlas(self,filteredarray,args):
-
         # remove isolated nodes, only connected graphs are left
         U=nx.Graph() # graph for union of all graphs in atlas
         for G in filteredarray:
@@ -1932,14 +1931,14 @@ class IDSS():
             self.output(frequencyArray,OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
 
             sumGraph=self.sumGraphsByWeight(frequencyArray,args)
-            self.sumGraphOutput(sumGraph,SUMGRAPH,self.inputFile[0:-4]+"-mst-sumgraph.png",args)
+            self.sumGraphOutput(sumGraph,SUMGRAPH,self.outputDirectory+self.inputFile[0:-4]+"-mst-sumgraph.png",args)
             if args['atlas'] not in (None,False,0):
                 self.createAtlasOfSolutions(frequencyArray,"frequency",args)
 
             #################################################### MinMax Graph ############################################
 
             minMaxGraph = self.createMinMaxGraph(sumGraph,args)
-            self.graphOutput(minMaxGraph,self.inputFile[0:-4]+"-minmax.png",args)
+            self.graphOutput(minMaxGraph,self.outputDirectory+self.inputFile[0:-4]+"-minmax.png",args)
 
             #################################################### MST SECTION ####################################################
             if args['mst'] not in (None,False,0):
