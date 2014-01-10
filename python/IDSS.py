@@ -71,6 +71,7 @@ class IDSS():
         self.typeFrequencyMeanCI = {}
         self.pairwise={}
         self.pairwiseError={}
+        self.sumOfDifferencesBetweenPairs={}
         logger.debug("Start time:  %s ", self.start)
         self.scr = None
 
@@ -116,6 +117,16 @@ class IDSS():
             self.countOfAssemblages +=1
         self.maxSeriationSize=self.countOfAssemblages
         return True
+
+    def preCalculateSumOfDifferencesBetweenPairs(self, args):
+        logger.debug("Precalculate differences between pairs")
+        pairs = self.all_pairs(self.assemblages)
+        for pair in pairs:
+            diff = self.calculateSumOfDifferences(pair[0],pair[1],args)
+            key1 = pair[0]+"*"+pair[1]
+            key2 = pair[1]+"*"+pair[0]
+            self.sumOfDifferencesBetweenPairs[key1]=diff
+            self.sumOfDifferencesBetweenPairs[key2]=diff
 
     def preCalculateComparisons(self,args):
         logger.debug("Precalculating the comparisons between all pairs of assemblages...")
@@ -777,7 +788,7 @@ class IDSS():
         os.environ["PATH"] += ":/usr/local/bin:"
         pos=nx.graphviz_layout(mst)
         edgewidth=[]
-        weights = nx.get_edge_attributes(mst, 'weight')
+        weights = nx.get_edge_attributes(mst, 'inverseweight')
         for w in weights:
             edgewidth.append(weights[w])
 
@@ -1087,126 +1098,118 @@ class IDSS():
     def continunityMaximizationSeriation(self,args):
         graphList=[]
         numGraphs=0
-        if args['continuityroot'] is not None:
-            numGraphs +=1
-            g=nx.Graph(startAssemblage=args['continuityroot'], End1=args['continuityroot'])
-            g.add_node(args['continuityroot'],size=self.assemblageSize[args['continuityroot']],
-                       xCoordinate=self.xAssemblage[args['continuityroot']],yCoordinate=self.yAssemblage[args['continuityroot']])
-            graphList.append(g)   ## create a starting graph for each of assemblage put into an array
-        else:
-            for ass in self.assemblages:
-                numGraphs +=1
-                g=nx.Graph(startAssemblage=ass, End1=ass)
-                g.add_node(ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass],yCoordinate=self.yAssemblage[ass])
-                graphList.append(g)   ## create a starting graph for each of assemblage put into an array
 
         ## special case for the first time through
-        for g in graphList:
-            minMatch = 10000000
-            currentMinimumMatch=""
-            nodelist = g.nodes()
-            for node in nodelist:
-                for b in self.assemblages:
-                    if b is not node:
-                        diff = self.calculateSumOfDifferences(node,b,args)
-                        if diff < minMatch:
-                            minMatch = diff
-                            currentMinimumMatch=b
+        ## set up all the initial pairs of two closest assemblages.
+        for ass in self.assemblages:
+            numGraphs +=1
+            g=nx.Graph(startAssemblage=ass, End1=ass)
+            g.add_node(ass,size=self.assemblageSize[ass], xCoordinate=self.xAssemblage[ass],yCoordinate=self.yAssemblage[ass])
+            minMatch=10
+            newNeighbor=""
+            ## now find the smallest neighbor from the rest of the assemblages.
+            for potentialNeighbor in self.assemblages:
+                if potentialNeighbor is not ass:
+                    diff = self.calculateSumOfDifferences(potentialNeighbor,ass,args)
+                    if diff < minMatch:
+                        minMatch = diff
+                        newNeighbor=potentialNeighbor
 
-            g.add_node(currentMinimumMatch, xCoordinate=self.xAssemblage[currentMinimumMatch],
-                       yCoordinate=self.xAssemblage[currentMinimumMatch], size=self.assemblageSize[currentMinimumMatch])
-            if minMatch==0:
-                minMatch=10000000
+            g.add_node(newNeighbor, xCoordinate=self.xAssemblage[newNeighbor],
+                       yCoordinate=self.xAssemblage[newNeighbor], size=self.assemblageSize[newNeighbor])
 
-            g.add_path([node, currentMinimumMatch], weight=minMatch, inverseweight=(1/minMatch ))
-            g.graph['End2']=currentMinimumMatch
+            g.add_path([ass, newNeighbor], weight=minMatch, inverseweight=(1/minMatch ))
+
+            g.graph['End2']=newNeighbor
+            graphList.append(g)   ## create a starting graph for each of assemblage put into an array
+
 
         ## Now go through list looking at each one and increasing as long as I can. Add graphs when there are equivalent solutions
-        for g in graphList:
-            for assemblage in self.assemblages:
-                globalMinMatch = 100000
-                endMinMatch={"End1":10000,"End2":10000}
-                currentMinimumMatch={}
-                matchEnd=""
-                matchEndAssemblage={}   ## this will contain the end assemblages and the differences
-                match=False
-                smallestMatchEnd=[]
-                assemblagesMatchedToEnd=[]
+        for current_graph in graphList:
+            globalMinMatch = 10
+            endMinMatch={"End1":10,"End2":10}
+            currentMinimumMatch={}
+            matchEnd=""
+            matchEndAssemblage={}   ## this will contain the end assemblages and the differences
+            #print "Now on GRAPH: ", current_graph
 
+            ## go through this the # of times of the assemblages -2 (since the network already has 2 nodes)
+            for count in (0, len(self.assemblages)-2):
                 ## examine both ends to see which is the smallest summed difference.
                 for assEnd in ("End1","End2"):
-                    if assEnd=="End1":
-                        otherEnd="End2"
-                    else:
-                        otherEnd="End1"
-
-                    ## only go from one side if you use declare a root
-                    if args['continuityroot'] is not None:
-                        assEnd=="End2"
-
                     ## set the current end assemblages
-                    endAssemblage=g.graph[assEnd]
+                    endAssemblage=current_graph.graph[assEnd]
+                    ## go through the other assemblages (not already in the graph.
+                    non_graph_subset=list(set(self.assemblages)-set(current_graph.nodes()))
+                    for assemblage in non_graph_subset:
+                        diff = self.calculateSumOfDifferences(endAssemblage,assemblage,args)
+                        if diff < endMinMatch[assEnd]:
+                            endMinMatch[assEnd] = diff
+                            currentMinimumMatch[assEnd] = assemblage
+                            matchEnd=assEnd
+                            matchEndAssemblage[assEnd]=endAssemblage
 
-                    for a in self.assemblages:
-                        if a not in g.nodes():
-                            diff = self.calculateSumOfDifferences(endAssemblage,a,args)
-                            if diff < endMinMatch[assEnd]:
-                                match=True
-                                endMinMatch[assEnd] = diff
-                                currentMinimumMatch[assEnd] = a
-                                matchEnd=assEnd
-                                matchEndAssemblage[assEnd]=endAssemblage
+                    ## at this point we should have the minimum distance match for each end.
+                    ## we then need to compare each end to find which one is the smallest
+                    ## three possibilities -- end1, end2 and both (i.e., the diff is the same)
+                    smallestMatchEnd=[]
+                    assemblagesMatchedToEnd=[]
 
-                ## at this point we should have the minimum distance match for each end.
-                ## we then need to compare each end to find which one is the smallest
-                ## three possibilities -- end1, end2 and both (i.e., the diff is the same)
+                    if endMinMatch['End1'] < endMinMatch['End2']:
+                        globalMinMatch=endMinMatch['End1']
+                        smallestMatchEnd.append('End1')
+                        assemblagesMatchedToEnd.append(currentMinimumMatch['End1'])
 
-                if endMinMatch['End1'] < endMinMatch['End2']:
-                    globalMinMatch=endMinMatch['End1']
-                    smallestMatchEnd.append('End1')
-                    assemblagesMatchedToEnd.append(matchEndAssemblage['End1'])
+                    elif endMinMatch['End2']< endMinMatch['End1']:
+                        globalMinMatch=endMinMatch['End2']
+                        smallestMatchEnd.append('End2')
+                        assemblagesMatchedToEnd.append(currentMinimumMatch['End2'])
+                    else:
+                        globalMinMatch=endMinMatch['End1']
+                        smallestMatchEnd.append('End1')
+                        smallestMatchEnd.append('End2')
+                        assemblagesMatchedToEnd.append(currentMinimumMatch['End1'])
+                        assemblagesMatchedToEnd.append(currentMinimumMatch['End2'])
 
-                elif endMinMatch['End2']< endMinMatch['End1']:
-                    globalMinMatch=endMinMatch['End2']
-                    smallestMatchEnd.append('End2')
-                    assemblagesMatchedToEnd.append(matchEndAssemblage['End2'])
-                else:
-                    globalMinMatch=endMinMatch['End1']
-                    smallestMatchEnd.append('End1')
-                    smallestMatchEnd.append('End2')
-                    assemblagesMatchedToEnd.append(matchEndAssemblage['End1'])
-                    assemblagesMatchedToEnd.append(matchEndAssemblage['End2'])
+                    #print "Assemblages Matched To End: ", assemblagesMatchedToEnd
+                    ## find out if there are others that have the same minimum value
+                    for b in self.assemblages:
+                        if b not in current_graph.nodes() and b is not endAssemblage and b not in assemblagesMatchedToEnd:
+                            diff = self.calculateSumOfDifferences(b,endAssemblage,args)
+                            if diff == globalMinMatch:
+                                ## add this as a matched equivalent assemblage. We will then deal with more than one match
+                                assemblagesMatchedToEnd.append(a)
+                    loop=1
+                    firstOne=True
 
-                ## find out if there are others that have the same minimum value
-                for a in self.assemblages:
-                    if a not in g.nodes() and a is not endAssemblage and a not in assemblagesMatchedToEnd:
-                        diff = self.calculateSumOfDifferences(a,endAssemblage,args)
-                        if diff == globalMinMatch:
-                            ## add this as a matched equivalent assemblage. We will then deal with more than one match
-                            assemblagesMatchedToEnd.append(a)
+                    original_network=current_graph.copy()
+                    for match in assemblagesMatchedToEnd:
+                        for endAss in smallestMatchEnd:
+                            # for the first time we need to simply add it to the right end but after this we copy...
+                            if firstOne == True:
+                                firstOne=False
+                                current_graph.add_node(match, xCoordinate=self.xAssemblage[match],
+                                   yCoordinate=self.xAssemblage[match],
+                                    size=self.assemblageSize[match])
+                                if globalMinMatch==0:
+                                    globalMinMatch=10
+                                current_graph.add_path( [match, matchEndAssemblage[endAss]], weight=globalMinMatch, inverseweight=(1/globalMinMatch ))
+                                #print "Assemblage added: ", match
+                                #print "network now: ", current_graph.nodes(), " long"
+                            ## if there are more than one we need to copy first before adding node
+                            else:
+                                loop += 1
+                                #print "Loop: ", loop
+                                new_network = original_network.copy()
+                                new_network.add_node(match, xCoordinate=self.xAssemblage[match],
+                                                     yCoordinate=self.xAssemblage[match],size=self.assemblageSize[match])
+                                if globalMinMatch==0:
+                                    globalMinMatch=10
+                                new_network.add_path([matchEndAssemblage[endAss], match], weight=globalMinMatch, inverseweight=(1/globalMinMatch ))
+                                graphList.append(new_network)
+                                numGraphs += 1
+                                #print "Number of graphs: ", numGraphs, " -- ", len(graphList)
 
-                firstOne=True
-                for match in assemblagesMatchedToEnd:
-                    for endAss in smallestMatchEnd:
-                        # for the first time we need to simply add it to the right end but after this we copy...
-                        if firstOne == True:
-                            firstOne=False
-                            g.add_node(match, xCoordinate=self.xAssemblage[match],
-                               yCoordinate=self.xAssemblage[match],
-                                size=self.assemblageSize[match])
-                            if globalMinMatch==0:
-                                globalMinMatch=10000000
-                            g.add_path([matchEndAssemblage[endAss], match], weight=globalMinMatch, inverseweight=(1/globalMinMatch ))
-                        ## if there are more than one we need to copy first before adding node
-                        else:
-                            new_network = g.copy()
-                            new_network.add_node(match, xCoordinate=self.xAssemblage[match],
-                                                 yCoordinate=self.xAssemblage[match],size=self.assemblageSize[match])
-                            if globalMinMatch==0:
-                                globalMinMatch=10000000
-                            new_network.add_path([matchEndAssemblage[endAss], match], weight=globalMinMatch, inverseweight=(1/globalMinMatch ))
-                            graphList.append(new_network)
-                            numGraphs += 1
         return graphList
 
     ## Output to file and to the screen
@@ -1227,7 +1230,6 @@ class IDSS():
         weights = nx.get_edge_attributes(sumGraph, 'weight')
         for w in weights:
             edgewidth.append(weights[w])
-
         maxValue = max(edgewidth)
         widths=[]
         for w in edgewidth:
@@ -1255,7 +1257,6 @@ class IDSS():
 
     ## Output to file and to the screen
     def sumGraphOutput(self,sumGraph,SUMGRAPH,sumgraphfilename, args):
-
 
         nodeList = sumGraph.nodes()
         for a in self.assemblages:
@@ -1553,6 +1554,47 @@ class IDSS():
                 network.graph["meanDistance"]=meanDistance
                 distanceHash[ text] = meanDistance
 
+    # from a "summed" graph, create a "min max" solution
+    def createMinMaxGraph(self, input_graph, args):
+        ## first need to find the pairs with the maximum occurrence, then we work down from there until all of the
+        ## nodes are included
+        maxWeight=0
+        pairsHash={}
+        output_graph=nx.Graph()
+        for e in input_graph.edges_iter():
+            d = input_graph.get_edge_data(*e)
+            fromAssemblage = e[0]
+            toAssemblage = e[1]
+            currentWeight=int(d['weight'])
+            pairsHash[fromAssemblage+"*"+toAssemblage]=currentWeight
+            label= fromAssemblage+"*"+toAssemblage
+            ##print label," - ", currentWeight
+
+        sorted_pairs = sorted(pairsHash.iteritems(), key=operator.itemgetter(1), reverse=True)
+        matchOnThisLevel=False
+        currentValue=0
+        for key,value in sorted_pairs:
+            if currentValue==0:
+                currentValue = value
+            elif value<currentValue:
+                matchOnThisLevel=False  ## we need to match all the connections with equivalent weights (otherwise we
+                                        ## would stop after the nodes are included the first time which would be arbitrary)
+                                        ## here we set the flag to false.
+            ass1,ass2=key.split("*")
+            #print ass1, "-", ass2, "---",value
+            if ass1  not in output_graph.nodes():
+                output_graph.add_node(ass1, xCoordinate=self.xAssemblage[ass1],
+                                        yCoordinate=self.xAssemblage[ass1],size=self.assemblageSize[ass1])
+            if ass2 not in output_graph.nodes():
+                output_graph.add_node(ass2, xCoordinate=self.xAssemblage[ass2],
+                                        yCoordinate=self.xAssemblage[ass2],size=self.assemblageSize[ass2])
+            if nx.has_path(output_graph,ass1,ass2) == False or matchOnThisLevel==True:
+                matchOnThisLevel=True   ## setting this true allows us to match the condition that at least one match was
+                                        ## made at this level
+                output_graph.add_path([ass1,ass2], weight=value, inverseweight=(1/value ))
+
+        return output_graph
+
     def filterSolutions(self,end_solutions,all_solutions,args):
         ################################################# FILTERING  ####################################
         # now do some weeding. Basically start with the last network ( largest), and work backwards to smaller and smaller solutions. Ignore any
@@ -1738,6 +1780,13 @@ class IDSS():
         logger.debug("This returns a graph with all pairs and the comparisons as weights.")
         pairGraph = self.preCalculateComparisons(args)
 
+        #####################################
+
+        logger.debug("Now calculate sum of differences between all pairs")
+        sumOfDifferencesBetweenPairs = self.preCalculateSumOfDifferencesBetweenPairs
+
+        #####################################
+
         frequencyArray=[]
         continuityArray=[]
         maxNodes=3
@@ -1850,6 +1899,11 @@ class IDSS():
             self.sumGraphOutput(sumGraph,SUMGRAPH,self.inputFile[0:-4]+"-mst-sumgraph.png",args)
             #self.createAtlasOfSolutions(frequencyArray,args)
 
+            #################################################### MinMax Graph ############################################
+
+            minMaxGraph = self.createMinMaxGraph(sumGraph,args)
+            self.graphOutput(minMaxGraph,self.inputFile[0:-4]+"-minmax.png",args)
+
             #################################################### MST SECTION ####################################################
             if args['mst'] not in (None,False,0):
                 outputFile = self.outputDirectory + self.inputFile[0:-4]+".vna"
@@ -1870,13 +1924,18 @@ class IDSS():
                     notPartOfSeriationsList.append(a)
                     print a
 
+            if len(notPartOfSeriationsList)==0:
+                print "---> All assemblages used."
+
         if args['continuity'] not in (None,False,0):
             # experimental
             continuityArray=self.continunityMaximizationSeriation(args)
             #self.outputGraphArray(array,args)
             sGraph=self.sumGraphsByCount(continuityArray,args)
-            self.graphOutput(sGraph,self.inputFile[0:-4]+"-minimum-sumgraph.png", args)
+            self.graphOutput(sGraph,self.inputFile[0:-4]+"-continuity-sumgraph.png", args)
             self.MST(sGraph,self.inputFile[0:-4]+"-mst-of-min.png",args)
+            minMaxGraph = self.createMinMaxGraph(sGraph,args)
+            self.graphOutput(minMaxGraph,self.inputFile[0:-4]+"-continuity-minmax.png",args)
 
         if args['graphs'] not in (None,False,0):
             plt.show() # display
