@@ -31,6 +31,7 @@ import os
 from pylab import *
 import matplotlib.pyplot as plt
 import re
+import xlsxwriter
 from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic as isomorphic
 
 class AutoVivification(dict):
@@ -489,7 +490,7 @@ class IDSS():
             if error == 0:
                 # uses NetworkX
                 net = nx.Graph(name=str(numberOfTriplets), GraphID=str(numberOfTriplets), End1=permu[0], End2=permu[2], Middle=permu[1],is_directed=False)
-                net.add_node(permu[0], name=permu[0], site="end", end=1, connectedTo=permu[1] )
+                net.add_node(permu[0], name=permu[0],site="end", end=1, connectedTo=permu[1] )
                 net.add_node(permu[1], name=permu[1], site="middle", end=0, connectedTo="middle")
                 net.add_node(permu[2], name=permu[2], site="end", end=1, connectedTo=permu[1])
                 net.add_edge(permu[0], permu[1],weight=comparison12, GraphID=numberOfTriplets,end=1)
@@ -905,14 +906,7 @@ class IDSS():
                 msg = "Can't open file %s to write: %s" % outputFile, e
                 sys.exit(msg)
 
-        sumgraphOutputFile = self.outputDirectory + self.inputFile[0:-4]+"-sumgraph.vna"
-        try:
-            SUMGRAPH = open(sumgraphOutputFile, 'w')
-        except csv.Error as e:
-            msg = "Can't open file %s to write: %s" % sumgraphOutputFile, e
-            sys.exit(msg)
-
-        return OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,SUMGRAPH
+        return OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE
 
     #################################################### sort by multiple keys ####################################################
     def multikeysort(self,items, columns):
@@ -955,19 +949,23 @@ class IDSS():
         for g in filteredarray:
             t=0
             for n in g.nodes():
-                g.node[n]['name']=g.node[n]['name']+" ("+str(num)+")"
+                g.node[n]['label']=g.node[n]['name'] ##+" ("+str(num)+")"
+                #print "label: ", g.node[n]['label']
                 t+=1
             num +=1
         UU=nx.Graph(is_directed=False)
         # do quick isomorphic-like check, not a true isomorphism checker
         nlist=self.iso_filter_graphs(filteredarray) # list of nonisomorphic graphs
-        atlasGraph=nx.disjoint_union_all(filteredarray)
+        atlasGraph=nx.disjoint_union_all(nlist)
+        os.environ["PATH"] += ":/usr/local/bin:"
         pos=nx.graphviz_layout(atlasGraph,prog="neato")
         #labels=nx.draw_networkx_labels(filteredarray,pos)
         C=nx.connected_component_subgraphs(atlasGraph)
         for g in C:
             c=[random()]*nx.number_of_nodes(g)
-            nodes, names = zip(*nx.get_node_attributes(g, 'name').items())
+            #nodes, names = zip(*nx.get_node_attributes(g, 'label').items())
+            names=nx.get_node_attributes(g,'label')
+            #print names
             nx.draw(g,
              pos,
              node_size=40,
@@ -975,11 +973,40 @@ class IDSS():
              vmin=0.0,
              vmax=1.0,
              alpha=.2,
-             font_size=7
+             font_size=7,
+             with_labels=True,
+             labels=names
              )
         atlasFile=self.outputDirectory + self.inputFile[0:-4]+"-"+str(type)+"-atlas.png"
         plt.savefig(atlasFile,dpi=250)
         #plt.show() # display
+
+    def outputExcel(self,filteredarray,filename,type,args):
+        workbook = xlsxwriter.Workbook(self.outputDirectory+filename+"-"+type+".xlsx")
+        worksheet = workbook.add_worksheet()
+        row=0
+        worksheet.write(row,0,"Seriation_Number")
+        worksheet.write(row,1,"Assemblage")
+        for type in range(2,self.numberOfClasses+2):
+            worksheet.write(row,type,"Type_"+str(type-1))
+
+        sernum=0
+        for g in filteredarray:
+            col = 0
+            sernum += 1
+            for node in nx.shortest_path(g, g.graph['End1'],g.graph['End2']):
+                #print node
+                row +=1
+                worksheet.write(row,0,sernum)
+                worksheet.write(row,1,node)
+                col=2
+                for a in self.assemblageFrequencies[node]:
+                    val = int(self.assemblageSize[node]*a)
+                    worksheet.write(row,col,val)
+                    col +=1
+
+        workbook.close()
+
 
     def createAtlas(self,filteredarray,args):
         # remove isolated nodes, only connected graphs are left
@@ -1065,7 +1092,6 @@ class IDSS():
                     currentWeight=1
                     if exists is True:
                         currentWeight = int(dd['weight']) + 1
-
                 if currentWeight > maxWeight:
                     maxWeight=currentWeight
                 sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight)
@@ -1327,13 +1353,15 @@ class IDSS():
 
 
     ## Output to file and to the screen
-    def sumGraphOutput(self,sumGraph,SUMGRAPH,sumgraphfilename, args):
+    def sumGraphOutput(self,sumGraph,sumgraphfilename, args):
 
         nodeList = sumGraph.nodes()
         for a in self.assemblages:
             if a not in nodeList:
                 sumGraph.add_node(a, name=a, xCoordinate=self.xAssemblage[a], yCoordinate=self.yAssemblage[a],
                                    size=self.assemblageSize[a])
+        sumgraphOutputFile = self.outputDirectory + sumgraphfilename+".vna"
+        SUMGRAPH = open(sumgraphOutputFile, 'w')
         SUMGRAPH.write( "*Node data\n")
         SUMGRAPH.write("ID AssemblageSize X Y Easting Northing\n")
 
@@ -1359,13 +1387,12 @@ class IDSS():
             SUMGRAPH.write(text)
 
         ## Now make the graphic for the sumgraph
-        newfilename=self.outputDirectory+self.inputFile[0:-4]+"-sumgraph.png"
-        self.saveGraph(sumGraph,newfilename+".gml",args)
+        newfilename=self.outputDirectory+sumgraphfilename+"-weight.png"
+        self.saveGraph(sumGraph,sumgraphfilename+".gml",args)
         plt.figure(newfilename,figsize=(8,8))
         plt.rcParams['text.usetex'] = False
         os.environ["PATH"] += ":/usr/local/bin:"
-        #pos=nx.graphviz_layout(sumGraph,prog="twopi",root=['graphroot'])
-        pos=nx.graphviz_layout(sumGraph)
+        pos=nx.graphviz_layout(sumGraph,prog="neato")
 
         edgewidth=[]
         weights = nx.get_edge_attributes(sumGraph, 'weight')
@@ -1381,7 +1408,6 @@ class IDSS():
         sizes = nx.get_node_attributes(sumGraph, 'size')
         #print sizes
         for s in sizes:
-            #print sizes[s]
             assemblageSizes.append(sizes[s])
         nx.draw_networkx_edges(sumGraph,pos,alpha=0.3,width=widths)
         sizes = nx.get_node_attributes(sumGraph,'size')
@@ -1394,49 +1420,10 @@ class IDSS():
             'fontsize'   : 10}
         plt.axis('off')
         plt.savefig(newfilename,dpi=75)
+
         if args['shapefile'] is not None and args['xyfile'] is not None:
-            self.createShapefile(sumGraph,self.outputDirectory+self.inputFile[0:-4]+"-sumgraph.shp",args)
+            self.createShapefile(sumGraph,self.outputDirectory+sumgraphfilename+"-weight.shp",args)
 
-        newfilename=self.outputDirectory+sumgraphfilename
-        plt.figure(newfilename,figsize=(8,8))
-        mst=nx.minimum_spanning_tree(sumGraph,weight='inverseweight')
-
-        plt.rcParams['text.usetex'] = False
-
-        pos=nx.graphviz_layout(mst)
-        #pos=nx.graphviz_layout(mst,prog="twopi",root=['graphroot'])
-        edgewidth=[]
-        weights = nx.get_edge_attributes(mst, 'weight')
-        for w in weights:
-            edgewidth.append(weights[w])
-
-        maxValue = max(edgewidth)
-        widths=[]
-        for w in edgewidth:
-            widths.append(((maxValue-w)+1)*5)
-
-        assemblageSizes=[]
-        sizes = nx.get_node_attributes(mst, 'size')
-        #print sizes
-        for s in sizes:
-            #print sizes[s]
-            assemblageSizes.append(sizes[s])
-        nx.draw_networkx_edges(mst,pos,alpha=0.3,width=widths)
-        sizes = nx.get_node_attributes(mst,'size')
-        nx.draw_networkx_nodes(mst,pos,node_size=assemblageSizes,node_color='w',alpha=0.4)
-        nx.draw_networkx_edges(mst,pos,alpha=0.4,node_size=0,width=1,edge_color='k')
-        nx.draw_networkx_labels(mst,pos,fontsize=10)
-        font = {'fontname'   : 'Helvetica',
-            'color'      : 'k',
-            'fontweight' : 'bold',
-            'fontsize'   : 10}
-        plt.axis('off')
-        plt.savefig(newfilename,dpi=75)
-        self.saveGraph(mst,newfilename+".gml",args)
-        if args['shapefile'] is not None and args['xyfile'] is not None:
-            self.createShapefile(mst,self.outputDirectory+sumgraphfilename+".shp",args)
-
-        # layout graphs with positions using graphviz neato
 
     #################################################### OUTPUT SECTION ####################################################
     def output(self,filteredArray,OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxEdges,args):
@@ -1844,7 +1831,7 @@ class IDSS():
 
         ###########################################################################################################
         ### setup the output files. Do this now so that if it fails, its not AFTER all the seriation stuff
-        OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,SUMGRAPH=self.setupOutput(args)
+        OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE=self.setupOutput(args)
 
         ###########################################################################################################
         logger.debug("Now pre-calculating all the combinations between pairs of assemblages. ")
@@ -1966,16 +1953,25 @@ class IDSS():
             #################################################### OUTPUT SECTION ####################################################
             self.output(frequencyArray,OUTFILE,OUTPAIRSFILE,OUTMSTFILE,OUTMSTDISTANCEFILE,maxNodes,args)
 
-            sumGraph=self.sumGraphsByWeight(frequencyArray,args)
-            self.sumGraphOutput(sumGraph,SUMGRAPH,self.outputDirectory+self.inputFile[0:-4]+"-mst-sumgraph.png",args)
             if args['atlas'] not in (None,False,0):
                 self.createAtlasOfSolutions(frequencyArray,"frequency",args)
 
+            sumGraphByWeight=self.sumGraphsByWeight(frequencyArray,args)
+            self.sumGraphOutput(sumGraphByWeight,self.outputDirectory+self.inputFile[0:-4]+"-sumgraph-by-weight",args)
+
+            sumGraphByCount=self.sumGraphsByCount(frequencyArray,args)
+            self.sumGraphOutput(sumGraphByCount,self.outputDirectory+self.inputFile[0:-4]+"-sumgraph-by-count",args)
+
+            if args['excel'] not in (None,False,0):
+                self.outputExcel(frequencyArray,self.inputFile[0:-4],"frequency",args)
+
             #################################################### MinMax Graph ############################################
 
-            minMaxGraph = self.createMinMaxGraph(sumGraph,args)
+            minMaxGraphByWeight = self.createMinMaxGraph(sumGraphByWeight,args)
+            minMaxGraphByCount = self.createMinMaxGraph(sumGraphByCount,args)
             if args['graphs'] not in (None,False,0):
-                self.graphOutput(minMaxGraph,self.outputDirectory+self.inputFile[0:-4]+"-minmax.png",args)
+                self.graphOutput(minMaxGraphByWeight,self.outputDirectory+self.inputFile[0:-4]+"-minmax-by-weight.png",args)
+                self.graphOutput(minMaxGraphByCount,self.outputDirectory+self.inputFile[0:-4]+"-minmax-by-count.png",args)
 
             #################################################### MST SECTION ####################################################
             if args['mst'] not in (None,False,0):
@@ -1991,7 +1987,7 @@ class IDSS():
             #################################################### MST SECTION ####################################################
 
             print "Assemblages not part of final solution:"
-            nodeList=sumGraph.nodes()
+            nodeList=sumGraphByWeight.nodes()
             for a in self.assemblages:
                 if a not in nodeList:
                     notPartOfSeriationsList.append(a)
@@ -2028,7 +2024,6 @@ if __name__ == "__main__":
     parser.add_argument('--filtered',default=1,help="The script will complete by checking to see if smaller valid solutions are included in the larger sets. If not, they are added to the final set. Default is true. ")
     parser.add_argument('--largestonly',default=None, help="If set, the results will only include the results from the last and largest successful series of solutions. Smaller solutions will be excluded. Default is false.")
     parser.add_argument('--individualfileoutput',default=None,help="If true, a .VNA files will be created for every solution.")
-    parser.add_argument('--excel',default=None, help="Not implemented.")
     parser.add_argument('--threshold',default=None,help="Sets the maximum difference between the frequencies of types that will be examine. This has the effect of keeping one from evaluating trivial solutions or solutions in which there is limited warrant for establishing continuity. Default is false.")
     parser.add_argument('--noscreen',default=None, help="If true, there will be no text output (i.e., runs silently). Default is false.")
     parser.add_argument('--xyfile',default=None,help="Enter the name of the XY file that contains the name of the assemblage and the X and Y coordinates for each.")
@@ -2046,6 +2041,7 @@ if __name__ == "__main__":
     parser.add_argument('--graphroot',default=None,help="The root of the graph figures (i.e., name of assemblage you want to treat as one end in the graphs.")
     parser.add_argument('--continuityroot',default=None,help="If you have a outgroup or root of the graph, set that here.")
     parser.add_argument('--atlas',default=None,help="If you want to have a figure that shows all of the results independently, set that here.")
+    parser.add_argument('--excel',default=None,help="Will create excel files with the assemblages in seriation order.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
