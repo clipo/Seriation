@@ -951,12 +951,19 @@ class IDSS():
 
     def createAtlasOfSolutions(self,filteredarray,type, args):
         plt.figure(self.inputFile[0:-4]+"-"+str(type)+"-atlas.png",figsize=(8,8))
-
+        num=0
+        for g in filteredarray:
+            t=0
+            for n in g.nodes():
+                g.node[n]['name']=g.node[n]['name']+" ("+str(num)+")"
+                t+=1
+            num +=1
         UU=nx.Graph(is_directed=False)
         # do quick isomorphic-like check, not a true isomorphism checker
         nlist=self.iso_filter_graphs(filteredarray) # list of nonisomorphic graphs
         atlasGraph=nx.disjoint_union_all(filteredarray)
         pos=nx.graphviz_layout(atlasGraph,prog="neato")
+        #labels=nx.draw_networkx_labels(filteredarray,pos)
         C=nx.connected_component_subgraphs(atlasGraph)
         for g in C:
             c=[random()]*nx.number_of_nodes(g)
