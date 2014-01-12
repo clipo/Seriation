@@ -994,9 +994,10 @@ class IDSS():
         for g in filteredarray:
             col = 0
             sernum += 1
+            row +=1
             for node in nx.shortest_path(g, g.graph['End1'],g.graph['End2']):
                 #print node
-                row +=1
+
                 worksheet.write(row,0,sernum)
                 worksheet.write(row,1,node)
                 col=2
@@ -1004,7 +1005,7 @@ class IDSS():
                     val = int(self.assemblageSize[node]*a)
                     worksheet.write(row,col,val)
                     col +=1
-
+                row += 1
         workbook.close()
 
 
