@@ -1106,44 +1106,55 @@ class IDSS():
 
     def sumGraphsByWeight(self, filteredarray, args):
         sumGraph = nx.Graph(is_directed=False)
-        ## go through all the graphs
+
+
+        # First add all the nodes to the sumgraph (this will repeat for each solution, but thats okay)
+        for node in self.assemblages:
+
+            xCoordinate = 0
+            yCoordinate = 0
+            name = node
+            if args['xyfile'] is not None:
+                xCoordinate = self.xAssemblage[name]
+                yCoordinate = self.yAssemblage[name]
+            sumGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,size=self.assemblageSize[name])
+
+        ## first find global max weight and global min weight
+        globalMaxWeight=0
+        globalMinWeight=1000
+        for g in filteredarray:
+            for e in g.edges():
+                fromAssemblage = e[0]
+                toAssemblage = e[1]
+                currentWeight = self.sumOfDifferencesBetweenPairs[fromAssemblage+"*"+toAssemblage]
+                if currentWeight>globalMaxWeight:
+                    globalMaxWeight=currentWeight
+                if currentWeight<globalMinWeight:
+                    globalMinWeight=currentWeight
+
+        ## Now create the summary graph by going through the edges of all the graphs
         for g in filteredarray:
             ## go through all the edges for each graph
-            for node in g.nodes(data=True):
-                xCoordinate = 0
-                yCoordinate = 0
-                name = node[0]
-                if args['xyfile'] is not None:
-                    xCoordinate = self.xAssemblage[name]
-                    yCoordinate = self.yAssemblage[name]
-                sumGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
-                                  size=self.assemblageSize[name])
-
-            maxWeight = 0
             for e in g.edges_iter():
                 d = g.get_edge_data(*e)
+                # get the pair of data
                 fromAssemblage = e[0]
                 toAssemblage = e[1]
                 exists = False
-                currentWeight = 1
+
+                # now see if it already exists in the summary graph
                 for e in sumGraph.edges():
-                    dd = sumGraph.get_edge_data(*e)
                     if fromAssemblage in e and toAssemblage in e:   ## if exists
                         exists = True
-                    currentWeight = 1
-                    if exists is True:
-                        currentWeight = int(dd['weight']) + 1
-                if currentWeight > maxWeight:
-                    maxWeight = currentWeight
-                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight)
+                        currentWeight = self.sumOfDifferencesBetweenPairs[fromAssemblage+"*"+toAssemblage]
 
-            for e in sumGraph.edges_iter():
-                d = sumGraph.get_edge_data(*e)
-                currentWeight = int(d['weight'])
-                inverseWeight = (maxWeight + 1) - currentWeight
-                fromAssemblage = e[0]
-                toAssemblage = e[1]
-                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight, inverseweight=inverseWeight)
+                # if the link doesnt already exist add it.
+                if exists== False:
+                    normalizedWeight = ((globalMaxWeight-currentWeight)/(globalMaxWeight-globalMinWeight))+1
+                    ## prevent divide by zero errors
+                    if normalizedWeight==0:
+                        normalizedWeight=0.00000001
+                    sumGraph.add_path([fromAssemblage, toAssemblage],weight=normalizedWeight, inverseweight=(1/normalizedWeight))
 
         return sumGraph
 
@@ -1670,6 +1681,8 @@ class IDSS():
         maxWeight = 0
         pairsHash = {}
         output_graph = nx.Graph(is_directed=False)
+
+
         for e in input_graph.edges_iter():
             d = input_graph.get_edge_data(*e)
             fromAssemblage = e[0]
@@ -1677,7 +1690,7 @@ class IDSS():
             if weight == "weight":
                 currentWeight = int(d['weight'])
             else:
-                currentWeight = int(d['inverseweight'])
+                currentWeight = int(d['weight'])
             pairsHash[fromAssemblage + "*" + toAssemblage] = currentWeight
             label = fromAssemblage + "*" + toAssemblage
             ##print label," - ", currentWeight
@@ -1686,6 +1699,8 @@ class IDSS():
         matchOnThisLevel = False
         currentValue = 0
         for key, value in sorted_pairs:
+            if value==0:
+                value=.00001
             if currentValue == 0:
                 currentValue = value
             elif value < currentValue:
@@ -1897,7 +1912,7 @@ class IDSS():
         #####################################
 
         logger.debug("Now calculate sum of differences between all pairs")
-        sumOfDifferencesBetweenPairs = self.preCalculateSumOfDifferencesBetweenPairs
+        self.preCalculateSumOfDifferencesBetweenPairs(args)
 
         #####################################
 
@@ -2030,7 +2045,7 @@ class IDSS():
 
             #################################################### MinMax Graph ############################################
 
-            minMaxGraphByWeight = self.createMinMaxGraph(input_graph=sumGraphByWeight, weight='inverseweight')
+            minMaxGraphByWeight = self.createMinMaxGraph(input_graph=sumGraphByWeight, weight='weight')
             minMaxGraphByCount = self.createMinMaxGraph(input_graph=sumGraphByCount, weight='weight')
             if args['graphs'] not in (None, False, 0):
                 self.graphOutput(minMaxGraphByWeight,
