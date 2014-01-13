@@ -1310,8 +1310,8 @@ class IDSS():
 
     ## Output to file and to the screen
     def graphOutput(self,sumGraph,sumgraphfilename, args):
+
         ## Now make the graphic for set of graphs
-        plt.figure(sumgraphfilename,figsize=(8,8))
         plt.rcParams['text.usetex'] = False
         newfilename=self.outputDirectory+sumgraphfilename
         gmlfilename=self.outputDirectory+sumgraphfilename+".gml"
@@ -1350,8 +1350,6 @@ class IDSS():
         plt.axis('off')
         plt.savefig(newfilename,dpi=75)
         self.saveGraph(sumGraph,newfilename+".gml",args)
-        #plt.show()
-
 
     ## Output to file and to the screen
     def sumGraphOutput(self,sumGraph,sumgraphfilename, args):
@@ -1614,9 +1612,12 @@ class IDSS():
                 distanceHash[ text] = meanDistance
 
     # from a "summed" graph, create a "min max" solution
-    def createMinMaxGraph(self, input_graph, args):
+    def createMinMaxGraph(self, **kwargs):
         ## first need to find the pairs with the maximum occurrence, then we work down from there until all of the
         ## nodes are included
+        ## the weight
+        weight = kwargs.get('weight',"weight")
+        input_graph = kwargs.get('input_graph')
         maxWeight=0
         pairsHash={}
         output_graph=nx.Graph(is_directed=False)
@@ -1624,7 +1625,10 @@ class IDSS():
             d = input_graph.get_edge_data(*e)
             fromAssemblage = e[0]
             toAssemblage = e[1]
-            currentWeight=int(d['weight'])
+            if weight=="weight":
+                currentWeight=int(d['weight'])
+            else:
+                currentWeight=int(d['inverseweight'])
             pairsHash[fromAssemblage+"*"+toAssemblage]=currentWeight
             label= fromAssemblage+"*"+toAssemblage
             ##print label," - ", currentWeight
@@ -1968,8 +1972,8 @@ class IDSS():
 
             #################################################### MinMax Graph ############################################
 
-            minMaxGraphByWeight = self.createMinMaxGraph(sumGraphByWeight,args)
-            minMaxGraphByCount = self.createMinMaxGraph(sumGraphByCount,args)
+            minMaxGraphByWeight = self.createMinMaxGraph(input_graph=sumGraphByWeight,weight='inverseweight')
+            minMaxGraphByCount = self.createMinMaxGraph(input_graph=sumGraphByCount,weight='weight')
             if args['graphs'] not in (None,False,0):
                 self.graphOutput(minMaxGraphByWeight,self.outputDirectory+self.inputFile[0:-4]+"-minmax-by-weight.png",args)
                 self.graphOutput(minMaxGraphByCount,self.outputDirectory+self.inputFile[0:-4]+"-minmax-by-count.png",args)
