@@ -1324,6 +1324,8 @@ class IDSS():
         #pos=nx.graphviz_layout(sumGraph,prog="twopi",root=['graphroot'])
         #pos=nx.spring_layout(mst,iterations=500)
         edgewidth=[]
+
+        ### Note the weights here are biased where the *small* differences are the largest (since its max value - diff)
         weights = nx.get_edge_attributes(sumGraph, 'weight')
         for w in weights:
             edgewidth.append(weights[w])
