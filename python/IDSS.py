@@ -135,6 +135,7 @@ class IDSS():
             key2 = pair[1] + "*" + pair[0]
             self.sumOfDifferencesBetweenPairs[key1] = diff
             self.sumOfDifferencesBetweenPairs[key2] = diff
+            #print "Key: ", key1, "=> ",diff
 
     def preCalculateComparisons(self, args):
         logger.debug("Precalculating the comparisons between all pairs of assemblages...")
@@ -1107,10 +1108,8 @@ class IDSS():
     def sumGraphsByWeight(self, filteredarray, args):
         sumGraph = nx.Graph(is_directed=False)
 
-
-        # First add all the nodes to the sumgraph (this will repeat for each solution, but thats okay)
+        # First add all the nodes to the sumgraph
         for node in self.assemblages:
-
             xCoordinate = 0
             yCoordinate = 0
             name = node
@@ -1140,21 +1139,11 @@ class IDSS():
                 # get the pair of data
                 fromAssemblage = e[0]
                 toAssemblage = e[1]
-                exists = False
+                currentWeight = self.sumOfDifferencesBetweenPairs[fromAssemblage+"*"+toAssemblage]
+                normalizedWeight = ((globalMaxWeight-currentWeight)/(globalMaxWeight-globalMinWeight))+1
+                #print "Current Weight: ", currentWeight, "Normalized Weight: ", normalizedWeight, " Max: ", globalMaxWeight, "Min: ", globalMinWeight
 
-                # now see if it already exists in the summary graph
-                for e in sumGraph.edges():
-                    if fromAssemblage in e and toAssemblage in e:   ## if exists
-                        exists = True
-                        currentWeight = self.sumOfDifferencesBetweenPairs[fromAssemblage+"*"+toAssemblage]
-
-                # if the link doesnt already exist add it.
-                if exists== False:
-                    normalizedWeight = ((globalMaxWeight-currentWeight)/(globalMaxWeight-globalMinWeight))+1
-                    ## prevent divide by zero errors
-                    if normalizedWeight==0:
-                        normalizedWeight=0.00000001
-                    sumGraph.add_path([fromAssemblage, toAssemblage],weight=normalizedWeight, inverseweight=(1/normalizedWeight))
+                sumGraph.add_path([fromAssemblage, toAssemblage], sumDiffWeight=currentWeight, weight=normalizedWeight, inverseweight=(1/normalizedWeight))
 
         return sumGraph
 
@@ -1671,8 +1660,54 @@ class IDSS():
                 network.graph["meanDistance"] = meanDistance
                 distanceHash[text] = meanDistance
 
-    # from a "summed" graph, create a "min max" solution
-    def createMinMaxGraph(self, **kwargs):
+    # from a "summed" graph, create a "min max" solution - but use weights not counts
+    def createMinMaxGraphByWeight(self, **kwargs):
+        ## first need to find the pairs with the maximum occurrence, then we work down from there until all of the
+        ## nodes are included
+        ## the weight
+        weight = kwargs.get('weight', "weight")
+        input_graph = kwargs.get('input_graph')
+
+        output_graph = nx.Graph(is_directed=False)
+
+        ## first add all of the nodes
+        for name in self.assemblages:
+            output_graph.add_node(name, name=name, label=name, xCoordinate=self.xAssemblage[name],
+                    yCoordinate=self.xAssemblage[name], size=self.assemblageSize[name])
+
+        pairsHash={}
+
+        for e in input_graph.edges_iter():
+            d = input_graph.get_edge_data(*e)
+            fromAssemblage = e[0]
+            toAssemblage = e[1]
+            key = fromAssemblage+"*"+toAssemblage
+            value = input_graph[fromAssemblage][toAssemblage]['weight']
+            #print "Original value: ",self.sumOfDifferencesBetweenPairs[key], " New Value: ", value
+            #value = self.sumOfDifferencesBetweenPairs[key]
+            pairsHash[key]=value
+
+        for key, value in sorted(pairsHash.iteritems(), key=operator.itemgetter(1), reverse=True ):
+            ass1, ass2 = key.split("*")
+            #print ass1, "-", ass2, "---",value
+            edgesToAdd={}
+            if nx.has_path(output_graph, ass1, ass2) == False:
+                edgesToAdd[key]=value
+                 ## check to see if any other pairs NOT already represented that have the same value
+                for p in pairsHash:
+                    if pairsHash[p] == value:
+                        k1,k2 = p.split("*")
+                        if nx.has_path(output_graph, k1,k2) == False:
+                            edgesToAdd[p]=pairsHash[p]
+                ## now add all of the edges that are the same value if they dont already exist as paths
+                for newEdge in edgesToAdd:
+                    a1,a2 = newEdge.split("*")
+                    weight = self.sumOfDifferencesBetweenPairs[newEdge]
+                    output_graph.add_path([a1, a2], weight=weight, inverseweight=(1/weight))
+        return output_graph
+
+    # from a "summed" graph, create a "min max" solution -- using Counts
+    def createMinMaxGraphByCount(self, **kwargs):
         ## first need to find the pairs with the maximum occurrence, then we work down from there until all of the
         ## nodes are included
         ## the weight
@@ -1681,7 +1716,6 @@ class IDSS():
         maxWeight = 0
         pairsHash = {}
         output_graph = nx.Graph(is_directed=False)
-
 
         for e in input_graph.edges_iter():
             d = input_graph.get_edge_data(*e)
@@ -1695,10 +1729,12 @@ class IDSS():
             label = fromAssemblage + "*" + toAssemblage
             ##print label," - ", currentWeight
 
-        sorted_pairs = sorted(pairsHash.iteritems(), key=operator.itemgetter(1), reverse=True)
+        #sorted_pairs = sorted(pairsHash.iteritems(), key=operator.itemgetter(1), reverse=True)
+
         matchOnThisLevel = False
         currentValue = 0
-        for key, value in sorted_pairs:
+        for key, value in sorted(pairsHash.iteritems(), key=operator.itemgetter(1), reverse=True):
+            #print key, "->", value
             if value==0:
                 value=.00001
             if currentValue == 0:
@@ -2045,8 +2081,8 @@ class IDSS():
 
             #################################################### MinMax Graph ############################################
 
-            minMaxGraphByWeight = self.createMinMaxGraph(input_graph=sumGraphByWeight, weight='weight')
-            minMaxGraphByCount = self.createMinMaxGraph(input_graph=sumGraphByCount, weight='weight')
+            minMaxGraphByWeight = self.createMinMaxGraphByWeight(input_graph=sumGraphByWeight, weight='weight')
+            minMaxGraphByCount = self.createMinMaxGraphByCount(input_graph=sumGraphByCount, weight='weight')
             if args['graphs'] not in (None, False, 0):
                 self.graphOutput(minMaxGraphByWeight,
                                  self.outputDirectory + self.inputFile[0:-4] + "-minmax-by-weight.png", args)
