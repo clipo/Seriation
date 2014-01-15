@@ -1,6 +1,7 @@
 __author__ = 'carllipo'
 
 import pysvg
+from pysvg import *
 import logging as logger
 import itertools
 import math
@@ -9,17 +10,12 @@ import xlsxwriter
 import sys
 import csv
 import argparse
-from pysvg.structure import *
-from pysvg.core import *
-from pysvg.text import *
-from pysvg.filter import *
-from pysvg.gradient import *
-from pysvg.linking import *
-from pysvg.script import *
-from pysvg.shape import *
-from pysvg.style import *
-from pysvg.text import *
-from pysvg.builders import *
+import numpy as np
+import scipy as sp
+import scipy.stats
+import svgwrite
+from svgwrite import cm, mm
+import random
 
 class frequencySeriationMaker():
     color = ["b", "r", "m", "y", "k", "w", (0.976, 0.333, 0.518), (0.643, 0.416, 0.894),
@@ -41,15 +37,13 @@ class frequencySeriationMaker():
         self.typeFrequencyUpperCI = {}
         self.typeFrequencyMeanCI = {}
         self.typeNames = []
-        self.canvas = svg()
-        self.rowIndex=30  # pixels between rows
+        self.rowIndex=20  # pixels between rows
         self.fontSize=4
         self.fontFamily="Verdana"
         self.typePositions=[]  ## center of each type column
-        self.myStyle = StyleBuilder()
-        self.myStyle.setFontFamily(fontfamily=self.fontFamily)
-        self.myStyle.setFontSize(self.fontSize)
         self.maxAssemblageLabelLength=0
+        self.dwg=None
+        self.rowPosition=200
 
     def processSeriationData(self, args):
         try:
@@ -59,20 +53,28 @@ class frequencySeriationMaker():
             logger.error("Cannot open %s. Error: %s", self.openFile, e)
             sys.exit('file %s does not open: %s') % ( self.openFile, e)
 
-
         reader = csv.reader(file, delimiter='\t', quotechar='|')
         rowcount = 0
         for row in reader:
-            if rowcount>0:      ## ignore the first row here. we just need the assemblage info
+            if rowcount==0:
+                row = map(str,row)
+                row.pop(0)
+                self.numberOfClasses=len(row)
+            else:      ## ignore the first row here. we just need the assemblage info
                 row = map(str, row)
-                sernum=row[0]
-                label = row[1]
-                self.labels.append(label)
-                labelLength=len(label)
-                if labeLength>self.maxAssemblageLabelLength:
-                    self.maxAssemblageLabelLength=labelLength
+                if len(row)>0:
+                    sernum=row[0]
+                    label = row[1]
+                    self.labels.append(label)
+                    labelLength=len(label)
+                    if labelLength>self.maxAssemblageLabelLength:
+                        self.maxAssemblageLabelLength=labelLength
             rowcount += 1
         file.close()
+
+        ## initialize positions
+        for n in range(0,self.numberOfClasses+1):
+            self.typePositions.append(n)
 
         try:
             logger.debug("trying to open: %s ", self.openFile)
@@ -83,6 +85,8 @@ class frequencySeriationMaker():
         values = []
         count =0
         index=0
+        reader = csv.reader(file, delimiter='\t', quotechar='|')
+        self.rowPosition = self.rowIndex
         for row in reader:
             ## first row is the header row with the type names.
             if count==0:
@@ -91,23 +95,23 @@ class frequencySeriationMaker():
                 for r in row:
                     self.typeNames.append(r)
                 count +=1
-                self.outputHeaderRow(typeNames,args)
+                self.outputHeaderRow(self.typeNames,args)
             else:
                 if len(row) > 1:
                     index += 1
                     row = map(str, row)
                     sernum=row[0]
                     label = row[1]
-                    self.labels[label] = label
+                    self.labels.append(label)
                     row.pop(0)
                     row.pop(0)
                     row = map(float, row)
                     self.numberOfClasses = len(row)
                     self.countOfAssemblages += 1
-                    self.outputAssemblageRow(label,row,rowPosition,args)
-                    rowPosition += rowIndex
+                    self.outputAssemblageRow(label,row,args)
+                    self.rowPosition += self.rowIndex
                 else:
-                    rowPosition += rowIndex
+                    self.rowPosition += self.rowIndex
 
         self.maxSeriationSize = self.countOfAssemblages
         return True
@@ -129,9 +133,7 @@ class frequencySeriationMaker():
         xpos={}
         for t in self.typeNames:
             count+=1
-            t1 = text(t, colindex, 100)
-            t1.set_style(self.myStyle.getStyle())
-            self.canvas.addElement(t1)
+            self.dwg.add(self.dwg.text(t, insert=(colindex, 100)))
             colindex += colsize
             self.typePositions[count]=colindex
 
@@ -140,19 +142,15 @@ class frequencySeriationMaker():
         maxWidth = self.numberOfClasses * 20
         col_spacing = maxWidth/self.numberOfClasses
 
-    def outputAssemblageRow(self, assemblageName, row,rowPosition, args):
-        rowPosition = 150
+    def outputAssemblageRow(self, assemblageName, row, args):
         freq = []
         values=[]
         rowtotal = sum(row)
         for r in row:
             freq.append(float(float(r) / float(rowtotal)))
             values.append(float(r))
-
-        t1 = text(assemblageName, 0, rowPosition)
-        t1.set_style(self.myStyle.getStyle())
-        self.canvas.addElement(t1)
-        rowPosition += self.rowIndex
+        self.rowPosition += self.rowIndex
+        self.dwg.add(self.dwg.text(assemblageName, insert=(0, self.rowPosition)))
         count = 0
         xposition = self.typePositions[1]
         for typeFreq in freq:
@@ -161,20 +159,106 @@ class frequencySeriationMaker():
             width = int(typeFreq*200)
             xposition += self.rowIndex
             #print "width: ", width
-            bar = self.sb.createRect(x-60-(width*0.5),  rowPosition-50, width,20, strokewidth=1)
-            s.addElement(bar)
+            shapes = self.dwg.add(self.dwg.g(id='freqbar', fill='white'))
+            shapes.add(self.dwg.rect(insert=(x-60-(width*0.5),  self.rowPosition), size=(width,20),
+                        fill='white', stroke='black', stroke_width=1))
 
+        self.dwg.save()
 
+   ########################################### BOOTSTRAP CI SECTION ####################################
+    def bootstrapCICalculation(self, assemblage, values, freqs, currentAssemblageSize, args, bootsize=1000, confidenceInterval=0.05):
 
-        s.save(self.outputFile)
+        types = len(freqs)
 
+        ## create an array of arrays - one for each type
+        arrayOfStats = []
+        for c in range(0, types):
+            array = []
+            arrayOfStats.append([])
+
+        ## size of bootstrapping (how many assemblages to create)
+        loop = bootsize
+        for counter in range(0, bootsize):
+
+            assemsize = currentAssemblageSize
+            # clear and set the array
+            cumulate = []
+            for d in range(0, types):
+                cumulate.append(0.0)
+
+            index = 0
+            count = 0
+            ## now count through the classes and set up the frequencies
+            for typeFrequency in freqs:
+                index += typeFrequency
+                cumulate[count] = index  ## this is the index of the frequency for this class
+                ## index should be total # of types at end
+                count += 1
+
+            ## set new_assemblage
+            new_assemblage = []
+            for c in range(0, types):
+                new_assemblage.append(0.0)
+
+            for sherd in range(0, int(currentAssemblageSize)):
+                rand = random()             ## random number from 0-1
+                classVar = 0
+                typeIndex = types - 1
+                found = 0
+                total = sum(cumulate)
+                for t in reversed(cumulate):
+                    if rand <= t:
+                        found = typeIndex
+                    typeIndex -= 1
+                new_assemblage[found] += 1
+
+            ## count new assemblage frequencies
+            counter = 0
+            new_assemblage_freq = []
+            for g in new_assemblage:
+                new_assemblage_freq.append(float(g / float(bootsize)))
+                arrayOfStats[counter].append(float(g / float(bootsize)))
+                counter += 1
+                ## this should result in a new assemblage of the same size
+
+        lowerCI = []
+        upperCI = []
+        meanCI = []
+        for freq in arrayOfStats:
+            upper = 0.0
+            lower = 0.0
+            mean = 0.0
+            if sum(freq) > 0.0:
+                mean, lower, upper = self.confidence_interval(freq, confidence=float(confidenceInterval))
+            else:
+                mean = lower = upper = 0
+            if math.isnan(lower) is True:
+                lower = 0.0
+            if math.isnan(upper) is True:
+                upper = 0.0
+            if math.isnan(mean) is True:
+                mean = 0.0
+            lowerCI.append(lower)
+            upperCI.append(upper)
+            meanCI.append(mean)
+
+        #self.typeFrequencyLowerCI[currentLabel] = lowerCI
+        #self.typeFrequencyUpperCI[currentLabel] = upperCI
+        #self.typeFrequencyMeanCI[currentLabel] = meanCI
+
+        return lowerCI,upperCI,meanCI
+
+    def confidence_interval(self, data, confidence=0.05):
+        a = 1.0 * np.array(data)
+        n = len(a)
+        m, se = np.mean(a), scipy.stats.sem(a)
+        h = se * sp.stats.t._ppf((1 + confidence) / 2., n - 1)
+        return m, m - h, m + h
 
     def setupOutput(self, args):
-        self.openFile(args['inputfile'],args)
+        self.openFile=args['inputfile']
         self.outputFile= args['inputfile'][0:-4]+".svg"
-        self.sb = ShapeBuilder()
-        self.canvas = svg("Frequency Seriation")
-
+        self.dwg = svgwrite.Drawing(self.outputFile, profile='tiny')
 
     def makeGraph(self, args):
         self.setupOutput(args)
