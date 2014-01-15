@@ -41,7 +41,7 @@ class frequencySeriationMaker():
         self.typeFrequencyUpperCI = {}
         self.typeFrequencyMeanCI = {}
         self.typeNames = []
-        self.canvas = pysvg.svg()
+        self.canvas = svg()
         self.rowIndex=30  # pixels between rows
         self.fontSize=4
         self.fontFamily="Verdana"
