@@ -21,7 +21,6 @@ from pysvg.style import *
 from pysvg.text import *
 from pysvg.builders import *
 
-
 class frequencySeriationMaker():
     color = ["b", "r", "m", "y", "k", "w", (0.976, 0.333, 0.518), (0.643, 0.416, 0.894),
              (0.863, 0.66, 0.447), (0.824, 0.412, 0.118)]
@@ -34,7 +33,7 @@ class frequencySeriationMaker():
         self.assemblages = {}
         self.countOfAssemblages = 0
         self.assemblageValues = {}
-        self.labels = {}
+        self.labels = []
         self.numberOfClasses = 0
         self.maxSeriationSize = 0
         self.validComparisonsHash = {}
@@ -42,101 +41,145 @@ class frequencySeriationMaker():
         self.typeFrequencyUpperCI = {}
         self.typeFrequencyMeanCI = {}
         self.typeNames = []
+        self.canvas = pysvg.svg()
+        self.rowIndex=30  # pixels between rows
+        self.fontSize=4
+        self.fontFamily="Verdana"
+        self.typePositions=[]  ## center of each type column
+        self.myStyle = StyleBuilder()
+        self.myStyle.setFontFamily(fontfamily=self.fontFamily)
+        self.myStyle.setFontSize(self.fontSize)
+        self.maxAssemblageLabelLength=0
 
-    def openFile(self, filename, args):
+    def processSeriationData(self, args):
         try:
-            logger.debug("trying to open: %s ", filename)
-            file = open(filename, 'r')
+            logger.debug("trying to open: %s ", self.openFile)
+            file = open(self.openFile, 'r')
         except csv.Error as e:
-            logger.error("Cannot open %s. Error: %s", filename, e)
-            sys.exit('file %s does not open: %s') % ( filename, e)
+            logger.error("Cannot open %s. Error: %s", self.openFile, e)
+            sys.exit('file %s does not open: %s') % ( self.openFile, e)
+
 
         reader = csv.reader(file, delimiter='\t', quotechar='|')
+        rowcount = 0
+        for row in reader:
+            if rowcount>0:      ## ignore the first row here. we just need the assemblage info
+                row = map(str, row)
+                sernum=row[0]
+                label = row[1]
+                self.labels.append(label)
+                labelLength=len(label)
+                if labeLength>self.maxAssemblageLabelLength:
+                    self.maxAssemblageLabelLength=labelLength
+            rowcount += 1
+        file.close()
+
+        try:
+            logger.debug("trying to open: %s ", self.openFile)
+            file = open(self.openFile, 'r')
+        except csv.Error as e:
+            logger.error("Cannot open %s. Error: %s", self.openFile, e)
+            sys.exit('file %s does not open: %s') % ( self.openFile, e)
         values = []
         count =0
         index=0
         for row in reader:
+            ## first row is the header row with the type names.
             if count==0:
                 row = map(str,row)
                 row.pop(0)
                 for r in row:
                     self.typeNames.append(r)
                 count +=1
+                self.outputHeaderRow(typeNames,args)
             else:
                 if len(row) > 1:
                     index += 1
                     row = map(str, row)
-                    label = row[0]
-                    self.labels[label+"_"+str(index)] = label
+                    sernum=row[0]
+                    label = row[1]
+                    self.labels[label] = label
+                    row.pop(0)
                     row.pop(0)
                     row = map(float, row)
                     self.numberOfClasses = len(row)
-                    freq = []
-                    rowtotal = sum(row)
-                    for r in row:
-                        freq.append(float(float(r) / float(rowtotal)))
-                        values.append(float(r))
-                    self.assemblages[label+"_"+str(index)] = freq
-                    self.assemblageFrequencies[label+"_"+str(index)] = freq
-                    self.assemblageValues[label+"_"+str(index)] = values
-                    self.assemblageSize[label+"_"+str(index)] = rowtotal
                     self.countOfAssemblages += 1
+                    self.outputAssemblageRow(label,row,rowPosition,args)
+                    rowPosition += rowIndex
+                else:
+                    rowPosition += rowIndex
+
         self.maxSeriationSize = self.countOfAssemblages
         return True
 
-    def makeGraph(self, args):
-        self.openFile(args['inputfile'],args)
-        outputFile= args['inputfile'][0:-4]+".svg"
-        oh = ShapeBuilder()
-        s = svg("seriation")
+    def outputHeaderRow(self, typeNames,args):
 
-        myStyle = StyleBuilder()
-        myStyle.setFontFamily(fontfamily="Verdana")
-        myStyle.setFontSize('4')
-        maxAssemblageLength=0
+        maxTypeNameLength=0
+        totalLength=0
         # find longest name in assemblages
-        for a in self.assemblages:
+        for a in self.typeNames:
             length=len(a)
-            if length>maxAssemblageLength:
-                maxAssemblageLength=length
+            totalLength+=length
+            if length>maxTypeNameLength:
+                maxTypeNameLength=length
 
         colsize = 100
-        colindex = maxAssemblageLength*20
+        colindex = maxTypeNameLength*20
         count=0
         xpos={}
         for t in self.typeNames:
             count+=1
             t1 = text(t, colindex, 100)
-            t1.set_style(myStyle.getStyle())
-            s.addElement(t1)
+            t1.set_style(self.myStyle.getStyle())
+            self.canvas.addElement(t1)
             colindex += colsize
-            xpos[count]=colindex
-        rowIndex=30
+            self.typePositions[count]=colindex
+
         rowPosition=150
         rowHeight = 10
         maxWidth = self.numberOfClasses * 20
         col_spacing = maxWidth/self.numberOfClasses
-        sb =ShapeBuilder()
 
-        for assemblage in self.labels:
-            t1 = text(assemblage, 0, rowPosition)
-            t1.set_style(myStyle.getStyle())
-            s.addElement(t1)
-            rowPosition += rowIndex
-            count = 0
-            xposition = xpos[1]
-            for typeFreq in self.assemblageFrequencies[assemblage]:
-                count += 1
-                x = xpos[count]
-                width = int(typeFreq*200)
-                xposition += rowIndex
-                #print "width: ", width
-                bar = sb.createRect(x-60-(width*0.5),  rowPosition-50, width,20, strokewidth=1)
-                s.addElement(bar)
+    def outputAssemblageRow(self, assemblageName, row,rowPosition, args):
+        rowPosition = 150
+        freq = []
+        values=[]
+        rowtotal = sum(row)
+        for r in row:
+            freq.append(float(float(r) / float(rowtotal)))
+            values.append(float(r))
+
+        t1 = text(assemblageName, 0, rowPosition)
+        t1.set_style(self.myStyle.getStyle())
+        self.canvas.addElement(t1)
+        rowPosition += self.rowIndex
+        count = 0
+        xposition = self.typePositions[1]
+        for typeFreq in freq:
+            count += 1
+            x = self.typePositions[count]
+            width = int(typeFreq*200)
+            xposition += self.rowIndex
+            #print "width: ", width
+            bar = self.sb.createRect(x-60-(width*0.5),  rowPosition-50, width,20, strokewidth=1)
+            s.addElement(bar)
 
 
 
-        s.save(outputFile)
+        s.save(self.outputFile)
+
+
+    def setupOutput(self, args):
+        self.openFile(args['inputfile'],args)
+        self.outputFile= args['inputfile'][0:-4]+".svg"
+        self.sb = ShapeBuilder()
+        self.canvas = svg("Frequency Seriation")
+
+
+    def makeGraph(self, args):
+        self.setupOutput(args)
+        self.processSeriationData(args)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='create seriation graph')
