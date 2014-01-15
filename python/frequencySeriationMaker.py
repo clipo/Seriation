@@ -17,6 +17,7 @@ import svgwrite
 from svgwrite import cm, mm
 import random
 
+
 class frequencySeriationMaker():
     color = ["b", "r", "m", "y", "k", "w", (0.976, 0.333, 0.518), (0.643, 0.416, 0.894),
              (0.863, 0.66, 0.447), (0.824, 0.412, 0.118)]
@@ -37,13 +38,16 @@ class frequencySeriationMaker():
         self.typeFrequencyUpperCI = {}
         self.typeFrequencyMeanCI = {}
         self.typeNames = []
-        self.rowIndex=20  # pixels between rows
+        self.rowIndex=10  # pixels between rows
         self.fontSize=4
         self.fontFamily="Verdana"
         self.typePositions=[]  ## center of each type column
         self.maxAssemblageLabelLength=0
         self.dwg=None
         self.rowPosition=200
+        self.rowHeight=15
+        self.columnSize=250
+        self.barScale=200
 
     def processSeriationData(self, args):
         try:
@@ -92,6 +96,7 @@ class frequencySeriationMaker():
             if count==0:
                 row = map(str,row)
                 row.pop(0)
+                row.pop(0)
                 for r in row:
                     self.typeNames.append(r)
                 count +=1
@@ -111,7 +116,7 @@ class frequencySeriationMaker():
                     self.outputAssemblageRow(label,row,args)
                     self.rowPosition += self.rowIndex
                 else:
-                    self.rowPosition += self.rowIndex
+                    self.rowPosition += self.rowIndex*2
 
         self.maxSeriationSize = self.countOfAssemblages
         return True
@@ -127,49 +132,63 @@ class frequencySeriationMaker():
             if length>maxTypeNameLength:
                 maxTypeNameLength=length
 
-        colsize = 100
-        colindex = maxTypeNameLength*20
+        colindex = self.maxAssemblageLabelLength*20
         count=0
         xpos={}
         for t in self.typeNames:
             count+=1
-            self.dwg.add(self.dwg.text(t, insert=(colindex, 100)))
-            colindex += colsize
+            #self.dwg.add(self.dwg.textArea(text=t,insert=(colindex, self.rowPosition)))
+            self.dwg.add(self.dwg.text(t, insert=(colindex+30, self.rowPosition)))
+            colindex += self.columnSize
             self.typePositions[count]=colindex
 
-        rowPosition=150
-        rowHeight = 10
-        maxWidth = self.numberOfClasses * 20
-        col_spacing = maxWidth/self.numberOfClasses
-
     def outputAssemblageRow(self, assemblageName, row, args):
-        freq = []
+        freq=[]
         values=[]
         rowtotal = sum(row)
         for r in row:
             freq.append(float(float(r) / float(rowtotal)))
             values.append(float(r))
         self.rowPosition += self.rowIndex
-        self.dwg.add(self.dwg.text(assemblageName, insert=(0, self.rowPosition)))
+        assemblageNameXPosition=self.maxAssemblageLabelLength*15-len(assemblageName)*8
+        self.dwg.add(self.dwg.text(assemblageName, insert=(assemblageNameXPosition, self.rowPosition+self.rowHeight)))
         count = 0
         xposition = self.typePositions[1]
+        lowerCI,upperCI,meanCI=self.bootstrapCICalculation(freq, sum(values), args)
         for typeFreq in freq:
             count += 1
             x = self.typePositions[count]
-            width = int(typeFreq*200)
+            width = int(typeFreq*self.barScale)
             xposition += self.rowIndex
             #print "width: ", width
             shapes = self.dwg.add(self.dwg.g(id='freqbar', fill='white'))
-            shapes.add(self.dwg.rect(insert=(x-60-(width*0.5),  self.rowPosition), size=(width,20),
+            leftx = x-90-(width*0.5)
+            shapes.add(self.dwg.rect(insert=(leftx,  self.rowPosition), size=(width,self.rowHeight),
                         fill='white', stroke='black', stroke_width=1))
-
+            self.errorBars(typeFreq,width,x,lowerCI[count-1],upperCI[count-1],meanCI[count-1],args)
         self.dwg.save()
 
+    def errorBars(self,freq,width,x,lowerCI,upperCI,meanCI,args):
+
+        newWidth=(freq+upperCI)-(freq-lowerCI)
+        newWidthSize=int(newWidth*self.barScale)
+        leftx = x-90-(newWidthSize*0.5)
+        #print "freq: ",freq, "lowerCI:", lowerCI, "upperCI", upperCI
+        errorBarHeight=self.rowHeight/10
+        shapes = self.dwg.add(self.dwg.g(id='errorbar', fill='white'))
+        shapes.add(self.dwg.rect(insert=(leftx,self.rowPosition+(0.5*self.rowHeight)), size=(newWidthSize,errorBarHeight),
+                        fill="black",stroke="black", stroke_width=0.5))
+
+        ## add meanCI bar
+        meanLeft = width-(freq-meanCI)
+        meanWidthSize=int(meanCI*self.barScale)
+        shapes.add(self.dwg.rect(insert=(meanLeft,self.rowPosition+(0.4*self.rowHeight)),size=(meanWidthSize,errorBarHeight*3),
+                                fill="blue",stroke="blue", stroke_width=0.5))
+
+
    ########################################### BOOTSTRAP CI SECTION ####################################
-    def bootstrapCICalculation(self, assemblage, values, freqs, currentAssemblageSize, args, bootsize=1000, confidenceInterval=0.05):
-
+    def bootstrapCICalculation(self, freqs, currentAssemblageSize, args, bootsize=100, confidenceInterval=0.05):
         types = len(freqs)
-
         ## create an array of arrays - one for each type
         arrayOfStats = []
         for c in range(0, types):
@@ -201,7 +220,7 @@ class frequencySeriationMaker():
                 new_assemblage.append(0.0)
 
             for sherd in range(0, int(currentAssemblageSize)):
-                rand = random()             ## random number from 0-1
+                rand = random.random()             ## random number from 0-1
                 classVar = 0
                 typeIndex = types - 1
                 found = 0
@@ -215,9 +234,10 @@ class frequencySeriationMaker():
             ## count new assemblage frequencies
             counter = 0
             new_assemblage_freq = []
+            boot_assem_size=sum(new_assemblage)
             for g in new_assemblage:
-                new_assemblage_freq.append(float(g / float(bootsize)))
-                arrayOfStats[counter].append(float(g / float(bootsize)))
+                new_assemblage_freq.append(float(g / float(boot_assem_size)))
+                arrayOfStats[counter].append(float(g / float(boot_assem_size)))
                 counter += 1
                 ## this should result in a new assemblage of the same size
 

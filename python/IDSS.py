@@ -348,9 +348,10 @@ class IDSS():
                 ## count new assemblage frequencies
                 counter = 0
                 new_assemblage_freq = []
+                newassemblage_size=sum(new_assemblage)
                 for g in new_assemblage:
-                    new_assemblage_freq.append(float(g / float(bootsize)))
-                    arrayOfStats[counter].append(float(g / float(bootsize)))
+                    new_assemblage_freq.append(float(g / float(newassemblage_size)))
+                    arrayOfStats[counter].append(float(g / float(newassemblage_size)))
                     counter += 1
                     ## this should result in a new assemblage of the same size
 
@@ -1030,10 +1031,11 @@ class IDSS():
         workbook = xlsxwriter.Workbook(self.outputDirectory + filename + "-" + type + ".xlsx")
         worksheet = workbook.add_worksheet()
         row = 0
-        worksheet.write(row, 0, "Seriation_Number")
-        worksheet.write(row, 1, "Assemblage")
+        worksheet.write(row, 0, 'Seriation_Number')
+        worksheet.write(row, 1, 'Assemblage')
         outputRow =[]
-        outputRow.append("Seriation_Number\tAssemblage")
+        outputRow.append('Seriation_Number')
+        outputRow.append('Assemblage')
         for type in range(2, self.numberOfClasses + 2):
             typename = "Type_" + str(type - 1)
             worksheet.write(row, type, typename)
