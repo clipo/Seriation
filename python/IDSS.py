@@ -1023,14 +1023,22 @@ class IDSS():
         #plt.show() # display
 
     def outputExcel(self, filteredarray, filename, type, args):
+        csv.register_dialect('excel_tab', delimiter='\t',lineterminator="\n")
+        sumgraphOutputFile = self.outputDirectory + filename + "-seriations.txt"
+        f=open(sumgraphOutputFile, 'wb')
+        writer=csv.writer(f,'excel_tab')
         workbook = xlsxwriter.Workbook(self.outputDirectory + filename + "-" + type + ".xlsx")
         worksheet = workbook.add_worksheet()
         row = 0
         worksheet.write(row, 0, "Seriation_Number")
         worksheet.write(row, 1, "Assemblage")
+        outputRow =[]
+        outputRow.append("Seriation_Number\tAssemblage")
         for type in range(2, self.numberOfClasses + 2):
-            worksheet.write(row, type, "Type_" + str(type - 1))
-
+            typename = "Type_" + str(type - 1)
+            worksheet.write(row, type, typename)
+            outputRow.append(typename)
+        writer.writerow(outputRow)
         sernum = 0
         for g in filteredarray:
             col = 0
@@ -1038,15 +1046,22 @@ class IDSS():
             row += 1
             for node in nx.shortest_path(g, g.graph['End1'], g.graph['End2']):
                 #print node
-
+                outputRow=[]
                 worksheet.write(row, 0, sernum)
+                outputRow.append(sernum)
                 worksheet.write(row, 1, node)
+                outputRow.append(node)
                 col = 2
                 for a in self.assemblageFrequencies[node]:
                     val = int(self.assemblageSize[node] * a)
                     worksheet.write(row, col, val)
+                    outputRow.append(val)
                     col += 1
-                row += 1
+                writer.writerow(outputRow)
+
+            row += 1
+            writer.writerow('')
+
         workbook.close()
 
 
