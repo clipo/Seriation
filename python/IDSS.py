@@ -2141,11 +2141,14 @@ class IDSS():
             # experimental
             continuityArray = self.continunityMaximizationSeriation(args)
             #self.outputGraphArray(array,args)
-            sGraph = self.sumGraphsByCount(continuityArray, args)
-            self.graphOutput(sGraph, self.inputFile[0:-4] + "-continuity-sumgraph.png", args)
-            self.MST(sGraph, self.inputFile[0:-4] + "-mst-of-min.png", args)
-            minMaxGraph = self.createMinMaxGraph(sGraph, args)
-            self.graphOutput(minMaxGraph, self.inputFile[0:-4] + "-continuity-minmax.png", args)
+            sGraphByCount = self.sumGraphsByCount(continuityArray, args)
+            sGraphByWeight = self.sumGraphsByWeight(continuityArray, args)
+            self.graphOutput(sGraphByCount, self.inputFile[0:-4] + "-continuity-sumgraph.png", args)
+            self.MST(sGraphByCount, self.inputFile[0:-4] + "-mst-of-min.png", args)
+            minMaxGraphByWeight = self.createMinMaxGraphByWeight(input_graph=sGraphByWeight, weight='weight')
+            self.graphOutput(minMaxGraphByWeight, self.inputFile[0:-4] + "-continuity-minmax-by-weight.png", args)
+            minMaxGraphByCount = self.createMinMaxGraphByCount(input_graph=sGraphByCount, weight='weight')
+            self.graphOutput(minMaxGraphByCount, self.inputFile[0:-4] + "-continuity-minmax-by-count.png", args)
             if args['atlas'] not in (None, False, 0):
                 self.createAtlasOfSolutions(continuityArray, "continuity", args)
 
@@ -2153,7 +2156,7 @@ class IDSS():
                 self.outputExcel(continuityArray, self.outputDirectory+self.inputFile[0:-4], "continuity", args)
 
             if args['frequencyseriation'] not in (None, False, 0):
-                excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "continuity", args)
+                excelFileName,textFileName=self.outputExcel(continuityArray, self.outputDirectory+self.inputFile[0:-4], "continuity", args)
                 seriation = frequencySeriationMaker()
                 argument={'inputfile':textFileName}
                 seriation.makeGraph(argument)
