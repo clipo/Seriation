@@ -35,7 +35,7 @@ from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic a
 import MST
 import shapefile
 import memory
-import frequencySeriationMaker
+from frequencySeriationMaker import frequencySeriationMaker
 
 
 class AutoVivification(dict):
@@ -1026,10 +1026,11 @@ class IDSS():
 
     def outputExcel(self, filteredarray, filename, type, args):
         csv.register_dialect('excel_tab', delimiter='\t',lineterminator="\n")
-        sumgraphOutputFile = self.outputDirectory + filename + "-seriations.txt"
-        f=open(sumgraphOutputFile, 'wb')
+        textFileName = self.outputDirectory + filename +"-"+type+"-seriations.txt"
+        f=open(textFileName, 'wb')
         writer=csv.writer(f,'excel_tab')
-        workbook = xlsxwriter.Workbook(self.outputDirectory + filename + "-" + type + ".xlsx")
+        excelFileName=self.outputDirectory + filename + "-" + type + ".xlsx"
+        workbook = xlsxwriter.Workbook(excelFileName)
         worksheet = workbook.add_worksheet()
         row = 0
         worksheet.write(row, 0, 'Seriation_Number')
@@ -1066,7 +1067,7 @@ class IDSS():
             writer.writerow('')
 
         workbook.close()
-
+        return excelFileName,textFileName
 
     def createAtlas(self, filteredarray, args):
         # remove isolated nodes, only connected graphs are left
@@ -2095,7 +2096,13 @@ class IDSS():
                                 args)
 
             if args['excel'] not in (None, False, 0):
-                self.outputExcel(frequencyArray, self.inputFile[0:-4], "frequency", args)
+                excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "frequency", args)
+
+            if args['frequencyseriation'] not in (None, False, 0):
+                excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "frequency", args)
+                seriation = frequencySeriationMaker()
+                argument={'inputfile':textFileName}
+                seriation.makeGraph(argument)
 
             #################################################### MinMax Graph ############################################
 
@@ -2143,10 +2150,13 @@ class IDSS():
                 self.createAtlasOfSolutions(continuityArray, "continuity", args)
 
             if args['excel'] not in (None, False, 0):
-                self.outputExcel(continuityArray, self.inputFile[0:-4], "-continuity-seriation", args)
+                self.outputExcel(continuityArray, self.outputDirectory+self.inputFile[0:-4], "continuity", args)
 
             if args['frequencyseriation'] not in (None, False, 0):
-                ### blah
+                excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "continuity", args)
+                seriation = frequencySeriationMaker()
+                argument={'inputfile':textFileName}
+                seriation.makeGraph(argument)
 
         if args['graphs'] not in (None, False, 0):
             plt.show() # display
