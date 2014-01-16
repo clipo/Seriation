@@ -35,6 +35,7 @@ from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic a
 import MST
 import shapefile
 import memory
+import frequencySeriationMaker
 
 
 class AutoVivification(dict):
@@ -2141,6 +2142,12 @@ class IDSS():
             if args['atlas'] not in (None, False, 0):
                 self.createAtlasOfSolutions(continuityArray, "continuity", args)
 
+            if args['excel'] not in (None, False, 0):
+                self.outputExcel(continuityArray, self.inputFile[0:-4], "-continuity-seriation", args)
+
+            if args['frequencyseriation'] not in (None, False, 0):
+                ### blah
+
         if args['graphs'] not in (None, False, 0):
             plt.show() # display
 
@@ -2198,6 +2205,7 @@ if __name__ == "__main__":
                         help="If you want to have a figure that shows all of the results independently, set that here.")
     parser.add_argument('--excel', default=None,
                         help="Will create excel files with the assemblages in seriation order.")
+    parser.add_argument('--frequencyseriation', default=None, help="Generates graphical output for the results in a frequency seriation form.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
