@@ -17,7 +17,6 @@ import svgwrite
 from svgwrite import cm, mm
 import random
 
-
 class frequencySeriationMaker():
     color = ["b", "r", "m", "y", "k", "w", (0.976, 0.333, 0.518), (0.643, 0.416, 0.894),
              (0.863, 0.66, 0.447), (0.824, 0.412, 0.118)]
@@ -48,6 +47,7 @@ class frequencySeriationMaker():
         self.rowHeight=15
         self.columnSize=200
         self.barScale=200
+        self.seriationNumber=0
 
     def processSeriationData(self, args):
         try:
@@ -88,9 +88,11 @@ class frequencySeriationMaker():
             sys.exit('file %s does not open: %s') % ( self.openFile, e)
         values = []
         count =0
-        index=0
+        index=2
         reader = csv.reader(file, delimiter='\t', quotechar='|')
-        self.rowPosition = self.rowIndex
+        self.rowPosition = self.rowIndex*5
+        startBlock=0
+        startcorner=self.rowPosition
         for row in reader:
             ## first row is the header row with the type names.
             if count==0:
@@ -101,11 +103,13 @@ class frequencySeriationMaker():
                     self.typeNames.append(r)
                 count +=1
                 self.outputHeaderRow(self.typeNames,args)
+                self.rowPosition += self.rowIndex
+                startcorner=self.rowPosition
             else:
                 if len(row) > 1:
                     index += 1
                     row = map(str, row)
-                    sernum=row[0]
+                    self.seriationNumber=float(row[0])
                     label = row[1]
                     self.labels.append(label)
                     row.pop(0)
@@ -116,10 +120,20 @@ class frequencySeriationMaker():
                     self.outputAssemblageRow(label,row,args)
                     self.rowPosition += self.rowIndex
                 else:
+                    endcorner=self.rowPosition+self.rowHeight
                     self.rowPosition += self.rowIndex*2
+                    if self.seriationNumber % 2 <> 0:
+                        self.createBlock(startcorner,endcorner)
+                    startcorner=self.rowPosition
 
         self.maxSeriationSize = self.countOfAssemblages
         return True
+
+    def createBlock(self,startcorner,endcorner):
+        shapes = self.dwg.add(self.dwg.g(id='background', fill='grey', opacity=0.3))
+        shapes.add(self.dwg.rect(insert=(20,  startcorner), size=(self.numberOfClasses*self.columnSize+self.maxAssemblageLabelLength*8+280,
+                                                                  endcorner-startcorner),
+                        fill='grey',opacity=0.3, stroke='none', stroke_width=1))
 
     def outputHeaderRow(self, typeNames,args):
 
@@ -167,27 +181,30 @@ class frequencySeriationMaker():
             leftx = x-90-(width*0.5)
             shapes.add(self.dwg.rect(insert=(leftx,  self.rowPosition), size=(width,self.rowHeight),
                         fill='white', stroke='black', stroke_width=1))
-            self.errorBars(typeFreq,width,x,lowerCI[count-1],upperCI[count-1],meanCI[count-1],args)
+            self.errorBars(typeFreq,width,x,leftx,lowerCI[count-1],upperCI[count-1],meanCI[count-1],args)
 
         self.dwg.add(self.dwg.text(int(sum(values)), insert=(leftx+150,self.rowPosition+5)))
         self.dwg.save()
 
-    def errorBars(self,freq,width,x,lowerCI,upperCI,meanCI,args):
+    def errorBars(self,freq,width,x,original_left,lowerCI,upperCI,meanCI,args):
 
         newWidth=meanCI+(meanCI-lowerCI)+(upperCI-meanCI)
         newWidthSize=int(newWidth*self.barScale)
         leftx = x-90-(newWidthSize*0.5)
         #print "freq: ",freq, "lowerCI:", lowerCI, "upperCI", upperCI
-        errorBarHeight=self.rowHeight/10
+        errorBarHeight=self.rowHeight/3
         shapes = self.dwg.add(self.dwg.g(id='errorbar', fill='white'))
         ## left side
-        #shapes.add(self.dwg.rect(insert=(leftx,self.rowPosition+(0.5*self.rowHeight)), size=(m*self.barScale,errorBarHeight),
-                        #fill="black",stroke="black", stroke_width=0.5))
-        ## right side
-        #shapes.add(self.dwg.rect(insert=(leftx+width,self.rowPosition+(0.5*self.rowHeight)), size=((leftx-x)*self.barScale,errorBarHeight),
-                        #fill="black",stroke="black", stroke_width=0.5))
-        shapes.add(self.dwg.rect(insert=(leftx,self.rowPosition+(0.5*self.rowHeight)), size=(newWidthSize,errorBarHeight),
+        shapes.add(self.dwg.rect(insert=(leftx,self.rowPosition+(0.3*self.rowHeight)), size=((original_left-leftx),errorBarHeight),
                         fill="black",stroke="black", stroke_width=0.5))
+        ## right side
+        rightx = original_left+width
+        rightCIend= rightx + newWidthSize*0.5
+        shapes.add(self.dwg.rect(insert=(rightx,self.rowPosition+(0.3*self.rowHeight)), size=((original_left-leftx),errorBarHeight),
+                        fill="black",stroke="black", stroke_width=0.5))
+
+        #shapes.add(self.dwg.rect(insert=(leftx,self.rowPosition+(0.5*self.rowHeight)), size=(newWidthSize,errorBarHeight),
+                        #fill="black",stroke="black", stroke_width=0.5))
 
         ## add meanCI bar
         meanWidthSize=int(meanCI*self.barScale)
@@ -328,10 +345,7 @@ from frequencySeriationMaker import frequencySeriationMaker
 
 seriation = frequencySeriationMaker()
 
-args={}
-args{'inputfile'}="../testdata/testdata-5.txt"
-args{'debug'}=1
-
+args={'inputfile':'../testdata/pfg-cpl-seriations.txt','debug':1 }
 
 seriation.makeGraph(args)
 
