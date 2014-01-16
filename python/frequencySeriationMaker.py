@@ -46,7 +46,7 @@ class frequencySeriationMaker():
         self.dwg=None
         self.rowPosition=200
         self.rowHeight=15
-        self.columnSize=250
+        self.columnSize=200
         self.barScale=200
 
     def processSeriationData(self, args):
@@ -138,9 +138,11 @@ class frequencySeriationMaker():
         for t in self.typeNames:
             count+=1
             #self.dwg.add(self.dwg.textArea(text=t,insert=(colindex, self.rowPosition)))
-            self.dwg.add(self.dwg.text(t, insert=(colindex+30, self.rowPosition)))
+            self.dwg.add(self.dwg.text(t, insert=(colindex+80, self.rowPosition)))
             colindex += self.columnSize
             self.typePositions[count]=colindex
+
+        self.dwg.add(self.dwg.text("Assemblage Size", insert=(colindex+self.columnSize,self.rowPosition)))
 
     def outputAssemblageRow(self, assemblageName, row, args):
         freq=[]
@@ -166,28 +168,36 @@ class frequencySeriationMaker():
             shapes.add(self.dwg.rect(insert=(leftx,  self.rowPosition), size=(width,self.rowHeight),
                         fill='white', stroke='black', stroke_width=1))
             self.errorBars(typeFreq,width,x,lowerCI[count-1],upperCI[count-1],meanCI[count-1],args)
+
+        self.dwg.add(self.dwg.text(int(sum(values)), insert=(x+self.rowIndex,self.rowPosition)))
         self.dwg.save()
 
     def errorBars(self,freq,width,x,lowerCI,upperCI,meanCI,args):
 
-        newWidth=(freq+upperCI)-(freq-lowerCI)
+        newWidth=meanCI+(meanCI-lowerCI)+(upperCI-meanCI)
         newWidthSize=int(newWidth*self.barScale)
         leftx = x-90-(newWidthSize*0.5)
         #print "freq: ",freq, "lowerCI:", lowerCI, "upperCI", upperCI
         errorBarHeight=self.rowHeight/10
         shapes = self.dwg.add(self.dwg.g(id='errorbar', fill='white'))
+        ## left side
+        #shapes.add(self.dwg.rect(insert=(leftx,self.rowPosition+(0.5*self.rowHeight)), size=(m*self.barScale,errorBarHeight),
+                        #fill="black",stroke="black", stroke_width=0.5))
+        ## right side
+        #shapes.add(self.dwg.rect(insert=(leftx+width,self.rowPosition+(0.5*self.rowHeight)), size=((leftx-x)*self.barScale,errorBarHeight),
+                        #fill="black",stroke="black", stroke_width=0.5))
         shapes.add(self.dwg.rect(insert=(leftx,self.rowPosition+(0.5*self.rowHeight)), size=(newWidthSize,errorBarHeight),
                         fill="black",stroke="black", stroke_width=0.5))
 
         ## add meanCI bar
-        meanLeft = width-(freq-meanCI)
         meanWidthSize=int(meanCI*self.barScale)
-        shapes.add(self.dwg.rect(insert=(meanLeft,self.rowPosition+(0.4*self.rowHeight)),size=(meanWidthSize,errorBarHeight*3),
-                                fill="blue",stroke="blue", stroke_width=0.5))
+        leftx=x-90-(meanWidthSize*0.5)
+        #shapes.add(self.dwg.rect(insert=(leftx,self.rowPosition+(0.4*self.rowHeight)),size=(meanWidthSize,errorBarHeight*3),
+        #                     fill="blue",stroke="blue", stroke_width=0.5))
 
 
    ########################################### BOOTSTRAP CI SECTION ####################################
-    def bootstrapCICalculation(self, freqs, currentAssemblageSize, args, bootsize=100, confidenceInterval=0.05):
+    def bootstrapCICalculation(self, freqs, currentAssemblageSize, args, bootsize=100, confidenceInterval=0.99):
         types = len(freqs)
         ## create an array of arrays - one for each type
         arrayOfStats = []
