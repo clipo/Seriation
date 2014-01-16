@@ -142,7 +142,7 @@ class frequencySeriationMaker():
             colindex += self.columnSize
             self.typePositions[count]=colindex
 
-        self.dwg.add(self.dwg.text("Assemblage Size", insert=(colindex+self.columnSize,self.rowPosition)))
+        self.dwg.add(self.dwg.text("Assemblage Size", insert=(colindex+50,self.rowPosition)))
 
     def outputAssemblageRow(self, assemblageName, row, args):
         freq=[]
@@ -169,7 +169,7 @@ class frequencySeriationMaker():
                         fill='white', stroke='black', stroke_width=1))
             self.errorBars(typeFreq,width,x,lowerCI[count-1],upperCI[count-1],meanCI[count-1],args)
 
-        self.dwg.add(self.dwg.text(int(sum(values)), insert=(x+self.rowIndex,self.rowPosition)))
+        self.dwg.add(self.dwg.text(int(sum(values)), insert=(leftx+150,self.rowPosition+5)))
         self.dwg.save()
 
     def errorBars(self,freq,width,x,lowerCI,upperCI,meanCI,args):
@@ -197,7 +197,7 @@ class frequencySeriationMaker():
 
 
    ########################################### BOOTSTRAP CI SECTION ####################################
-    def bootstrapCICalculation(self, freqs, currentAssemblageSize, args, bootsize=100, confidenceInterval=0.99):
+    def bootstrapCICalculation(self, freqs, currentAssemblageSize, args, bootsize=100, confidenceInterval=0.999):
         types = len(freqs)
         ## create an array of arrays - one for each type
         arrayOfStats = []
