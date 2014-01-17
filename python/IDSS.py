@@ -80,6 +80,7 @@ class IDSS():
         self.pairwise = {}
         self.pairwiseError = {}
         self.sumOfDifferencesBetweenPairs = {}
+        self.typeNames=[]
         logger.debug("Start time:  %s ", self.start)
         self.scr = None
 
@@ -106,24 +107,30 @@ class IDSS():
 
         reader = csv.reader(file, delimiter='\t', quotechar='|')
         values = []
+        rowcount=0
         for row in reader:
-            if len(row) > 1:
-                row = map(str, row)
-                label = row[0]
-                self.labels[label] = label
+            row = map(str, row)
+            if rowcount==0 and args['noheader'] <> 1:
+                rowcount=1
                 row.pop(0)
-                row = map(float, row)
-                self.numberOfClasses = len(row)
-                freq = []
-                rowtotal = sum(row)
-                for r in row:
-                    freq.append(float(float(r) / float(rowtotal)))
-                    values.append(float(r))
-                self.assemblages[label] = freq
-                self.assemblageFrequencies[label] = freq
-                self.assemblageValues[label] = values
-                self.assemblageSize[label] = rowtotal
-                self.countOfAssemblages += 1
+                self.typeNames=row
+            else:
+                if len(row) > 1:
+                    label = row[0]
+                    self.labels[label] = label
+                    row.pop(0)
+                    row = map(float, row)
+                    self.numberOfClasses = len(row)
+                    freq = []
+                    rowtotal = sum(row)
+                    for r in row:
+                        freq.append(float(float(r) / float(rowtotal)))
+                        values.append(float(r))
+                    self.assemblages[label] = freq
+                    self.assemblageFrequencies[label] = freq
+                    self.assemblageValues[label] = values
+                    self.assemblageSize[label] = rowtotal
+                    self.countOfAssemblages += 1
         self.maxSeriationSize = self.countOfAssemblages
         return True
 
@@ -1038,10 +1045,17 @@ class IDSS():
         outputRow =[]
         outputRow.append('Seriation_Number')
         outputRow.append('Assemblage')
-        for type in range(2, self.numberOfClasses + 2):
-            typename = "Type_" + str(type - 1)
-            worksheet.write(row, type, typename)
-            outputRow.append(typename)
+        if args['noheader'] in (1,True,"yes"):
+            for type in range(2, self.numberOfClasses + 2):
+                typename = "Type_" + str(type - 1)
+                worksheet.write(row, type, typename)
+                outputRow.append(typename)
+        else:
+            colcount=2
+            for typename in self.typeNames:
+                worksheet.write(row, colcount, typename)
+                outputRow.append(typename)
+                colcount +=1
         writer.writerow(outputRow)
         sernum = 0
         for g in filteredarray:
@@ -2218,6 +2232,8 @@ if __name__ == "__main__":
                         help="If you want to have a figure that shows all of the results independently, set that here.")
     parser.add_argument('--excel', default=None,
                         help="Will create excel files with the assemblages in seriation order.")
+    parser.add_argument('--noheader',default=None,
+                        help="If you do not use type names as the first line of the input file, use this option to read the data.")
     parser.add_argument('--frequencyseriation', default=None, help="Generates graphical output for the results in a frequency seriation form.")
     try:
         args = vars(parser.parse_args())
