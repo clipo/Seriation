@@ -16,6 +16,8 @@ import scipy.stats
 import svgwrite
 from svgwrite import cm, mm
 import random
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF
 
 class frequencySeriationMaker():
     color = ["b", "r", "m", "y", "k", "w", (0.976, 0.333, 0.518), (0.643, 0.416, 0.894),
@@ -127,6 +129,11 @@ class frequencySeriationMaker():
                     startcorner=self.rowPosition
 
         self.maxSeriationSize = self.countOfAssemblages
+
+        if args['pdf'] not in (None, False, 0):
+            drawing = svg2rlg(self.outputFile)
+            renderPDF.drawToFile(drawing, self.outputFile[0:-4]+".pdf")
+
         return True
 
     def createBlock(self,startcorner,endcorner):
@@ -185,6 +192,8 @@ class frequencySeriationMaker():
 
         self.dwg.add(self.dwg.text(int(sum(values)), insert=(leftx+150,self.rowPosition+5)))
         self.dwg.save()
+
+
 
     def errorBars(self,freq,width,x,original_left,lowerCI,upperCI,meanCI,args):
 
@@ -314,6 +323,7 @@ class frequencySeriationMaker():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='create seriation graph')
+    parser.add_argument('--pdf',default=None,help='Create PDF files in addition to SVG')
     parser.add_argument('--debug', default=None, help='Sets the DEBUG flag for massive amounts of annotated output.')
     parser.add_argument('--bootstrapCI', default=None,
                         help="Sets whether you want to use the bootstrap confidence intervals for the comparisons between assemblage type frequencies. Set's to on or off.")

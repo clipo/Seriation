@@ -1138,6 +1138,7 @@ class IDSS():
             plt.savefig(gfile, dpi=75)
             plt.figure(gfile, figsize=(8, 8))
 
+
     def sumGraphsByWeight(self, filteredarray, args):
         sumGraph = nx.Graph(is_directed=False)
 
@@ -1428,6 +1429,7 @@ class IDSS():
         plt.axis('off')
         plt.savefig(newfilename, dpi=75)
         self.saveGraph(sumGraph, newfilename + ".gml", args)
+
 
     ## Output to file and to the screen
     def sumGraphOutput(self, sumGraph, sumgraphfilename, args):
@@ -2115,7 +2117,7 @@ class IDSS():
             if args['frequencyseriation'] not in (None, False, 0):
                 excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "frequency", args)
                 seriation = frequencySeriationMaker()
-                argument={'inputfile':textFileName}
+                argument={'inputfile':textFileName,'pdf':1}
                 seriation.makeGraph(argument)
 
             #################################################### MinMax Graph ############################################
@@ -2235,6 +2237,7 @@ if __name__ == "__main__":
     parser.add_argument('--noheader',default=None,
                         help="If you do not use type names as the first line of the input file, use this option to read the data.")
     parser.add_argument('--frequencyseriation', default=None, help="Generates graphical output for the results in a frequency seriation form.")
+
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
