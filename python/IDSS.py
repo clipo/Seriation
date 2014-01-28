@@ -1008,7 +1008,7 @@ class IDSS():
         nlist = self.iso_filter_graphs(filteredarray) # list of nonisomorphic graphs
         atlasGraph = nx.disjoint_union_all(nlist)
         os.environ["PATH"] += ":/usr/local/bin:"
-        pos = nx.graphviz_layout(atlasGraph, prog="neato")
+        pos = nx.graphviz_layout(atlasGraph, prog="twopi")
         #labels=nx.draw_networkx_labels(filteredarray,pos)
         C = nx.connected_component_subgraphs(atlasGraph)
         for g in C:
