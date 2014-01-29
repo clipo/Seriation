@@ -21,9 +21,11 @@ import time
 from datetime import datetime
 import os
 import re
-from pathos.multiprocessing import ProcessingPool as Pool
+#from pathos.multiprocessing import ProcessingPool as Pool
 from functools import partial
-#from multiprocessing import Pool
+import copy_reg, copy, pickle
+
+import multiprocessing
 import numpy as np
 import scipy as sp
 import scipy.stats
@@ -33,15 +35,13 @@ from pylab import *
 import matplotlib.pyplot as plt
 import xlsxwriter
 from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic as isomorphic
-
 import MST
 import shapefile
 import memory
 from frequencySeriationMaker import frequencySeriationMaker
 
 
-
-def checkForValidAdditions(nnetwork,filter_list,pairGraph,assemblages,args,typeFrequencyUpperCI,typeFrequencyLowerCI,typeFrequencyMeanCI):
+def checkForValidAdditions(nnetwork,validComparisonsHash,filter_list,pairGraph,assemblages,args,typeFrequencyUpperCI,typeFrequencyLowerCI):
     array_of_new_networks = []  ## a list of all the valid new networks that we run into
     maxnodes = len(nnetwork.nodes())
 
@@ -53,9 +53,9 @@ def checkForValidAdditions(nnetwork,filter_list,pairGraph,assemblages,args,typeF
 
         endAssemblage = nnetwork.graph[assEnd]
 
-        list1 = self.validComparisonsHash[endAssemblage]
+        list1 = validComparisonsHash[endAssemblage]
         list2 = nnetwork.nodes()
-        validAssemblages = list(self.filter_list(list1, list2))
+        validAssemblages = list(filter_list(list1, list2))
 
         ######################################################################################
         for testAssemblage in validAssemblages:
@@ -70,26 +70,24 @@ def checkForValidAdditions(nnetwork,filter_list,pairGraph,assemblages,args,typeF
             ## Sanity check
             if innerNeighbor is None:
                 sys.exit("Quitting due to errors.")
-            c = self.pairGraph.get_edge_data(innerNeighbor, endAssemblage)
+            c = pairGraph.get_edge_data(innerNeighbor, endAssemblage)
             comparison = c['weight']
             comparisonMap = ""
-            oneToColumns = range(len(self.assemblages[testAssemblage]))
+            oneToColumns = range(len(assemblages[testAssemblage]))
 
             error = 0  ## set the error check to 0
             for i in oneToColumns:
                 c = ""
                 p = nx.shortest_path(nnetwork, nnetwork.graph[assEnd], nnetwork.graph[otherEnd])
-                newVal = self.assemblages[testAssemblage][i]
+                newVal = assemblages[testAssemblage][i]
                 previousAssemblage = testAssemblage
                 for compareAssemblage in p:
-                    oldVal = self.assemblages[compareAssemblage][i]
-                    if self.args['bootstrapCI'] not in (None, ""):
-                        upperCI_test = self.typeFrequencyUpperCI[previousAssemblage][i]
-                        lowerCI_test = self.typeFrequencyLowerCI[previousAssemblage][i]
-                        upperCI_end = self.typeFrequencyUpperCI[compareAssemblage][i]
-                        lowerCI_end = self.typeFrequencyLowerCI[compareAssemblage][i]
-                        mean_test = self.typeFrequencyMeanCI[previousAssemblage][i]
-                        mean_end = self.typeFrequencyMeanCI[compareAssemblage][i]
+                    oldVal = assemblages[compareAssemblage][i]
+                    if args['bootstrapCI'] not in (None, ""):
+                        upperCI_test = typeFrequencyUpperCI[previousAssemblage][i]
+                        lowerCI_test = typeFrequencyLowerCI[previousAssemblage][i]
+                        upperCI_end = typeFrequencyUpperCI[compareAssemblage][i]
+                        lowerCI_end = typeFrequencyLowerCI[compareAssemblage][i]
 
                         if upperCI_test < lowerCI_end:
                             c += "D"
@@ -144,17 +142,6 @@ def checkForValidAdditions(nnetwork,filter_list,pairGraph,assemblages,args,typeF
     else:
         return False
 
-
-
-class AutoVivification(dict):
-    """Implementation of perl's autovivification feature."""
-
-    def __getitem__(self, item):
-        try:
-            return dict.__getitem__(self, item)
-        except KeyError:
-            value = self[item] = type(self)()
-            return value
 
 
 class IDSS():
@@ -2410,14 +2397,16 @@ class IDSS():
                 ## look through the set of existing valid networks.
                 validNewNetworks = []
 
-                #partial_check =  partial(checkForValidAdditions, data=networks, self.filter_list,self.pairGraph,self.assemblages,
-                #                  self.args,self.typeFrequencyUpperCI,self.typeFrequencyLowerCI,self.typeFrequencyMeanCI)
+                partial_check =  partial(checkForValidAdditions, networks,self.validComparisonsHash,self.filter_list,self.pairGraph,self.assemblages,
+                                  self.args,self.typeFrequencyUpperCI,self.typeFrequencyLowerCI)
 
-                pool = Pool(processes=4)
+                try:
+                    cpus = multiprocessing.cpu_count()
+                except NotImplementedError:
+                    cpus = 2   # arbitrary default
+                pool = multiprocessing.Pool(processes=cpus)
 
-                result = pool.map(checkForValidAdditions, networks)\
-                    #, self.filter_list,self.pairGraph,self.assemblages,
-                    #              self.args,self.typeFrequencyUpperCI,self.typeFrequencyLowerCI,self.typeFrequencyMeanCI)
+                result = pool.map(partial_check, networks)
 
                 #validNewNetworks = [x for x in result if not x is False]
 
@@ -2430,7 +2419,6 @@ class IDSS():
                         if self.currentMaxNodes > maxNodes:
                             maxNodes = self.currentMaxNodes
                             currentTotal = len(newNetworks)
-
 
                 if self.args['screen'] not in (None, ""):
                     msg = "Current Max Nodes:  %d " % maxNodes
@@ -2548,6 +2536,8 @@ class IDSS():
 
 
 if __name__ == "__main__":
+
+
     parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
     parser.add_argument('--debug', default=None, help='Sets the DEBUG flag for massive amounts of annoated output.')
     parser.add_argument('--bootstrapCI', default=None,
@@ -2630,3 +2620,15 @@ args('graphs'}=1
 frequencyResults,continuityResults,exceptions = seriation.seriate(args)
 
 '''''
+
+
+class AutoVivification(dict):
+    """Implementation of perl's autovivification feature."""
+
+    def __getitem__(self, item):
+        try:
+            return dict.__getitem__(self, item)
+        except KeyError:
+            value = self[item] = type(self)()
+            return value
+
