@@ -24,6 +24,7 @@ import re
 #from pathos.multiprocessing import ProcessingPool as Pool
 from functools import partial
 import copy_reg, copy, pickle
+import parmap
 
 import multiprocessing
 import numpy as np
@@ -39,6 +40,7 @@ import MST
 import shapefile
 import memory
 from frequencySeriationMaker import frequencySeriationMaker
+import seriationEvaluation
 
 
 def checkForValidAdditions(nnetwork,validComparisonsHash,filter_list,pairGraph,assemblages,args,typeFrequencyUpperCI,typeFrequencyLowerCI):
@@ -2397,8 +2399,12 @@ class IDSS():
                 ## look through the set of existing valid networks.
                 validNewNetworks = []
 
-                partial_check =  partial(checkForValidAdditions, networks,self.validComparisonsHash,self.filter_list,self.pairGraph,self.assemblages,
+                case = networks
+                listz = parmap.map(checkForValidAdditions, case, self.validComparisonsHash,self.filter_list,self.pairGraph,self.assemblages,
                                   self.args,self.typeFrequencyUpperCI,self.typeFrequencyLowerCI)
+
+                #partial_check =  partial(seriationEvaluation.checkForValidAdditions(network,self.validComparisonsHash,self.filter_list,self.pairGraph,self.assemblages,
+                #                  self.args,self.typeFrequencyUpperCI,self.typeFrequencyLowerCI),networks)
 
                 try:
                     cpus = multiprocessing.cpu_count()
@@ -2406,7 +2412,7 @@ class IDSS():
                     cpus = 2   # arbitrary default
                 pool = multiprocessing.Pool(processes=cpus)
 
-                result = pool.map(partial_check, networks)
+                result = pool.map(listz, networks)
 
                 #validNewNetworks = [x for x in result if not x is False]
 
