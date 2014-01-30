@@ -25,10 +25,12 @@ def worker(networks, out_q):
         list of numbers to factor. The results are placed in
         a dictionary that's pushed to a queue.
     """
-    outdict = {}
+    outdict = []
     for n in networks:
-        outdict[n] = checkForValidAdditions(n)
-
+        output=[]
+        output=checkForValidAdditions(n)
+        for o in output:
+            outdict.append(o)
     out_q.put(outdict)
 
 def checkForValidAdditions(nnetwork):
@@ -149,6 +151,7 @@ def checkForValidAdditions(nnetwork):
 
                 if len(new_network) > maxnodes:
                     maxnodes = len(new_network)
+
 
     return array_of_new_networks
 

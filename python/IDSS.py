@@ -2097,6 +2097,12 @@ class IDSS():
             logger.debug("Process complete at seriation size %d with %d solutions after filtering.",
                          self.maxSeriationSize, len(frequencyArray))
 
+            ## determine time elapsed
+            #time.sleep(5)
+            timeNow = time.time()
+            timeElapsed = timeNow - self.start
+            print "Time elapsed for frequency seriation processing: %d seconds" % timeElapsed
+
             #################################################### OUTPUT SECTION ####################################################
             self.output(frequencyArray, OUTFILE, OUTPAIRSFILE, OUTMSTFILE, OUTMSTDISTANCEFILE, maxNodes, args)
 

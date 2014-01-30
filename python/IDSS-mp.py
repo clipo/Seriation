@@ -1156,22 +1156,12 @@ class IDSS():
         self.saveGraph(UU, atlasFile + ".gml")
 
 
-    def finalGoodbye(self, maxNodes, frequencyTotal, continuityTotal):
+    def finalGoodbye(self):
         if self.args['screen'] is not None:
             curses.endwin()
             curses.resetty()
             curses.nl()
             curses.echo()
-        ## determine time elapsed
-        #time.sleep(5)
-        timeNow = time.time()
-        timeElapsed = timeNow - self.start
-        print "Seriation complete."
-        print "Maximum size of seriation: %d" % maxNodes
-        print "Number of frequency seriation solutions at last step: %d" % frequencyTotal
-        print "Number of continuity seriation solutions at end: %d " % continuityTotal
-        print "Time elapsed for calculation: %d seconds" % timeElapsed
-        if self.args['screen'] is not None:
             os.system("reset")
 
     #################################################### set up all the output files ####################################################
@@ -2103,7 +2093,7 @@ class IDSS():
                 'excel': None, 'threshold': None, 'noscreen': None, 'xyfile': None, 'pairwisefile': None, 'mst': None,
                 'stats': None, 'screen': None, 'allsolutions': None, 'inputfile': None, 'outputdirectory': None,
                 'shapefile': None, 'frequency': None, 'continuity': None, 'graphs': None, 'graphroot': None,
-                'continuityroot': None}
+                'continuityroot': None, 'verbose':None, 'frequencyseriation':None}
         for a in oldargs:
             self.args[a] = oldargs[a]
 
@@ -2265,26 +2255,22 @@ class IDSS():
 
             while currentMaxSeriationSize < self.maxSeriationSize:
                 currentMaxSeriationSize += 1
-                print "This is time:  ", currentMaxSeriationSize
                 ### first time through copy the triples, else get the previous new ones.
                 if currentMaxSeriationSize == 3:  ## first time through. Just copy the triples to the working arrays
                     networks = triples
                     solutions = triples # clear the
                 else:
                     i = 0
-                    print("Currently have %d solutions at step %d"%( len(newNetworks), currentMaxSeriationSize))
+                    #print("Currently have %d solutions at step %d"%( len(newNetworks), currentMaxSeriationSize))
                     if len(newNetworks) > 0:
                         # there were no networks the previous times so nothing to do.
                         logger.debug("These solutions are ---  ")
-                        print newNetworks
                         for sol in newNetworks:
-                            print "sol: ", sol
                             logger.debug("solution %d: %s", i, nx.shortest_path(sol, sol.graph["End1"], sol.graph["End2"]))
                             i += 1
                         networks = []
                         networks += newNetworks  # copy the array of previous new ones for this round
                         solutions.append(newNetworks) # append the new list to the previous one
-                        #print "Number of new Networks:", len(newNetworks)
                         newNetworks = []         # clear the array of new solutions
 
                 stepcount += 1
@@ -2327,9 +2313,9 @@ class IDSS():
 
                 # Collect all results into a single result dict. We know how many dicts
                 # with results to expect.
-                resultdict = {}
+                resultdict = []
                 for i in range(cpus):
-                    resultdict.update(out_q.get())
+                    resultdict.append(out_q.get())
 
                 # Wait for all worker processes to finish
                 for p in procs:
@@ -2377,6 +2363,13 @@ class IDSS():
             logger.debug("Process complete at seriation size %d with %d solutions after filtering.",
                          self.maxSeriationSize, len(frequencyArray))
 
+            if self.args['verbose'] not in (None,0,False):
+                ## determine time elapsed
+                #time.sleep(5)
+                timeNow = time.time()
+                timeElapsed = timeNow - self.start
+                print "Time elapsed for frequency seriation processing: %d seconds" % timeElapsed
+
             #################################################### OUTPUT SECTION ####################################################
             self.output(frequencyArray, OUTFILE, OUTPAIRSFILE, OUTMSTFILE, OUTMSTDISTANCEFILE, maxNodes)
 
@@ -2419,17 +2412,22 @@ class IDSS():
                 mst = MST.MST(outputFile, self.outputDirectory, shapefile)
                 mst.createMST()
                 #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
-            #################################################### MST SECTION ####################################################
+            #################################################### END SECTION ####################################################
 
-            print "Assemblages not part of final solution:"
-            nodeList = sumGraphByWeight.nodes()
-            for a in self.assemblages:
-                if a not in nodeList:
-                    notPartOfSeriationsList.append(a)
-                    print a
+            if self.args['verbose'] not in (None,0,False):
+                print "Seriation complete."
+                print "Maximum size of seriation: %d" % maxNodes
+                print "Number of frequency seriation solutions at last step: %d" % len(frequencyArray)
+                print "Assemblages not part of final solution:"
+                nodeList = sumGraphByWeight.nodes()
+                for a in self.assemblages:
+                    if a not in nodeList:
+                        notPartOfSeriationsList.append(a)
+                        print a
+                if len(notPartOfSeriationsList) == 0:
+                    print "*** All assemblages used in frequency seriation.***"
 
-            if len(notPartOfSeriationsList) == 0:
-                print "---> All assemblages used."
+
 
         if self.args['continuity'] not in (None, False, 0):
             # experimental
@@ -2455,11 +2453,26 @@ class IDSS():
                 argument={'inputfile':textFileName}
                 seriation.makeGraph(argument)
 
+            if self.args['verbose'] not in (None,0,False):
+                ## determine time elapsed
+                #time.sleep(5)
+                timeNow = time.time()
+                timeElapsed = timeNow - self.start
+                print "Number of continuity seriation solutions at end: %d " % len(continuityArray)
+                print "Time elapsed for continuity seriation processing: %d seconds" % timeElapsed
+
+        ## determine time elapsed
+        #time.sleep(5)
+        timeNow = time.time()
+        timeElapsed = timeNow - self.start
+        if self.args['verbose'] not in (None,0,False):
+            print "Time elapsed for completion of program: %d seconds" % timeElapsed
+
         if self.args['graphs'] not in (None, False, 0):
             plt.show() # display
 
         ## say goodbye and clean up the screen stuff #########################
-        self.finalGoodbye(maxNodes, len(frequencyArray), len(continuityArray))
+        self.finalGoodbye()
 
         return frequencyArray, continuityArray, notPartOfSeriationsList
 
@@ -2517,6 +2530,7 @@ if __name__ == "__main__":
     parser.add_argument('--noheader',default=None,
                         help="If you do not use type names as the first line of the input file, use this option to read the data.")
     parser.add_argument('--frequencyseriation', default=None, help="Generates graphical output for the results in a frequency seriation form.")
+    parser.add_argument('--verbose',default=True, help='Provides output for your information')
 
     try:
         args = vars(parser.parse_args())
