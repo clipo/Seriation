@@ -2243,6 +2243,9 @@ class IDSS():
             all_solutions = []
             all_solutions = all_solutions + triples  ## add the triples to the intial solution
 
+            ## create a directory for the processing of the pickle files if it doesnt exist already
+            if not os.path.exists(".p"):
+                os.makedirs(".p")
             ## pickle the stuff I need for parallel processing
             pickle.dump(self.validComparisonsHash,open('.p/validComparisonsHash.p','wb'))
             pickle.dump(self.pairGraph,open('validComparisonsHash.p','wb'))
