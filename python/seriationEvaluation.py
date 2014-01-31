@@ -1,28 +1,18 @@
 __author__ = 'clipo'
 
-
-import csv
-import re
-import sys
 import logging as logger
-import random
-from datetime import datetime
 import pickle
-import multiprocessing
-import numpy as np
-import scipy as sp
-import scipy.stats
-import networkx as nx
-from random import randint
+import uuid
 from pylab import *
+import networkx as nx
+import re
 
 def filter_list(full_list, excludes):
     s = set(excludes)
     return (x for x in full_list if x not in s)
 
 def worker(networks, out_q):
-    """ The worker function, invoked in a process. 'nums' is a
-        list of numbers to factor. The results are placed in
+    """ The worker function, invoked in a process. The results are placed in
         a dictionary that's pushed to a queue.
     """
     outdict = []
@@ -34,8 +24,8 @@ def worker(networks, out_q):
     out_q.put(outdict)
 
 def checkForValidAdditions(nnetwork):
+    ## create the hashes
     validComparisonsHash = {}
-    filter_list = {}
     pairGraph = {}
     assemblages={}
     args={}
@@ -132,16 +122,16 @@ def checkForValidAdditions(nnetwork):
                     error += 1
 
             if error == 0:
-                name = str(randint(1,1000000000000000))
+                graphID = uuid.uuid4().urn
                 new_network = nnetwork.copy()
-                new_network.graph["GraphID"] = name
-                new_network.graph["name"] = name
+                new_network.graph["GraphID"] = graphID
+                new_network.graph["name"] = graphID
                 path = nx.shortest_path(nnetwork, nnetwork.graph["End1"], nnetwork.graph["End2"])
 
                 new_network.add_node(testAssemblage, name=testAssemblage, end=1, site="end")
                 new_network.add_node(endAssemblage, name=endAssemblage, site="middle", end=0)
                 new_network.add_edge(testAssemblage, endAssemblage, weight=comparisonMap, end=1, site="end",
-                                     GraphID=name)
+                                     GraphID=graphID)
 
                 new_network.graph[assEnd] = testAssemblage
                 path = nx.shortest_path(new_network, new_network.graph["End1"], new_network.graph["End2"])

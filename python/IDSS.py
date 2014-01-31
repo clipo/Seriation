@@ -21,11 +21,8 @@ import time
 from datetime import datetime
 import os
 import re
-#from pathos.multiprocessing import ProcessingPool as Pool
-#from functools import partial
-#import copy_reg, copy, pickle
+import uuid
 import pickle
-
 import multiprocessing
 import numpy as np
 import scipy as sp
@@ -503,13 +500,14 @@ class IDSS():
 
             if error == 0:
                 # uses NetworkX
-                net = nx.Graph(name=str(numberOfTriplets), GraphID=str(numberOfTriplets), End1=permu[0], End2=permu[2],
+                graphID = uuid.uuid4().urn
+                net = nx.Graph(name=str(numberOfTriplets), GraphID=graphID, End1=permu[0], End2=permu[2],
                                Middle=permu[1], is_directed=False)
                 net.add_node(permu[0], name=permu[0], site="end", end=1, connectedTo=permu[1])
                 net.add_node(permu[1], name=permu[1], site="middle", end=0, connectedTo="middle")
                 net.add_node(permu[2], name=permu[2], site="end", end=1, connectedTo=permu[1])
-                net.add_edge(permu[0], permu[1], weight=comparison12, GraphID=numberOfTriplets, end=1)
-                net.add_edge(permu[2], permu[1], weight=comparison23, GraphID=numberOfTriplets, end=1)
+                net.add_edge(permu[0], permu[1], weight=comparison12, GraphID=graphID, end=1)
+                net.add_edge(permu[2], permu[1], weight=comparison23, GraphID=graphID, end=1)
                 logger.debug("VALID TRIPLE SOLUTION: %s * %s * %s ", permu[0], permu[1], permu[2])
                 logger.debug("VALID TRIPLE SOLUTION: %s  <--->   %s", comparison12, comparison23)
                 logger.debug("VALID TRIPLE SOLUTION: %s ", net.adjacency_list())
@@ -686,8 +684,9 @@ class IDSS():
                     logger.debug("New comparison map is: %s ", comparisonMap)
 
                     new_network = nnetwork.copy()
-                    new_network.graph["GraphID"] = str(self.solutionCount + 1)
-                    new_network.graph["name"] = str(self.solutionCount + 1)
+                    graphID = uuid.uuid4().urn
+                    new_network.graph["GraphID"] = graphID
+                    new_network.graph["name"] = graphID
                     logger.debug("Here's the new network (before addition): %s",
                                  nx.shortest_path(nnetwork, nnetwork.graph["End1"], nnetwork.graph["End2"]))
                     logger.debug("From %s the ends of the seriation are %d (before): %s and %s", assEnd,
@@ -702,7 +701,7 @@ class IDSS():
 
                     #### This adds the comparison to the new edge that has been added.
                     new_network.add_edge(testAssemblage, endAssemblage, weight=comparisonMap, end=1, site="end",
-                                         GraphID=self.solutionCount)
+                                         GraphID=graphID)
                     logger.debug("Ends of the seriation %d (before): %s and %s ", new_network.graph['GraphID'],
                                  new_network.graph["End1"], new_network.graph["End2"])
 
@@ -940,8 +939,9 @@ class IDSS():
                     logger.debug("New comparison map is: %s ", comparisonMap)
 
                     new_network = nnetwork.copy()
-                    new_network.graph["GraphID"] = str(self.solutionCount + 1)
-                    new_network.graph["name"] = str(self.solutionCount + 1)
+                    graphID = uuid.uuid4().urn
+                    new_network.graph["GraphID"] = graphID
+                    new_network.graph["name"] = graphID
                     logger.debug("Here's the new network (before addition): %s",
                                  nx.shortest_path(nnetwork, nnetwork.graph["End1"], nnetwork.graph["End2"]))
                     logger.debug("From %s the ends of the seriation are %d (before): %s and %s", assEnd,
@@ -956,7 +956,7 @@ class IDSS():
 
                     #### This adds the comparison to the new edge that has been added.
                     new_network.add_edge(testAssemblage, endAssemblage, weight=comparisonMap, end=1, site="end",
-                                         GraphID=self.solutionCount)
+                                         GraphID=graphID)
                     logger.debug("Ends of the seriation %d (before): %s and %s ", new_network.graph['GraphID'],
                                  new_network.graph["End1"], new_network.graph["End2"])
 
@@ -1044,12 +1044,10 @@ class IDSS():
 
         graphs = []
         megaGraph = nx.Graph(is_directed=False)
-        number = 0
         graphCount = 0
         for net in networks:
             graphCount += 1
             g = nx.Graph(is_directed=False)
-            number = net.graph['GraphID']
             for nodey in net.nodes(data=True):
                 xCoordinate = 0
                 yCoordinate = 0
@@ -1074,7 +1072,7 @@ class IDSS():
                 #count = megaGraph.get_edge_data(fromAssemblage,toAssemblage,'weight'
                 count += 1
                 megaGraph.add_path([fromAssemblage, toAssemblage], weight=count,
-                                   distance=distance, color=number,
+                                   distance=distance,
                                    size=(self.assemblageSize[fromAssemblage], self.assemblageSize[toAssemblage]))
 
                 g.add_path([fromAssemblage, toAssemblage],
