@@ -426,9 +426,9 @@ class IDSS():
                     high1 = self.typeFrequencyUpperCI[permu[0]][i]
                     high2 = self.typeFrequencyUpperCI[permu[1]][i]
                     high3 = self.typeFrequencyUpperCI[permu[2]][i]
-                    mean1 = self.typeFrequencyMeanCI[permu[0]][i]
-                    mean2 = self.typeFrequencyMeanCI[permu[1]][i]
-                    mean3 = self.typeFrequencyMeanCI[permu[2]][i]
+                    #mean1 = self.typeFrequencyMeanCI[permu[0]][i]
+                    #mean2 = self.typeFrequencyMeanCI[permu[1]][i]
+                    #mean3 = self.typeFrequencyMeanCI[permu[2]][i]
 
                     # compare 1 and 2
                     if high1 < low2:
@@ -483,7 +483,6 @@ class IDSS():
                         comparison12 += "M"
                         comparison23 += "U"
                     else:
-
                         logger.debug(
                             "\n\rNo match to our possibility of combinations. ass1: %f ass2: %f  ass3: %f" % ass1, ass2,
                             ass3)
@@ -522,7 +521,6 @@ class IDSS():
     def filter_list(self, full_list, excludes):
         s = set(excludes)
         return (x for x in full_list if x not in s)
-
 
     def checkForValidAdditionsToNetwork(self, nnetwork):
         logger.debug(
@@ -826,7 +824,6 @@ class IDSS():
                         curses.resetty()
                         os.system("reset")
                         sys.exit("Quitting as requested.\n\r")
-
                 ## now see if the test assemblages fits on the end.
                 logger.debug("Checking assemblage %s to see if it fits on the end of the current solution.",
                              testAssemblage)
@@ -1192,23 +1189,6 @@ class IDSS():
 
         return OUTFILE, OUTPAIRSFILE, OUTMSTFILE, OUTMSTDISTANCEFILE
 
-    #################################################### sort by multiple keys ####################################################
-    def multikeysort(self, items, columns):
-        from operator import itemgetter
-
-        comparers = [((itemgetter(col[1:].strip()), -1) if col.startswith('-') else (itemgetter(col.strip()), 1)) for
-                     col in columns]
-
-        def comparer(left, right):
-            for fn, mult in comparers:
-                result = cmp(fn(left), fn(right))
-                if result:
-                    return mult * result
-            else:
-                return 0
-
-        return sorted(items, cmp=comparer)
-
     def createShapefile(self, graph, shapefilename):
         w = shapefile.Writer(shapefile.POLYLINE)  # 3= polylines
         #turn geometry/attribute autoBalanace on
@@ -1423,8 +1403,6 @@ class IDSS():
                 toAssemblage = e[1]
                 currentWeight = self.sumOfDifferencesBetweenPairs[fromAssemblage+"*"+toAssemblage]
                 normalizedWeight = ((globalMaxWeight-currentWeight)/(globalMaxWeight-globalMinWeight))+1
-                #print "Current Weight: ", currentWeight, "Normalized Weight: ", normalizedWeight, " Max: ", globalMaxWeight, "Min: ", globalMinWeight
-
                 sumGraph.add_path([fromAssemblage, toAssemblage], sumDiffWeight=currentWeight, weight=normalizedWeight, inverseweight=(1/normalizedWeight))
 
         return sumGraph
@@ -1579,11 +1557,7 @@ class IDSS():
                     smallestMatchEnd.append('End1')
                     smallestMatchEnd.append('End2')
                     assemblagesMatchedToEnd.append(currentMinimumMatch[matchEnd])
-                    #else:
-                    #exit("Error: matched null values in continuity seriation.")
-                    #print "matches BOTH ends:  ", currentMinimumMatch['End1']
 
-                #print "Assemblages Matched To End: ", assemblagesMatchedToEnd
                 ## find out if there are others that have the same minimum value
                 for b in self.assemblages:
                     if b not in current_graph.nodes() and b not in assemblagesMatchedToEnd:
@@ -1605,15 +1579,9 @@ class IDSS():
                                                    size=self.assemblageSize[match])
                             if globalMinMatch == 0:
                                 globalMinMatch = 10
-                            #print "adding: ", match, " to ", matchEndAssemblage[endAss]
-                            #print "Network originally: ", current_graph.nodes()
                             current_graph.add_path([match, matchEndAssemblage[endAss]], weight=globalMinMatch,
                                                    inverseweight=(1 / globalMinMatch ))
                             current_graph.graph[endAss] = match
-                            #print "attaching to this end: ", endAss
-                            #print "attaching to this assemblage: ", matchEndAssemblage[endAss]
-                            #print "network now: ", current_graph.nodes()
-
 
                         ## if there are more than one we need to copy first before adding node
                         else:
@@ -1646,8 +1614,6 @@ class IDSS():
         plt.figure(newfilename, figsize=(8, 8))
         os.environ["PATH"] += ":/usr/local/bin:"
         pos = nx.graphviz_layout(sumGraph)
-        #pos=nx.graphviz_layout(sumGraph,prog="twopi",root=['graphroot'])
-        #pos=nx.spring_layout(mst,iterations=500)
         edgewidth = []
 
         ### Note the weights here are biased where the *small* differences are the largest (since its max value - diff)
@@ -1956,7 +1922,7 @@ class IDSS():
         ## first add all of the nodes
         for name in self.assemblages:
             output_graph.add_node(name, name=name, label=name, xCoordinate=self.xAssemblage[name],
-                    yCoordinate=self.xAssemblage[name], size=self.assemblageSize[name])
+                    yCoordinate=self.yAssemblage[name], size=self.assemblageSize[name])
 
         pairsHash={}
 
@@ -2010,9 +1976,6 @@ class IDSS():
                 currentWeight = int(d['weight'])
             pairsHash[fromAssemblage + "*" + toAssemblage] = currentWeight
             label = fromAssemblage + "*" + toAssemblage
-            ##print label," - ", currentWeight
-
-        #sorted_pairs = sorted(pairsHash.iteritems(), key=operator.itemgetter(1), reverse=True)
 
         matchOnThisLevel = False
         currentValue = 0
@@ -2030,10 +1993,10 @@ class IDSS():
             #print ass1, "-", ass2, "---",value
             if ass1 not in output_graph.nodes():
                 output_graph.add_node(ass1, name=ass1, xCoordinate=self.xAssemblage[ass1],
-                                      yCoordinate=self.xAssemblage[ass1], size=self.assemblageSize[ass1])
+                                      yCoordinate=self.yAssemblage[ass1], size=self.assemblageSize[ass1])
             if ass2 not in output_graph.nodes():
                 output_graph.add_node(ass2, name=ass2, xCoordinate=self.xAssemblage[ass2],
-                                      yCoordinate=self.xAssemblage[ass2], size=self.assemblageSize[ass2])
+                                      yCoordinate=self.yAssemblage[ass2], size=self.assemblageSize[ass2])
             if nx.has_path(output_graph, ass1, ass2) == False or matchOnThisLevel == True:
                 matchOnThisLevel = True   ## setting this true allows us to match the condition that at least one match was
                 ## made at this level
@@ -2436,7 +2399,7 @@ class IDSS():
                         notPartOfSeriationsList.append(a)
                         print a
                 if len(notPartOfSeriationsList) == 0:
-                    print "*** All assemblages used in frequency seriation.***"
+                    print "*** All assemblages used in frequency seriations.***"
 
 
 
