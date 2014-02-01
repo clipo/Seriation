@@ -2205,7 +2205,7 @@ class IDSS():
                 confidenceInterval = self.args['bootstrapSignificance']
             else:
                 confidenceInterval = 0.95
-            self.bootstrapCICalculation(args, 100, float(confidenceInterval))
+            self.bootstrapCICalculation( 100, float(confidenceInterval))
 
         ###########################################################################################################
         ### setup the output files. Do this now so that if it fails, its not AFTER all the seriation stuff
@@ -2248,11 +2248,11 @@ class IDSS():
                 os.makedirs(".p")
             ## pickle the stuff I need for parallel processing
             pickle.dump(self.validComparisonsHash,open('.p/validComparisonsHash.p','wb'))
-            pickle.dump(self.pairGraph,open('validComparisonsHash.p','wb'))
-            pickle.dump(self.assemblages,open('assemblages.p','wb'))
-            pickle.dump(self.args,open('args.p','wb'))
-            pickle.dump(self.typeFrequencyUpperCI,open('typeFrequencyUpperCI.p','wb'))
-            pickle.dump(self.typeFrequencyLowerCI,open('typeFrequencyLowerCI.p','wb'))
+            pickle.dump(self.pairGraph,open('.p/pairGraph.p','wb'))
+            pickle.dump(self.assemblages,open('.p/assemblages.p','wb'))
+            pickle.dump(self.args,open('.p/args.p','wb'))
+            pickle.dump(self.typeFrequencyUpperCI,open('.p/typeFrequencyUpperCI.p','wb'))
+            pickle.dump(self.typeFrequencyLowerCI,open('.p/typeFrequencyLowerCI.p','wb'))
 
             while currentMaxSeriationSize < self.maxSeriationSize:
                 currentMaxSeriationSize += 1

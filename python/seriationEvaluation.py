@@ -34,12 +34,12 @@ def checkForValidAdditions(nnetwork):
     typeFrequencyLowerCI={}
 
     ## pickle the stuff I need for parallel processing
-    validComparisonsHash=pickle.load(open('validComparisonsHash.p','rb'))
-    pairGraph=pickle.load(open('validComparisonsHash.p','rb'))
-    assemblages=pickle.load(open('assemblages.p','rb'))
-    args=pickle.load(open('args.p','rb'))
-    typeFrequencyUpperCI=pickle.load(open('typeFrequencyUpperCI.p','rb'))
-    typeFrequencyLowerCI=pickle.load(open('typeFrequencyLowerCI.p','rb'))
+    validComparisonsHash=pickle.load(open('.p/validComparisonsHash.p','rb'))
+    pairGraph=pickle.load(open('.p/pairGraph.p','rb'))
+    assemblages=pickle.load(open('.p/assemblages.p','rb'))
+    args=pickle.load(open('.p/args.p','rb'))
+    typeFrequencyUpperCI=pickle.load(open('.p/typeFrequencyUpperCI.p','rb'))
+    typeFrequencyLowerCI=pickle.load(open('.p/typeFrequencyLowerCI.p','rb'))
 
     array_of_new_networks = []  ## a list of all the valid new networks that we run into
     maxnodes = len(nnetwork.nodes())
