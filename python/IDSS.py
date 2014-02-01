@@ -1195,6 +1195,7 @@ class IDSS():
         #w.autoBalance = 1
         # add a field, any field
         w.field('FIELD','C','1')
+        w.autoBalance = 1
         xCoordinates = nx.get_node_attributes(graph, "xCoordinate")
         yCoordinates = nx.get_node_attributes(graph, "yCoordinate")
         num=0
@@ -1213,11 +1214,17 @@ class IDSS():
         w.line(parts=lineparts)
         w.record('')
         # create the PRJ file
-        prj = open("%s.prj" % shapefilename[0:-4], "w")
-        epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
-        prj.write(epsg)
-        prj.close()
+        #prj = open("%s.prj" % shapefilename[0:-4], "w")
+        #epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+        #prj.write(epsg)
+        #prj.close()
         w.save(shapefilename)
+        w = shapefile.Writer(shapefile.POINT)
+        w.field('Label','C','40')
+        for n,d in graph.nodes_iter(data=True):
+            w.point(float(d['xCoordinate']),float(d['yCoordinate']))
+            w.record(d['name'],'Point')
+        w.save(shapefilename[0:-4]+"-points.shp")
 
     def iso(self, G1, glist):
         """Quick and dirty nonisomorphism checker used to check isomorphisms."""
