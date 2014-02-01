@@ -1211,9 +1211,16 @@ class IDSS():
 
     def createShapefile(self, graph, shapefilename):
         w = shapefile.Writer(shapefile.POLYLINE)  # 3= polylines
+        #turn geometry/attribute autoBalanace on
+        #w.autoBalance = 1
+        # add a field, any field
+        w.field('FIELD','C','1')
         xCoordinates = nx.get_node_attributes(graph, "xCoordinate")
         yCoordinates = nx.get_node_attributes(graph, "yCoordinate")
+        num=0
+        lineparts=[]
         for e in graph.edges_iter():
+            num += 1
             d = graph.get_edge_data(*e)
             node1 = e[0]
             node2 = e[1]
@@ -1221,7 +1228,10 @@ class IDSS():
             y1 = float(yCoordinates[node1])
             x2 = float(xCoordinates[node2])
             y2 = float(yCoordinates[node2])
-            w.poly(parts=[[[x1, y1], [x2, y2]]])
+            lineparts.append([[x1,y1],[x2,y2]])
+            #w.poly(parts=[[[x1, y1], [x2, y2]]])
+        w.line(parts=lineparts)
+        w.record('')
         w.save(shapefilename)
 
     def iso(self, G1, glist):
@@ -1632,7 +1642,7 @@ class IDSS():
         gmlfilename = self.outputDirectory + sumgraphfilename + ".gml"
         self.saveGraph(sumGraph, gmlfilename)
         if self.args['shapefile'] is not None and self.args['xyfile'] is not None:
-            self.createShapefile(sumGraph, newfilename + ".shp")
+            self.createShapefile(sumGraph, newfilename[0:-4] + ".shp")
         plt.figure(newfilename, figsize=(8, 8))
         os.environ["PATH"] += ":/usr/local/bin:"
         pos = nx.graphviz_layout(sumGraph)
