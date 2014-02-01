@@ -1212,6 +1212,11 @@ class IDSS():
             #w.poly(parts=[[[x1, y1], [x2, y2]]])
         w.line(parts=lineparts)
         w.record('')
+        # create the PRJ file
+        prj = open("%s.prj" % shapefilename[0:-4], "w")
+        epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+        prj.write(epsg)
+        prj.close()
         w.save(shapefilename)
 
     def iso(self, G1, glist):
