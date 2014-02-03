@@ -323,7 +323,7 @@ class frequencySeriationMaker():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='create seriation graph')
-    parser.add_argument('--pdf',default=None,help='Create PDF files in addition to SVG')
+    parser.add_argument('--pdf',default=None,help='[UNIMPLEMENTED] Create PDF files in addition to SVG')
     parser.add_argument('--debug', default=None, help='Sets the DEBUG flag for massive amounts of annotated output.')
     parser.add_argument('--bootstrapCI', default=None,
                         help="Sets whether you want to use the bootstrap confidence intervals for the comparisons between assemblage type frequencies. Set's to on or off.")
