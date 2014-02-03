@@ -2076,7 +2076,7 @@ class IDSS():
                 'excel': None, 'threshold': None, 'noscreen': None, 'xyfile': None, 'pairwisefile': None, 'mst': None,
                 'stats': None, 'screen': None, 'allsolutions': None, 'inputfile': None, 'outputdirectory': None,
                 'shapefile': None, 'frequency': None, 'continuity': None, 'graphs': None, 'graphroot': None,
-                'continuityroot': None, 'verbose':None, 'frequencyseriation':None}
+                'continuityroot': None, 'verbose':None, 'frequencyseriation':None, 'pdf':None, 'atlas':None}
         for a in oldargs:
             self.args[a] = oldargs[a]
 
