@@ -130,9 +130,9 @@ class frequencySeriationMaker():
 
         self.maxSeriationSize = self.countOfAssemblages
 
-        if args['pdf'] not in (None, False, 0):
-            drawing = svg2rlg(self.outputFile)
-            renderPDF.drawToFile(drawing, self.outputFile[0:-4]+".pdf")
+        #if args['pdf'] not in (None, False, 0):
+        #    drawing = svg2rlg(self.outputFile)
+        #    renderPDF.drawToFile(drawing, self.outputFile[0:-4]+".pdf")
 
         return True
 
