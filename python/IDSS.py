@@ -138,7 +138,8 @@ class IDSS():
             key2 = pair[1] + "*" + pair[0]
             self.sumOfDifferencesBetweenPairs[key1] = diff
             self.sumOfDifferencesBetweenPairs[key2] = diff
-            #print "Key: ", key1, "=> ",diff
+            if diff == 0:
+                logger.info("Potential problem:  %s and %s are identical in their frequencies. ", pair[0],pair[1])
 
     def preCalculateComparisons(self):
         logger.debug("Precalculating the comparisons between all pairs of assemblages...")
@@ -1964,6 +1965,8 @@ class IDSS():
                 for newEdge in edgesToAdd:
                     a1,a2 = newEdge.split("*")
                     weight = self.sumOfDifferencesBetweenPairs[newEdge]
+                    if weight in (None, 0, False):
+                        weight=0.000000000001
                     output_graph.add_path([a1, a2], weight=weight, inverseweight=(1/weight))
         return output_graph
 
@@ -1994,7 +1997,7 @@ class IDSS():
         for key, value in sorted(pairsHash.iteritems(), key=operator.itemgetter(1), reverse=True):
             #print key, "->", value
             if value==0:
-                value=.00001
+                value=.0000000000001
             if currentValue == 0:
                 currentValue = value
             elif value < currentValue:
@@ -2012,7 +2015,8 @@ class IDSS():
             if nx.has_path(output_graph, ass1, ass2) == False or matchOnThisLevel == True:
                 matchOnThisLevel = True   ## setting this true allows us to match the condition that at least one match was
                 ## made at this level
-                output_graph.add_path([ass1, ass2], weight=value, inverseweight=(1 / value ))
+
+                output_graph.add_path([ass1, ass2], weight=value, inverseweight=(1/value ))
 
         return output_graph
 
