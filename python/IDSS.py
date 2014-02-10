@@ -2097,7 +2097,7 @@ class IDSS():
         testAssemblage=assemblages[1]
 
         ## first comaprison is different since its always okay and there are no incorrect values
-        error = 0
+
         oneToColumns = range(len(self.assemblages[testAssemblage]))
 
         seriationList=[] ## hold all the seriations
@@ -2132,20 +2132,21 @@ class IDSS():
                 else:
                     ser += "M"
 
-            seriationList[i]=ser
+                seriationList[i]=ser
+            startAssemblage=testAssemblage
 
-            ## now look back to see if possible
-            for s in seriationList:
-                test = re.compile('DU|DM*U').search(s)
-                if test not in (None,""):
-                    error +=1
-
-            if error >0:
-                break
+        ## now look for errors
+        error = 0
+        for s in seriationList:
+            #print "Seriation test: ", s
+            test = re.compile('DU|DM*U').search(s)
+            if test not in (None,""):
+                error +=1
 
         if error > 0:
             return False
         else:
+            #print "Good seriation solution found:  ", nnetwork
             return True
 
     def findValidSeriations(self,graph):
@@ -2156,9 +2157,12 @@ class IDSS():
         for pair in pairs:
             #print "pair1 %s pair2 %s" % (pair[0],pair[1])
             try:
-                paths= nx.all_simple_paths(graph,source=pair[0],target=pair[1],cutoff=10)
+                paths= nx.all_simple_paths(graph,source=pair[0],target=pair[1])
                 for p in paths:
-                    newGraph = nx.Graph()
+                    graphID = uuid.uuid4().urn
+                    newGraph = nx.Graph(End1=pair[0],End2=pair[1])
+                    newGraph.graph["GraphID"] = graphID
+                    newGraph.graph["name"] = graphID
                     newGraph.add_path(p)
                     for n in newGraph.nodes():
                         newGraph.add_node(n,name=n,label=n)
@@ -2179,17 +2183,18 @@ class IDSS():
     def filterInclusiveSolutions(self, array):
         solutionSet = []
         for graph in sorted(array, key=lambda x: x.number_of_nodes(), reverse=True):
-            if len(solutionSet) == 0:
-                solutionSet.append(graph)
-            add=0
+            #if len(solutionSet) == 0:
+            #    solutionSet.append(graph)
+            addSolution = True
             for sol in solutionSet:
                 s = sol.nodes()
                 g = graph.nodes()
-
-                if len(self.difference(g,s)) > 0:
-                    add += 1
-            if add>1:
-                solutionSet.append(sol)
+                if set(g).issubset(s):
+                    #print "Difference is: ", self.difference(s,g)
+                    addSolution=False
+            if addSolution is not False:
+                solutionSet.append(graph)
+        #print "length of final solution set: ", len(solutionSet)
         return solutionSet
 
     def seriate(self, args):
@@ -2561,7 +2566,13 @@ class IDSS():
 
             self.createAtlasOfSolutions(validSeriations, "Valid_Seriations")
             filteredSet=self.filterInclusiveSolutions(validSeriations)
+            #print "Filtered set:", filteredSet
             self.createAtlasOfSolutions(filteredSet, "Unique_Valid_Seriations")
+            if self.args['excel'] not in (None, False, 0):
+                excelFileName,textFileName=self.outputExcel(filteredSet, self.outputDirectory+self.inputFile[0:-4], "valid_continuity")
+                seriation = frequencySeriationMaker()
+                argument={'inputfile':textFileName}
+                seriation.makeGraph(argument)
 
         ## determine time elapsed
         #time.sleep(5)
