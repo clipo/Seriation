@@ -2084,6 +2084,114 @@ class IDSS():
         for a in oldargs:
             self.args[a] = oldargs[a]
 
+    def isSeriation(self, nnetwork):
+
+        if self.args['screen'] not in (None, ""):
+            self.scr.addstr(1, 40, "STEP: Testing to see if this is a valid solution  ....      ")
+            self.scr.refresh()
+
+        error=0
+        # just start from one side (shouldnt matter which).
+        assemblages = nnetwork.nodes()
+        startAssemblage=assemblages[0]
+        testAssemblage=assemblages[1]
+
+        ## first comaprison is different since its always okay and there are no incorrect values
+        error = 0
+        oneToColumns = range(len(self.assemblages[testAssemblage]))
+
+        seriationList=[] ## hold all the seriations
+        for i in oneToColumns:
+            startVal = self.assemblages[startAssemblage][i]
+            testVal = self.assemblages[testAssemblage][i]
+            if startVal<testVal:
+                compareVal="U"
+            elif startVal>testVal:
+                compareVal="D"
+            else:
+                compareVal="M"
+
+            seriationList.append(compareVal)
+
+        ## move to next assemblage
+        startAssemblage = testAssemblage
+
+        ## now start adding on assemblages and looking for failures.
+        ######################################################################################
+        for testAssemblage in assemblages[2:]:
+
+            for i in oneToColumns:
+                ser = seriationList[i]
+                startVal = self.assemblages[startAssemblage][i]
+                testVal = self.assemblages[testAssemblage][i]
+
+                if startVal<testVal:
+                    ser += "U"
+                elif startVal>testVal:
+                    ser += "D"
+                else:
+                    ser += "M"
+
+            seriationList[i]=ser
+
+            ## now look back to see if possible
+            for s in seriationList:
+                test = re.compile('DU|DM*U').search(s)
+                if test not in (None,""):
+                    error +=1
+
+            if error >0:
+                break
+
+        if error > 0:
+            return False
+        else:
+            return True
+
+    def findValidSeriations(self,graph):
+        seriationList=[]
+        nodes = graph.nodes()
+        #print "Nodes: ", nodes
+        pairs = self.all_pairs(nodes)
+        for pair in pairs:
+            #print "pair1 %s pair2 %s" % (pair[0],pair[1])
+            try:
+                paths= nx.all_simple_paths(graph,source=pair[0],target=pair[1],cutoff=10)
+                for p in paths:
+                    newGraph = nx.Graph()
+                    newGraph.add_path(p)
+                    for n in newGraph.nodes():
+                        newGraph.add_node(n,name=n,label=n)
+                    test = self.isSeriation(newGraph)
+                    if test is True:
+                        #print "%s is a seriation!" % newGraph
+                        seriationList.append(newGraph)
+            except nx.NetworkXNoPath:
+                continue
+                #print 'No path'
+
+        return seriationList
+
+    #Prints everything in set b that's not in set a
+    def difference(self, a, b):
+        return list(set(b).difference(set(a)))
+
+    def filterInclusiveSolutions(self, array):
+        solutionSet = []
+        for graph in sorted(array, key=lambda x: x.number_of_nodes(), reverse=True):
+            if len(solutionSet) == 0:
+                solutionSet.append(graph)
+            add=0
+            for sol in solutionSet:
+                s = sol.nodes()
+                g = graph.nodes()
+
+                if len(self.difference(g,s)) > 0:
+                    add += 1
+            if add>1:
+                solutionSet.append(sol)
+        return solutionSet
+
     def seriate(self, args):
         self.addOptions(args)
         self.checkMinimumRequirements()
@@ -2417,8 +2525,6 @@ class IDSS():
                 if len(notPartOfSeriationsList) == 0:
                     print "*** All assemblages used in frequency seriations.***"
 
-
-
         if self.args['continuity'] not in (None, False, 0):
             # experimental
             continuityArray = self.continunityMaximizationSeriation()
@@ -2450,6 +2556,12 @@ class IDSS():
                 timeElapsed = timeNow - self.start
                 print "Number of continuity seriation solutions at end: %d " % len(continuityArray)
                 print "Time elapsed for continuity seriation processing: %d seconds" % timeElapsed
+
+            validSeriations = self.findValidSeriations(minMaxGraphByWeight)
+
+            self.createAtlasOfSolutions(validSeriations, "Valid_Seriations")
+            filteredSet=self.filterInclusiveSolutions(validSeriations)
+            self.createAtlasOfSolutions(filteredSet, "Unique_Valid_Seriations")
 
         ## determine time elapsed
         #time.sleep(5)
