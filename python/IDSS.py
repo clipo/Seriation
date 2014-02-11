@@ -6,6 +6,7 @@ __author__ = 'carllipo'
 
 import csv
 from datetime import datetime
+import operator
 import argparse
 import sys
 import logging as logger
@@ -1467,9 +1468,9 @@ class IDSS():
     def calculateSumOfDifferences(self, assemblage1, assemblage2):
         diff = 0
         for type in range(0, self.numberOfClasses):
-            diff += abs(float(self.assemblageFrequencies[assemblage1][type]) - float(
-                self.assemblageFrequencies[assemblage2][type]))
-        return diff
+            diff += pow((float(self.assemblageFrequencies[assemblage1][type]) - float(
+                self.assemblageFrequencies[assemblage2][type])),2)
+        return pow(diff,0.5)
 
 
     def iso_filter_graphs(self, list):
@@ -2028,41 +2029,37 @@ class IDSS():
         ################################################# FILTERING  ####################################
 
         filteredarray = []
-        if self.args['filtered'] not in (None, ""):  ## only get the largest set that includes ALL
-            if self.args['screen'] not in (None, ""):
-                self.scr.addstr(1, 40, "STEP: Filter to get uniques... ")
-            logger.debug("--- Filtering solutions so we only end up with the unique ones.")
-            logger.debug("--- Start with %d solutions.", len(end_solutions))
-            filteredarray.append(end_solutions[-1])
-            newOne = 0
-            for tnetwork in reversed(all_solutions):
-                exists = 0
-                for fnetwork in filteredarray:
-                    fnetworkArray = fnetwork.nodes()
-                    logger.debug("----fnetworkArray: %s", fnetworkArray)
-                    tnetworkArray = tnetwork.nodes()
-                    logger.debug("----tnetworkArray: %s", tnetworkArray)
-                    minus = list(set(tnetworkArray) - set(fnetworkArray))
-                    logger.debug("difference between: %s ", minus)
-                    change = len(minus)
-                    logger.debug("Change: %d", change)
-                    if change > 0 and len(list(set(minus) - set(fnetworkArray))):
-                        newOne += 1
-                    else:
-                        exists += 1
-                if exists == 0:
-                    logger.debug("pushing tnetwork to list of filtered arrays")
-                    filteredarray.append(tnetwork)
-                exists = 0
+        if self.args['screen'] not in (None, ""):
+            self.scr.addstr(1, 40, "STEP: Filter to get uniques... ")
+        logger.debug("--- Filtering solutions so we only end up with the unique ones.")
+        logger.debug("--- Start with %d solutions.", len(end_solutions))
+        filteredarray.append(end_solutions[-1])
+        newOne = 0
+        for tnetwork in reversed(all_solutions):
+            exists = 0
+            for fnetwork in filteredarray:
+                fnetworkArray = fnetwork.nodes()
+                logger.debug("----fnetworkArray: %s", fnetworkArray)
+                tnetworkArray = tnetwork.nodes()
+                logger.debug("----tnetworkArray: %s", tnetworkArray)
+                minus = list(set(tnetworkArray) - set(fnetworkArray))
+                logger.debug("difference between: %s ", minus)
+                change = len(minus)
+                logger.debug("Change: %d", change)
+                if change > 0 and len(list(set(minus) - set(fnetworkArray))):
+                    newOne += 1
+                else:
+                    exists += 1
+            if exists == 0:
+                logger.debug("pushing tnetwork to list of filtered arrays")
+                filteredarray.append(tnetwork)
+            exists = 0
 
-            logger.debug("End with %d solutions.", len(filteredarray))
-            filterCount = len(filteredarray)
-            if self.args['screen'] not in (None, ""):
-                self.scr.addstr(11, 1, "End with filterCount solutions.")
-        elif self.args['allsolutions'] not in (None, ""):
-            filteredarray = all_solutions  ## all possible networks
-        else:
-            filteredarray = end_solutions ## just the largest ones (from the last round)
+        logger.debug("End with %d solutions.", len(filteredarray))
+        filterCount = len(filteredarray)
+        if self.args['screen'] not in (None, ""):
+            self.scr.addstr(11, 1, "End with filterCount solutions.")
+
         return filteredarray
 
     def checkMinimumRequirements(self):
@@ -2458,9 +2455,13 @@ class IDSS():
             logger.debug("Process complete at seriation size %d with %d solutions before filtering.",
                          self.maxSeriationSize, len(end_solutions))
 
+            all_solutions += end_solutions
             ###########################################################################################################
             frequencyArray = self.filterSolutions(end_solutions, all_solutions)
-
+            #if self.args['allsolutions'] not in (None, ""):
+            #frequencyArray = self.filterInclusiveSolutions(all_solutions,end_solutions)
+            #else:
+            #    frequencyArray = self.filterInclusiveSolutions(end_solutions)
             #filteredarray = all_solutions
 
             logger.debug("Process complete at seriation size %d with %d solutions after filtering.",
