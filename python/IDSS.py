@@ -2183,8 +2183,8 @@ class IDSS():
             edges +=1
             fromAssemblage = e[0]
             toAssemblage = e[1]
-            solutionDistance += sqrt(pow((self.xAssemblage(fromAssemblage)-self.xAssemblage(toAssemblage)),2)
-                                +pow((self.yAssemblage(fromAssemblage)-self.yAssemblage(toAssemblage)),2))
+            solutionDistance += sqrt(pow((self.xAssemblage[fromAssemblage]-self.xAssemblage[toAssemblage]),2)
+                                +pow((self.yAssemblage[fromAssemblage]-self.yAssemblage[toAssemblage]),2))
             assemblagesInSolution.append(fromAssemblage)
             assemblagesInSolution.append(toAssemblage)
         assemblageSet=set(assemblagesInSolution)
