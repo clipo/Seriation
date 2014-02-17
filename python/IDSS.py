@@ -2535,7 +2535,7 @@ class IDSS():
             #################################################### MinMax Graph ############################################
 
             minMaxGraphByWeight = self.createMinMaxGraphByWeight(input_graph=sumGraphByWeight, weight='weight')
-            pscore = calculateGeographicSolutionPValue(minMaxGraphByWeight)
+            pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
             print "Geographic p-value for the frequency seriation minmax solution: ", pscore
 
             minMaxGraphByCount = self.createMinMaxGraphByCount(input_graph=sumGraphByCount, weight='weight')
