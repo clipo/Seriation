@@ -2183,8 +2183,8 @@ class IDSS():
             edges +=1
             fromAssemblage = e[0]
             toAssemblage = e[1]
-            solutionDistance += sqrt(pow((self.xAssemblage[fromAssemblage]-self.xAssemblage[toAssemblage]),2)
-                                +pow((self.yAssemblage[fromAssemblage]-self.yAssemblage[toAssemblage]),2))
+            solutionDistance += sqrt(pow((int(self.xAssemblage[fromAssemblage])-int(self.xAssemblage[toAssemblage])),2)
+                                +pow((int(self.yAssemblage[fromAssemblage])-int(self.yAssemblage[toAssemblage])),2))
             assemblagesInSolution.append(fromAssemblage)
             assemblagesInSolution.append(toAssemblage)
         assemblageSet=set(assemblagesInSolution)
@@ -2200,8 +2200,8 @@ class IDSS():
         for b in range(0,bootstrap):
             testDistance=0
             for p in pairs:
-                testDistance += sqrt(pow((self.xAssemblage(p[0])-self.xAssemblage(p[1])),2)
-                        +pow((self.yAssemblage(p[0])-self.yAssemblage(p[1])),2))
+                testDistance += sqrt(pow((int(self.xAssemblage[p[0]])-int(self.xAssemblage[p[1]])),2)
+                        +pow((int(self.yAssemblage[p[0]])-int(self.yAssemblage[p[1]])),2))
             if testDistance <= solutionDistance:
                 pvalueScore += 1
 
