@@ -12,7 +12,7 @@ import sys
 import logging as logger
 import itertools
 import math
-import random
+import random as rnd
 import curses
 from itertools import chain
 import traceback
@@ -59,7 +59,7 @@ class IDSS():
         self.assemblages = {}
         self.countOfAssemblages = 0
         self.assemblageValues = {}
-        self.labels = {}
+        self.labels = []
         self.numberOfClasses = 0
         self.maxSeriationSize = 0
         self.xAssemblage = {}
@@ -113,7 +113,7 @@ class IDSS():
             else:
                 if len(row) > 1:
                     label = row[0]
-                    self.labels[label] = label
+                    self.labels.append(label)
                     row.pop(0)
                     row = map(float, row)
                     self.numberOfClasses = len(row)
@@ -2174,7 +2174,7 @@ class IDSS():
         return seriationList
 
     def calculateGeographicSolutionPValue(self,graph):
-        bootstrap=100
+        bootstrap=1000
         solutionDistance=0
         assemblagesInSolution=[]
         edges=0
@@ -2189,25 +2189,39 @@ class IDSS():
             assemblagesInSolution.append(toAssemblage)
         assemblageSet=set(assemblagesInSolution)
 
-        random.random.seed() # uses system time to initialize random number generator, or you can pass in a deterministic seed as an argument if you want
-
-        # code to use to generate K pairs
-        A = random.random.sample(assemblageSet,2*edges) # now you have a list of 2*K unique elements from 0 to N-1
-        pairs = zip(A[0:edges],A[edges:(2*edges)]) # now you have your pairs
+        rnd.seed() # uses system time to initialize random number generator, or you can pass in a deterministic seed as an argument if you want
 
         pvalueScore=0
         for b in range(0,bootstrap):
+            # code to use to generate K pairs
+            list1 = self.labels
+            list2 = self.labels
+
             testDistance=0
-            for p in pairs:
-                testDistance += sqrt(pow((int(self.xAssemblage[p[0]])-int(self.xAssemblage[p[1]])),2)
-                        +pow((int(self.yAssemblage[p[0]])-int(self.yAssemblage[p[1]])),2))
+
+            for p in range(0,edges-1):
+                test = False
+                p1 = p2 = ""
+                while test is False:
+                    p1 = rnd.choice(list1)
+                    p2 = rnd.choice(list2)
+                    if p1 != p2:
+                        test = True
+                #print "Pair: ", p1, "-", p2
+                testDistance += sqrt(pow((int(self.xAssemblage[p1])-int(self.xAssemblage[p2])),2)
+                            +pow((int(self.yAssemblage[p1])-int(self.yAssemblage[p2])),2))
+                #print "Test Distance: ", testDistance
+
             if testDistance <= solutionDistance:
                 pvalueScore += 1
-
+        #print "Solution distance: ", solutionDistance
+        #print "Test distance: ", testDistance
+        #print "Bootstrap: ", bootstrap
         pvalue = pvalueScore/bootstrap
-
+        #print "Pvalue: ", pvalue
+        if pvalue == 0:
+            pvalue ="0.0000000"
         return pvalue
-
 
     #Prints everything in set b that's not in set a
     def difference(self, a, b):
@@ -2534,8 +2548,9 @@ class IDSS():
             #################################################### MinMax Graph ############################################
 
             minMaxGraphByWeight = self.createMinMaxGraphByWeight(input_graph=sumGraphByWeight, weight='weight')
-            pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
-            print "Geographic p-value for the frequency seriation minmax solution: ", pscore
+            if self.args["xyfile"] not in (None, False, 0):
+                pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
+                print "Geographic p-value for the frequency seriation minmax solution: ", pscore
 
             minMaxGraphByCount = self.createMinMaxGraphByCount(input_graph=sumGraphByCount, weight='weight')
             if self.args['graphs'] not in (None, False, 0):
@@ -2613,9 +2628,9 @@ class IDSS():
                 seriation = frequencySeriationMaker()
                 argument={'inputfile':textFileName}
                 seriation.makeGraph(argument)
-
-            pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
-            print "Geographic p-value for the continuity seriation minmax solution: ", pscore
+            if self.args['xyfile'] not in (None, False, 0):
+                pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
+                print "Geographic p-value for the continuity seriation minmax solution: ", pscore
 
         ## determine time elapsed
         #time.sleep(5)
