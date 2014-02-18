@@ -2188,12 +2188,11 @@ class IDSS():
             assemblagesInSolution.append(fromAssemblage)
             assemblagesInSolution.append(toAssemblage)
         assemblageSet=set(assemblagesInSolution)
-        N=len(assemblageSet)
-        X = range(N)
-        random.seed() # uses system time to initialize random number generator, or you can pass in a deterministic seed as an argument if you want
+
+        random.random.seed() # uses system time to initialize random number generator, or you can pass in a deterministic seed as an argument if you want
 
         # code to use to generate K pairs
-        A = random.sample(X,2*edges) # now you have a list of 2*K unique elements from 0 to N-1
+        A = random.random.sample(assemblageSet,2*edges) # now you have a list of 2*K unique elements from 0 to N-1
         pairs = zip(A[0:edges],A[edges:(2*edges)]) # now you have your pairs
 
         pvalueScore=0
@@ -2615,7 +2614,7 @@ class IDSS():
                 argument={'inputfile':textFileName}
                 seriation.makeGraph(argument)
 
-            pscore = calculateGeographicSolutionPValue(minMaxGraphByWeight)
+            pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
             print "Geographic p-value for the continuity seriation minmax solution: ", pscore
 
         ## determine time elapsed
