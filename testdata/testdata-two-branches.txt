@@ -7,8 +7,8 @@ Assemblage-5	40	5	40	15	0	0
 Assemblage-A6	50	0	40	10	0	0
 Assemblage-A7	55	0	35	5	5	0
 Assemblage-A8	45	0	30	5	20	0
-Assemblage-A9	35	0	20	0	45	0
-Assemblage-A10	40	0	10	0	50	0
+Assemblage-A9	40	0	20	0	40	0
+Assemblage-A10	35	0	10	0	55	0
 Assemblage-B11	44	4	35	12	0	5
 Assemblage-B12	45	3	30	10	0	12
 Assemblage-B13	43	2	25	8	2	20
