@@ -32,6 +32,7 @@ import networkx as nx
 import networkx.algorithms.isomorphism as iso
 from pylab import *
 import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
 import xlsxwriter
 from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic as isomorphic
 import MST
@@ -2190,15 +2191,14 @@ class IDSS():
         assemblageSet=set(assemblagesInSolution)
 
         rnd.seed() # uses system time to initialize random number generator, or you can pass in a deterministic seed as an argument if you want
-
-        pvalueScore=0
+        x=[]
+        pvalueScore=0.000
         for b in range(0,bootstrap):
             # code to use to generate K pairs
             list1 = self.labels
             list2 = self.labels
 
             testDistance=0
-
             for p in range(0,edges-1):
                 test = False
                 p1 = p2 = ""
@@ -2213,14 +2213,31 @@ class IDSS():
                 #print "Test Distance: ", testDistance
 
             if testDistance <= solutionDistance:
+                #print "TEST is less than solutionDistance: ",testDistance
                 pvalueScore += 1
-        #print "Solution distance: ", solutionDistance
-        #print "Test distance: ", testDistance
-        #print "Bootstrap: ", bootstrap
+            x.append(testDistance)
+
+        f=plt.figure("Geographic Distance", figsize=(8, 8))
+        num_bins = 20
+        # the histogram of the data
+        n, bins, patches = plt.hist(x, num_bins, facecolor='green', alpha=0.5)
+
+        plt.axvline(solutionDistance, color='r', linestyle='dashed', linewidth=2)
+        plt.xlabel('Geographic Distance')
+        plt.ylabel('Count')
+        plt.title(r'Histogram of Summed Geographic Distance')
+
+        # Tweak spacing to prevent clipping of ylabel
+        plt.subplots_adjust(left=0.15)
+        minx =min(x)
+        maxx=max(x)
         pvalue = pvalueScore/bootstrap
-        #print "Pvalue: ", pvalue
+        x1,x2,y1,y2 = plt.axis()
+        text="p-value: "+ str(pvalue)
+        plt.text(maxx/3, (y2-y1)*2/3, text, style='italic')
+
         if pvalue == 0:
-            pvalue ="0.0000000"
+            pvalue ="0.000"
         return pvalue
 
     #Prints everything in set b that's not in set a
