@@ -2669,14 +2669,14 @@ if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
-    parser.add_argument('--debug', default=None, help='Sets the DEBUG flag for massive amounts of annoated output.')
-    parser.add_argument('--bootstrapCI', default=None,
+    parser.add_argument('--debug', '-d', default=None, help='Sets the DEBUG flag for massive amounts of annoated output.')
+    parser.add_argument('--bootstrapCI', '-b', default=None,
                         help="Sets whether you want to use the bootstrap confidence intervals for the comparisons between assemblage type frequencies. Set's to on or off.")
-    parser.add_argument('--bootstrapSignificance', default=0.95, type=float,
+    parser.add_argument('--bootstrapSignificance', '-bs', default=0.95, type=float,
                         help="The significance to which the confidence intervals are calculated. Default is 0.95.")
-    parser.add_argument('--filtered', default=1,
+    parser.add_argument('--filtered','-f', default=1,
                         help="The script will complete by checking to see if smaller valid solutions are included in the larger sets. If not, they are added to the final set. Default is true. ")
-    parser.add_argument('--largestonly', default=None,
+    parser.add_argument('--largestonly','-lo', default=None,
                         help="If set, the results will only include the results from the last and largest successful series of solutions. Smaller solutions will be excluded. Default is false.")
     parser.add_argument('--individualfileoutput', default=None,
                         help="If true, a .VNA files will be created for every solution.")
