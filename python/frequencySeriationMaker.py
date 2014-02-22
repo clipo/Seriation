@@ -372,6 +372,10 @@ From the command line:
 
 python ./frequencySeriationMaker.py --inputfile=../testdata/pfg.txt"
 
+if you want to use this based on the original data that doesn't have a first column with the seriation number (as is true for the IDSS output), you
+need to specify that its a single input.
+
+python ./frequencySeriationMaker.py --multiple=0 --inputfile=../testdata/testdata-two-branches.txt
 
 As a module:
 
@@ -382,5 +386,8 @@ seriation = frequencySeriationMaker()
 args={'inputfile':'../testdata/pfg-cpl-seriations.txt','debug':1 }
 
 seriation.makeGraph(args)
+
+
+
 
 '''''
