@@ -206,8 +206,6 @@ class frequencySeriationMaker():
             shapes.add(self.dwg.rect(insert=(leftx,  self.rowPosition), size=(width,self.rowHeight),
                         fill='white', stroke='black', stroke_width=1))
             self.errorBars(typeFreq,width,x,leftx,lowerCI[count-1],upperCI[count-1],meanCI[count-1])
-
-        print leftx
         self.dwg.add(self.dwg.text(int(sum(values)), insert=(self.assemblageSize+25,self.rowPosition+5)))
         self.dwg.save()
 
