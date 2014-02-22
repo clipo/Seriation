@@ -2559,8 +2559,8 @@ class IDSS():
             if self.args['frequencyseriation'] not in (None, False, 0):
                 excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "frequency")
                 seriation = frequencySeriationMaker()
-                argument={'inputfile':textFileName,'pdf':1}
-                seriation.makeGraph(argument)
+                self.args={'inputfile':textFileName,'pdf':1}
+                seriation.makeGraph(self.args)
 
             #################################################### MinMax Graph ############################################
 
@@ -2669,7 +2669,7 @@ if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
-    parser.add_argument('--debug', '-d', default=None, help='Sets the DEBUG flag for massive amounts of annoated output.')
+    parser.add_argument('--debug', '-d', default=None, help='Sets the DEBUG flag for massive amounts of annotated output.')
     parser.add_argument('--bootstrapCI', '-b', default=None,
                         help="Sets whether you want to use the bootstrap confidence intervals for the comparisons between assemblage type frequencies. Set's to on or off.")
     parser.add_argument('--bootstrapSignificance', '-bs', default=0.95, type=float,

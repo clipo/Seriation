@@ -50,8 +50,10 @@ class frequencySeriationMaker():
         self.columnSize=200
         self.barScale=200
         self.seriationNumber=0
+        self.args={}
 
-    def processSeriationData(self, args):
+
+    def processSeriationData(self):
         try:
             logger.debug("trying to open: %s ", self.openFile)
             file = open(self.openFile, 'r')
@@ -69,8 +71,12 @@ class frequencySeriationMaker():
             else:      ## ignore the first row here. we just need the assemblage info
                 row = map(str, row)
                 if len(row)>0:
-                    sernum=row[0]
-                    label = row[1]
+                    if self.args['multiple'] in (None, 'False', '0'):
+                        sernum=1
+                        label=row[0]
+                    else:
+                        sernum=row[0]
+                        label = row[1]
                     self.labels.append(label)
                     labelLength=len(label)
                     if labelLength>self.maxAssemblageLabelLength:
@@ -99,27 +105,37 @@ class frequencySeriationMaker():
             ## first row is the header row with the type names.
             if count==0:
                 row = map(str,row)
-                row.pop(0)
-                row.pop(0)
+                if self.args['multiple'] in (None, 'False', "0"):
+                    row.pop(0)
+                else:
+                    row.pop(0)
+                    row.pop(0)
                 for r in row:
                     self.typeNames.append(r)
                 count +=1
-                self.outputHeaderRow(self.typeNames,args)
+                self.outputHeaderRow(self.typeNames)
                 self.rowPosition += self.rowIndex
                 startcorner=self.rowPosition
             else:
                 if len(row) > 1:
                     index += 1
                     row = map(str, row)
-                    self.seriationNumber=float(row[0])
-                    label = row[1]
-                    self.labels.append(label)
-                    row.pop(0)
-                    row.pop(0)
+                    #print self.args
+                    if self.args['multiple'] in (None, 'False', '0'):
+                        self.seriationNumber=1
+                        label=row[0]
+                        self.labels.append(label)
+                        row.pop(0)
+                    else:
+                        self.seriationNumber=float(row[0])
+                        label = row[1]
+                        self.labels.append(label)
+                        row.pop(0)
+                        row.pop(0)
                     row = map(float, row)
                     self.numberOfClasses = len(row)
                     self.countOfAssemblages += 1
-                    self.outputAssemblageRow(label,row,args)
+                    self.outputAssemblageRow(label,row)
                     self.rowPosition += self.rowIndex
                 else:
                     endcorner=self.rowPosition+self.rowHeight
@@ -142,7 +158,7 @@ class frequencySeriationMaker():
                                                                   endcorner-startcorner),
                         fill='grey',opacity=0.3, stroke='none', stroke_width=1))
 
-    def outputHeaderRow(self, typeNames,args):
+    def outputHeaderRow(self, typeNames):
 
         maxTypeNameLength=0
         totalLength=0
@@ -164,8 +180,9 @@ class frequencySeriationMaker():
             self.typePositions[count]=colindex
 
         self.dwg.add(self.dwg.text("Assemblage Size", insert=(colindex+50,self.rowPosition)))
+        self.assemblageSize=colindex+50
 
-    def outputAssemblageRow(self, assemblageName, row, args):
+    def outputAssemblageRow(self, assemblageName, row):
         freq=[]
         values=[]
         rowtotal = sum(row)
@@ -177,7 +194,7 @@ class frequencySeriationMaker():
         self.dwg.add(self.dwg.text(assemblageName, insert=(assemblageNameXPosition, self.rowPosition+self.rowHeight)))
         count = 0
         xposition = self.typePositions[1]
-        lowerCI,upperCI,meanCI=self.bootstrapCICalculation(freq, sum(values), args)
+        lowerCI,upperCI,meanCI=self.bootstrapCICalculation(freq, sum(values))
         for typeFreq in freq:
             count += 1
             x = self.typePositions[count]
@@ -188,14 +205,15 @@ class frequencySeriationMaker():
             leftx = x-90-(width*0.5)
             shapes.add(self.dwg.rect(insert=(leftx,  self.rowPosition), size=(width,self.rowHeight),
                         fill='white', stroke='black', stroke_width=1))
-            self.errorBars(typeFreq,width,x,leftx,lowerCI[count-1],upperCI[count-1],meanCI[count-1],args)
+            self.errorBars(typeFreq,width,x,leftx,lowerCI[count-1],upperCI[count-1],meanCI[count-1])
 
-        self.dwg.add(self.dwg.text(int(sum(values)), insert=(leftx+150,self.rowPosition+5)))
+        print leftx
+        self.dwg.add(self.dwg.text(int(sum(values)), insert=(self.assemblageSize+25,self.rowPosition+5)))
         self.dwg.save()
 
 
 
-    def errorBars(self,freq,width,x,original_left,lowerCI,upperCI,meanCI,args):
+    def errorBars(self,freq,width,x,original_left,lowerCI,upperCI,meanCI):
 
         newWidth=meanCI+(meanCI-lowerCI)+(upperCI-meanCI)
         newWidthSize=int(newWidth*self.barScale)
@@ -223,7 +241,7 @@ class frequencySeriationMaker():
 
 
    ########################################### BOOTSTRAP CI SECTION ####################################
-    def bootstrapCICalculation(self, freqs, currentAssemblageSize, args, bootsize=100, confidenceInterval=0.999):
+    def bootstrapCICalculation(self, freqs, currentAssemblageSize, bootsize=100, confidenceInterval=0.999):
         types = len(freqs)
         ## create an array of arrays - one for each type
         arrayOfStats = []
@@ -311,15 +329,22 @@ class frequencySeriationMaker():
         h = se * sp.stats.t._ppf((1 + confidence) / 2., n - 1)
         return m, m - h, m + h
 
-    def setupOutput(self, args):
-        self.openFile=args['inputfile']
-        self.outputFile= args['inputfile'][0:-4]+".svg"
+    def setupOutput(self):
+        self.openFile=self.args['inputfile']
+        self.outputFile= self.args['inputfile'][0:-4]+".svg"
         self.dwg = svgwrite.Drawing(self.outputFile, profile='tiny')
 
-    def makeGraph(self, args):
-        self.setupOutput(args)
-        self.processSeriationData(args)
+    def makeGraph(self,args):
+        self.addOptions(args)
+        self.setupOutput()
+        self.processSeriationData()
 
+    def addOptions(self, oldargs):
+        self.args = {'debug': None, 'bootstrapCI': None, 'bootstrapSignificance': None,
+                'inputfile': None, 'outputdirectory': None,
+                'multiple': None}
+        for a in oldargs:
+            self.args[a] = oldargs[a]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='create seriation graph')
@@ -333,14 +358,15 @@ if __name__ == "__main__":
                         help="<REQUIRED> Enter the name of the data file with the assemblage data to process.")
     parser.add_argument('--outputdirectory', default=None,
                         help="If you want the output to go someplace other than the /output directory, specify that here.")
+    parser.add_argument('--multiple', default=True, help="If you are creating just one seriation set (with the first column being the assemblage name), set this to FALSE. Otherwise, set the seriation number as the first column and set to TRUE. Default is TRUE. ")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
         parser.error(str(msg))
         sys.exit()
 
-    seriation = frequencySeriationMaker()
 
+    seriation = frequencySeriationMaker()
     seriation.makeGraph(args)
 
 ''''
