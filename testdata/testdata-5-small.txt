@@ -1,0 +1,6 @@
+AssemblageName	Type_1	Type_2	Type_3	Type_4	Type_5	Type_6	Type_7	Type_8	Type_9	Type_10
+Assemblage-1	0	50	5	5	2	1	5	64	5	11
+Assemblage-2	5	32	5	5	2	100	2	16	5	1
+Assemblage-3	0	10	7	85	3	31	25	61	5	112
+Assemblage-4	27	150	5	5	190	16	56	27	5	22
+Assemblage-5	20	50	15	4	22	14	57	67	5	24
