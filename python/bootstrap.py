@@ -15,10 +15,12 @@ import numpy as np
 #from sklearn.gaussian_process import GaussianProcess
 from matplotlib import pyplot as plt
 from scipy import stats
+import operator
 
 class sampleSizeEvaluation():
 
     def __init__(self):
+        self.cell_text =[]
         self.data={}
         self.upperCI={}
         self.lowerCI={}
@@ -34,8 +36,9 @@ class sampleSizeEvaluation():
         self.args={}
         self.fignum=0
         self.assemblageSampleSize=0
+        self.slope=self.intercept= self.r_value=self.p_value=self.std_err=0.0
 
-    def confidence_interval(self, data, alpha=0.95):
+    def confidence_interval(self, data, alpha=0.05):
         a = 1.0 * np.array(data)
         n = len(a)
         m, se = np.mean(a), scipy.stats.sem(a)
@@ -48,14 +51,7 @@ class sampleSizeEvaluation():
        ########################################### BOOTSTRAP CI SECTION ####################################
     def bootstrapRichness(self, assemblageLabel, types, bootsize=3, alpha=0.05):
 
-        #self.sampleSizeArray =[]
-        #self.means=[]
-        #self.upperCIs=[]
-        #self.lowerCIs=[]
-        #self.data={}
-        #self.lowerCI=[]
-        #self.upperCI=[]
-        #self.mean=[]
+
         ## original sample size
         currentAssemblageSize = sum(types)
         self.assemblageSampleSize=currentAssemblageSize
@@ -72,7 +68,7 @@ class sampleSizeEvaluation():
 
         ## iterate through bootstrap (in 50s through 2x of the original sample)
         maxBootstrapSampleSize = 2 * self.assemblageSampleSize
-        step=50
+        step=maxBootstrapSampleSize/20
         for currentSampleSize in range(10,maxBootstrapSampleSize,step):
             richness=[]
             ## size of bootstrapping (how many assemblages to create)
@@ -111,6 +107,7 @@ class sampleSizeEvaluation():
                 r = sum(x > 0 for x in new_assemblage)
                 #print "Richness: ",r
                 richness.append(r)
+
                 # compute 95% confidence intervals around the mean
             #CIs = bootstrap.ci(data=richness, statfunction=scipy.mean, alpha=alpha)
             #mean = scipy.stats.mean(richness, axis=0)
@@ -128,29 +125,38 @@ class sampleSizeEvaluation():
             if currentSampleSize-step+1>self.assemblageSampleSize<currentSampleSize+step-1:
                 arrayPosition=len(self.sampleSizeArray)-1
 
-        slope, intercept, r_value, p_value, std_err = stats.linregress(self.sampleSizeArray[arrayPosition-5:arrayPosition],self.means[arrayPosition-5:arrayPosition])
-        print "SLOPE: ", slope, "std_err:", std_err
+        self.slope, self.intercept, self.r_value, self.p_value, self.std_err = stats.linregress(self.sampleSizeArray[arrayPosition-5:arrayPosition],self.means[arrayPosition-5:arrayPosition])
+
+
+        #print "SLOPE: ", self.slope, "std_err:", self.std_err, " p-value: ", self.p_value
         return True
 
-    def plotData(self,assemblageName):
+    def plotData(self,assemblageName,row,col):
         font = {'family' : 'serif',
         'color'  : 'black',
         'weight' : 'normal',
         'size'   : 14,
         }
         self.fignum += 1
-        fig = plt.figure(self.fignum)
-        #CIIntervals=[self.lowerCIs,self.upperCIs]
+        plt.subplot(row, col, self.fignum)
+        lowerDiffs=map(operator.sub, self.means,self.lowerCIs)
+        #lowerDiffs=[self.means-self.lowerCIs for self.means, self.lowerCIs in zip(self.means, self.lowerCIs)]
+        upperDiffs=map(operator.sub,self.upperCIs,self.means)
+        #upperDiffs=[self.upperCIs-self.means for self.upperCIs, self.means in zip(self.upperCIs, self.means)]
+        CIIntervals=[lowerDiffs,upperDiffs]
         #print CIIntervals
-        plt.errorbar(self.sampleSizeArray,self.means,fmt='o')
+        plt.errorbar(self.sampleSizeArray,self.means,yerr=CIIntervals, fmt='o',label=assemblageName)
+
         #yerr=[self.lowerCIs,self.upperCIs]
         plt.plot(self.sampleSizeArray,self.means, 'k--')
+        text="%s\t%f\t%f\t%f" % (assemblageName, self.slope, self.std_err, self.p_value)
+        print text
+        self.cell_text.append([assemblageName,self.slope,self.std_err,self.p_value])
+        #plt.text(self.assemblageSampleSize*.5, self.numberOfClasses-3,slopetext, fontdict=font)
         plt.axvline(self.assemblageSampleSize, color='r', linestyle='dashed', linewidth=2)
         plt.title(assemblageName, fontdict=font)
         plt.xlabel('Sample Size (N)', fontdict=font)
         plt.ylabel('Bootstrap Richness', fontdict=font)
-        plt.show()
-
 
     def openFile(self,filename):
         try:
@@ -188,10 +194,25 @@ class sampleSizeEvaluation():
         self.addOptions(args)
         self.checkMinimumRequirements()
         self.openFile(self.args['inputfile'])
+        #fig = plt.figure()
+        print "Assemblage\tSlope\t Std_Dev\tp-value"
+        self.cell_text.append(["Assemblage","Slope","Std.Dev.","p-value"])
+        rows=int(len(self.labels)/3)+1
+        cols=3
         for ass in self.labels:
-            print "Now on... ", ass
+            self.sampleSizeArray =[]
+            self.means=[]
+            self.upperCIs=[]
+            self.lowerCIs=[]
+            self.data={}
+            #self.lowerCI=[]
+            #self.upperCI=[]
+            #self.mean=[]
             self.bootstrapRichness( ass, self.assemblageTypeCounts[ass], bootsize=1000, alpha=self.args['alpha'])
-            self.plotData(ass)
+
+            self.plotData(ass,rows,cols)
+        #the_table = plt.table(cellText=self.cell_text')
+        plt.show()
 
     def checkMinimumRequirements(self):
         if self.args['inputfile'] in (None, ""):
