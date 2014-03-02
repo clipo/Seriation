@@ -2242,9 +2242,18 @@ class IDSS():
 
     #Prints everything in set b that's not in set a
     def difference(self, a, b):
+        """This function compares two strings, a and b
+        :param a: A string to be compared
+        :param b: A string to be compared
+        :returns: a list of the things that are different between the two strings
+        """
         return list(set(b).difference(set(a)))
 
     def filterInclusiveSolutions(self, array):
+        """This function filters out subsets in a list of solutions
+        :param array: an array of graphs
+        :returns: an array of the graphs that are unique and not subsets of each other
+        """
         solutionSet = []
         for graph in sorted(array, key=lambda x: x.number_of_nodes(), reverse=True):
             #if len(solutionSet) == 0:
