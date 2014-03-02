@@ -16,7 +16,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy import stats
 import operator
-import timbre.stats as ts
+
 
 class sampleSizeEvaluation():
 
