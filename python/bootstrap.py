@@ -16,6 +16,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy import stats
 import operator
+import timbre.stats as ts
 
 class sampleSizeEvaluation():
 
@@ -125,8 +126,7 @@ class sampleSizeEvaluation():
             if currentSampleSize-step+1>self.assemblageSampleSize<currentSampleSize+step-1:
                 arrayPosition=len(self.sampleSizeArray)-1
 
-        self.slope, self.intercept, self.r_value, self.p_value, self.std_err = stats.linregress(self.sampleSizeArray[arrayPosition-5:arrayPosition],self.means[arrayPosition-5:arrayPosition])
-
+        self.slope, self.intercept, self.r_value, self.p_value, self.std_err = stats.linregress(self.sampleSizeArray[arrayPosition-3:arrayPosition],self.means[arrayPosition-3:arrayPosition])
 
         #print "SLOPE: ", self.slope, "std_err:", self.std_err, " p-value: ", self.p_value
         return True
