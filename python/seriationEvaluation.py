@@ -61,11 +61,21 @@ def checkForValidAdditions(nnetwork):
         ######################################################################################
         for testAssemblage in validAssemblages:
             if assEnd == "End1":
-                path = nx.shortest_path(nnetwork, nnetwork.graph["End1"], nnetwork.graph["End2"])
-                innerNeighbor = path[1]
+                if nnetwork.graph["End1"] == nnetwork.graph["End2"]:
+                    continue
+                else:
+                    path = nx.shortest_path(nnetwork, nnetwork.graph["End1"], nnetwork.graph["End2"])
+                    #print "checking path between: ", nnetwork.graph["End1"], " and ", nnetwork.graph["End2"]
+                    if len(path)<2:
+                        print path
+                        sys.exit()
+                    innerNeighbor = path[1]
             elif assEnd == "End2":
-                path = nx.shortest_path(nnetwork, nnetwork.graph["End2"], nnetwork.graph["End1"])
-                innerNeighbor = path[1]
+                if nnetwork.graph["End1"] == nnetwork.graph["End2"]:
+                    continue
+                else:
+                    path = nx.shortest_path(nnetwork, nnetwork.graph["End2"], nnetwork.graph["End1"])
+                    innerNeighbor = path[1]
             else: ## sanity check
                 sys.exit("Quitting due to errors.")
             ## Sanity check

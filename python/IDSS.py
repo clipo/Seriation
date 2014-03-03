@@ -40,6 +40,7 @@ import shapefile
 import memory
 from frequencySeriationMaker import frequencySeriationMaker
 import seriationEvaluation
+from occurrenceSeriationMaker import occurrenceSeriationMaker
 
 
 class IDSS():
@@ -141,6 +142,9 @@ class IDSS():
         return True
 
     def aggregateIdenticalAssemblages(self):
+        '''function combines assemblages that are the same.
+        It takes no parameters and uses arrays/dicts for the class
+        '''
         tempList={}
         self.occurrenceSeriationList={}
 
@@ -164,7 +168,7 @@ class IDSS():
         self.labels=[]
 
         for t in tempList:
-            newval = ", ".join(str(tempList[t]))
+            newval = str("/".join(tempList[t]))
             #print "t:", t
             newarray = []
             for s in t:
@@ -175,6 +179,7 @@ class IDSS():
             self.assemblages[newval]=newarray
             self.assemblageFrequencies[newval]=newarray
             self.labels.append(newval)
+            self.assemblageSize[newval]=int(sum(newarray))
 
     def preCalculateSumOfDifferencesBetweenPairs(self):
         logger.debug("Precalculate differences between pairs")
@@ -1809,7 +1814,7 @@ class IDSS():
             y = 0
             northing = 0
             easting = 0
-            if self.args['xyfile'] not in self.FalseList:
+            if self.args['xyfile'] not in self.FalseList and self.args['occurrence'] in self.FalseList:
                 x = float(self.xAssemblage[l]) / 1000000.0
                 y = (float(self.largestY) - float(self.yAssemblage[l])) / 100000.0
                 easting = self.xAssemblage[l]
@@ -2131,7 +2136,8 @@ class IDSS():
                 'excel': None, 'threshold': None, 'noscreen': None, 'xyfile': None, 'pairwisefile': None, 'mst': None,
                 'stats': None, 'screen': None, 'allsolutions': None, 'inputfile': None, 'outputdirectory': None,
                 'shapefile': None, 'frequency': None, 'continuity': None, 'graphs': None, 'graphroot': None,
-                'continuityroot': None, 'verbose':None, 'frequencyseriation':None, 'pdf':None, 'atlas':None}
+                'continuityroot': None, 'verbose':None, 'occurrenceseriation':None,
+                'occurrence':None,'frequencyseriation':None, 'pdf':None, 'atlas':None}
         for a in oldargs:
             self.args[a] = oldargs[a]
 
@@ -2396,6 +2402,16 @@ class IDSS():
             self.outputDirectory = self.args['outputdirectory']
         else:
             self.outputDirectory = "../output/"
+
+
+        ###########################################################################################################
+        ### If occurrence seriation, collapse all the identical solutions (shouldnt be a problem for the frequency set but I suppose it could be
+        if self.args['occurrence'] not in self.FalseList:
+            self.aggregateIdenticalAssemblages()
+        if len(self.assemblages)<3:
+            print "Problem: you only have 2 assemblages (perhaps after consolidation). There is no point in continuing. "
+            sys.exit()
+
         ############################################################################################################
         logger.debug("Going to open pairwise file it is exists.")
         if self.args['pairwisefile'] not in self.FalseList:
@@ -2439,13 +2455,7 @@ class IDSS():
         ### setup the output files. Do this now so that if it fails, its not AFTER all the seriation stuff
         OUTFILE, OUTPAIRSFILE, OUTMSTFILE, OUTMSTDISTANCEFILE = self.setupOutput()
 
-        ###########################################################################################################
-        ### If occurrence seriation, collapse all the identical solutions (shouldnt be a problem for the frequency set but I suppose it could be
-        if self.args['occurrence'] not in self.FalseList:
-            self.aggregateIdenticalAssemblages()
-        if len(self.assemblages)<3:
-            print "Problem: you only have 2 assemblages (perhaps after consolidation). There is no point in continuing. "
-            sys.exit()
+
 
         ###########################################################################################################
         logger.debug("Now pre-calculating all the combinations between pairs of assemblages. ")
@@ -2632,6 +2642,11 @@ class IDSS():
                 self.args={'inputfile':textFileName,'pdf':1}
                 seriation.makeGraph(self.args)
 
+            if self.args['occurrenceseriation'] not in self.FalseList:
+                excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "frequency")
+                seriation = occurrenceSeriationMaker()
+                self.args={'inputfile':textFileName,'pdf':1}
+                seriation.makeGraph(self.args)
             #################################################### MinMax Graph ############################################
 
             minMaxGraphByWeight = self.createMinMaxGraphByWeight(input_graph=sumGraphByWeight, weight='weight')
@@ -2790,6 +2805,7 @@ if __name__ == "__main__":
     parser.add_argument('--frequencyseriation', default=None, help="Generates graphical output for the results in a frequency seriation form.")
     parser.add_argument('--verbose',default=True, help='Provides output for your information')
     parser.add_argument('--occurrence', default=None, help="Treats data as just occurrence information and produces valid occurrence solutions.")
+    parser.add_argument('--occurrenceseriation', default=None, help="Generates graphical output for occurrence seriation.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:

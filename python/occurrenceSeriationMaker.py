@@ -214,7 +214,7 @@ class occurrenceSeriationMaker():
         self.outputRowAssemblage={}
         self.labels=[]
         for t in tempList:
-            newval = ", ".join(tempList[t])
+            newval = str("/".join(tempList[t]))
             self.occurrenceSeriationList[newval]=t
             #print "NewKey:", newval, "Value:", t
             self.outputRowAssemblage[newval]=t

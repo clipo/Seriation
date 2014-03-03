@@ -1,4 +1,6 @@
-Assemblage-1	0	53	3	44
-Assemblage-2	0	45	5	50
-Assemblage-3	5	30	20	45
-Assemblage-4	20	10	30	40
+Assemblage_Name	Type_1	Type_2	Type_3	Type_4
+Assemblage-1	5	5	5	45
+Assemblage-2	0	8	5	47
+Assemblage-3	0	8	5	3
+Assemblage-4	0	0	20	2
+Assemblage-5	0	0	0	5
