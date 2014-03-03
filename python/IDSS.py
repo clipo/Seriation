@@ -1334,10 +1334,10 @@ class IDSS():
 
     def outputExcel(self, filteredarray, filename, type):
         csv.register_dialect('excel_tab', delimiter='\t',lineterminator="\n")
-        textFileName = self.outputDirectory + filename +"-"+type+"-seriations.txt"
+        textFileName = filename +"-"+type+"-seriations.txt"
         f=open(textFileName, 'wb')
         writer=csv.writer(f,'excel_tab')
-        excelFileName=self.outputDirectory + filename + "-" + type + ".xlsx"
+        excelFileName= filename + "-" + type + ".xlsx"
         workbook = xlsxwriter.Workbook(excelFileName)
         worksheet = workbook.add_worksheet()
         row = 0
@@ -1364,7 +1364,6 @@ class IDSS():
             sernum += 1
             row += 1
             for node in nx.shortest_path(g, g.graph['End1'], g.graph['End2']):
-                #print node
                 outputRow=[]
                 worksheet.write(row, 0, sernum)
                 outputRow.append(sernum)
@@ -1377,6 +1376,7 @@ class IDSS():
                     outputRow.append(val)
                     col += 1
                 writer.writerow(outputRow)
+                #print outputRow
 
             row += 1
             writer.writerow('')
@@ -1475,7 +1475,7 @@ class IDSS():
                 fromAssemblage = e[0]
                 toAssemblage = e[1]
                 currentWeight = self.sumOfDifferencesBetweenPairs[fromAssemblage+"*"+toAssemblage]
-                normalizedWeight = ((globalMaxWeight-currentWeight)/(globalMaxWeight-globalMinWeight))+1
+                normalizedWeight = ((globalMaxWeight-currentWeight)/((globalMaxWeight-globalMinWeight)+1))+1
                 sumGraph.add_path([fromAssemblage, toAssemblage], sumDiffWeight=currentWeight, weight=normalizedWeight, inverseweight=(1/normalizedWeight))
 
         return sumGraph
@@ -2132,7 +2132,7 @@ class IDSS():
 
     def addOptions(self, oldargs):
         args = {'debug': None, 'bootstrapCI': None, 'bootstrapSignificance': None,
-                'filtered': None, 'largestonly': None, 'individualfileoutput': None,
+                'filtered': None, 'largestonly': None, 'individualfileoutput': None, 'xyfile':None,
                 'excel': None, 'threshold': None, 'noscreen': None, 'xyfile': None, 'pairwisefile': None, 'mst': None,
                 'stats': None, 'screen': None, 'allsolutions': None, 'inputfile': None, 'outputdirectory': None,
                 'shapefile': None, 'frequency': None, 'continuity': None, 'graphs': None, 'graphroot': None,
@@ -2140,6 +2140,7 @@ class IDSS():
                 'occurrence':None,'frequencyseriation':None, 'pdf':None, 'atlas':None}
         for a in oldargs:
             self.args[a] = oldargs[a]
+
 
     def isSeriation(self, nnetwork):
 
@@ -2639,18 +2640,22 @@ class IDSS():
             if self.args['frequencyseriation'] not in self.FalseList:
                 excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "frequency")
                 seriation = frequencySeriationMaker()
-                self.args={'inputfile':textFileName,'pdf':1}
+                #self.args={'inputfile':textFileName,'pdf':1}
+                self.args['inputfile']=textFileName
+                self.args['multiple']=1
                 seriation.makeGraph(self.args)
 
             if self.args['occurrenceseriation'] not in self.FalseList:
-                excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "frequency")
+                excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "occurrence")
                 seriation = occurrenceSeriationMaker()
-                self.args={'inputfile':textFileName,'pdf':1}
+                #self.args={'inputfile':textFileName,'pdf':1}
+                self.args['multiple']=1
+                self.args['inputfile']=textFileName
                 seriation.makeGraph(self.args)
             #################################################### MinMax Graph ############################################
-
+            #print self.args
             minMaxGraphByWeight = self.createMinMaxGraphByWeight(input_graph=sumGraphByWeight, weight='weight')
-            if self.args["xyfile"] not in self.FalseList:
+            if self.args['xyfile'] not in self.FalseList:
                 pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
                 print "Geographic p-value for the frequency seriation minmax solution: ", pscore
 
@@ -2685,7 +2690,7 @@ class IDSS():
                         notPartOfSeriationsList.append(a)
                         print a
                 if len(notPartOfSeriationsList) == 0:
-                    print "*** All assemblages used in frequency seriations.***"
+                    print "*** All assemblages used in seriations.***"
 
         if self.args['continuity'] not in self.FalseList:
             # experimental
