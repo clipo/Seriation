@@ -78,6 +78,7 @@ class IDSS():
         self.pairwiseError = {}
         self.sumOfDifferencesBetweenPairs = {}
         self.typeNames=[]
+        self.FalseList=[None,0,False,"None","0","False"]
         logger.debug("Start time:  %s ", self.start)
         self.scr = None
 
@@ -121,8 +122,16 @@ class IDSS():
                     freq = []
                     rowtotal = sum(row)
                     for r in row:
-                        freq.append(float(float(r) / float(rowtotal)))
-                        values.append(float(r))
+                        if self.args['occurrence'] not in self.FalseList:
+                            if float(r)>0:
+                                values.append(1)
+                                freq.append(1)
+                            else:
+                                values.append(0)
+                                freq.append(0)
+                        else:
+                            freq.append(float(float(r) / float(rowtotal)))
+                            values.append(float(r))
                     self.assemblages[label] = freq
                     self.assemblageFrequencies[label] = freq
                     self.assemblageValues[label] = values
@@ -130,6 +139,42 @@ class IDSS():
                     self.countOfAssemblages += 1
         self.maxSeriationSize = self.countOfAssemblages
         return True
+
+    def aggregateIdenticalAssemblages(self):
+        tempList={}
+        self.occurrenceSeriationList={}
+
+        for e in self.assemblages:
+            combined=""
+            for val in self.assemblages[e]:
+                combined += str(val)
+            #print "combined:", combined
+            self.occurrenceSeriationList[e]=combined
+            val = tempList.get(combined, 0)
+            if val==0:
+                newval = []
+                newval.append(e)
+                tempList[combined]=newval
+                #print "combined: ", combined, " value: ", tempList[combined]
+            else:
+                tempList[combined].append(e)
+                #print "now combined: ", combined, "now value: ", tempList[combined]
+        self.assemblages={}
+        self.assemblageFrequencies = {}
+        self.labels=[]
+
+        for t in tempList:
+            newval = ", ".join(str(tempList[t]))
+            #print "t:", t
+            newarray = []
+            for s in t:
+                #print "s:", s
+                newarray.append(float(s))
+            #print "new array:", newarray
+            #print "NewKey:", newval, "Value:", t
+            self.assemblages[newval]=newarray
+            self.assemblageFrequencies[newval]=newarray
+            self.labels.append(newval)
 
     def preCalculateSumOfDifferencesBetweenPairs(self):
         logger.debug("Precalculate differences between pairs")
@@ -160,7 +205,7 @@ class IDSS():
                 logger.debug("\t\t\t\tType %d- Type %d - Type %d - Type %d - Type %d - Type %d - Type %d  ########", i,
                              i, i, i, i, i, i)
 
-                if self.args['bootstrapCI'] not in (None, ""):
+                if self.args['bootstrapCI'] not in self.FalseList:
                     upperCI_test = self.typeFrequencyUpperCI[pair[0]][i]
                     lowerCI_test = self.typeFrequencyLowerCI[pair[0]][i]
                     upperCI_end = self.typeFrequencyUpperCI[pair[1]][i]
@@ -393,13 +438,13 @@ class IDSS():
         error = 0
         numberOfTriplets = 0
 
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(1, 40, "STEP: Find valid triples....      ")
             self.scr.refresh()
         permutations = self.all_tuples(self.assemblages)
 
         for permu in permutations:
-            if self.args['screen'] not in (None, ""):
+            if self.args['screen'] not in self.FalseList:
                 c = self.scr.getch()
                 if c == ord('q'):
                     curses.endwin()
@@ -421,8 +466,7 @@ class IDSS():
                 ass2 = self.assemblages[permu[1]][i]
                 ass3 = self.assemblages[permu[2]][i]
                 logger.debug("ass1: %f ass2: %f ass3: %f", ass1, ass2, ass3)
-
-                if self.args['bootstrapCI'] not in (None, ""):
+                if self.args['bootstrapCI'] not in self.FalseList:
                     low1 = self.typeFrequencyLowerCI[permu[0]][i]
                     low2 = self.typeFrequencyLowerCI[permu[1]][i]
                     low3 = self.typeFrequencyLowerCI[permu[2]][i]
@@ -497,7 +541,7 @@ class IDSS():
 
             comparison = comparison12 + comparison23
             test = re.compile('DU').search(comparison)
-            if test not in (None, ""):
+            if test not in self.FalseList:
                 error += 1
 
             if error == 0:
@@ -522,14 +566,23 @@ class IDSS():
         return triples
 
     def filter_list(self, full_list, excludes):
+        ''' This function filters two lists to find uniques
+        :param a: A list to be compared
+        :param b: A list to be compared
+        :returns: a list of the things that are unique
+        '''
         s = set(excludes)
         return (x for x in full_list if x not in s)
 
     def checkForValidAdditionsToNetwork(self, nnetwork):
+        ''' This is the core function that checks to see what assemblages, if any can be added to ends of the existing solutions
+        :param a: a network
+        :returns: a list of new valid networks
+        '''
         logger.debug(
             "######################Starting check for solution %s with %s nodes ######################################",
             nnetwork.graph['GraphID'], len(nnetwork))
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(1, 40, "STEP: Testing for addition to seriation ....      ")
             self.scr.refresh()
 
@@ -562,7 +615,7 @@ class IDSS():
             ######################################################################################
             for testAssemblage in validAssemblages:
                 logger.debug(" Now checking %s to see if we can be put next to %s", testAssemblage, endAssemblage)
-                if self.args['screen'] not in (None, ""):
+                if self.args['screen'] not in self.FalseList:
                     msg = "Now checking %s against %s." % (testAssemblage, endAssemblage)
                     self.scr.addstr(3, 0, msg)
                     self.scr.refresh()
@@ -637,7 +690,7 @@ class IDSS():
                         oldVal = self.assemblages[compareAssemblage][i]
                         logger.debug("Compare %s with %s ", previousAssemblage, compareAssemblage)
                         logger.debug("Old value: %f  vs new value: %f", oldVal, newVal)
-                        if self.args['bootstrapCI'] not in (None, ""):
+                        if self.args['bootstrapCI'] not in self.FalseList:
                             upperCI_test = self.typeFrequencyUpperCI[previousAssemblage][i]
                             lowerCI_test = self.typeFrequencyLowerCI[previousAssemblage][i]
                             upperCI_end = self.typeFrequencyUpperCI[compareAssemblage][i]
@@ -672,7 +725,7 @@ class IDSS():
                         previousAssemblage = compareAssemblage
 
                     test = re.compile('DU|DM*U').search(c)
-                    if test not in (None, ""):
+                    if test not in self.FalseList:
                         logger.debug("Comparison is %s. Error!", c)
                         error += 1
 
@@ -784,7 +837,7 @@ class IDSS():
         print (
             "######################Starting check for solution %s with %s nodes ######################################",
             nnetwork.graph['GraphID'], len(nnetwork))
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(1, 40, "STEP: Testing for addition to seriation ....      ")
             self.scr.refresh()
 
@@ -817,7 +870,7 @@ class IDSS():
             ######################################################################################
             for testAssemblage in validAssemblages:
                 logger.debug(" Now checking %s to see if we can be put next to %s", testAssemblage, endAssemblage)
-                if self.args['screen'] not in (None, ""):
+                if self.args['screen'] not in self.FalseList:
                     msg = "Now checking %s against %s." % (testAssemblage, endAssemblage)
                     self.scr.addstr(3, 0, msg)
                     self.scr.refresh()
@@ -891,7 +944,7 @@ class IDSS():
                         oldVal = self.assemblages[compareAssemblage][i]
                         logger.debug("Compare %s with %s ", previousAssemblage, compareAssemblage)
                         logger.debug("Old value: %f  vs new value: %f", oldVal, newVal)
-                        if self.args['bootstrapCI'] not in (None, ""):
+                        if self.args['bootstrapCI'] not in self.FalseList:
                             upperCI_test = self.typeFrequencyUpperCI[previousAssemblage][i]
                             lowerCI_test = self.typeFrequencyLowerCI[previousAssemblage][i]
                             upperCI_end = self.typeFrequencyUpperCI[compareAssemblage][i]
@@ -926,7 +979,7 @@ class IDSS():
                         previousAssemblage = compareAssemblage
 
                     test = re.compile('DU|DM*U').search(c)
-                    if test not in (None, ""):
+                    if test not in self.FalseList:
                         logger.debug("Comparison is %s. Error!", c)
                         error += 1
 
@@ -1182,7 +1235,7 @@ class IDSS():
         outmstFile = self.outputDirectory + self.inputFile[0:-4] + "-mst.vna"
         outmst2File = self.outputDirectory + self.inputFile[0:-4] + "-mst-distance.vna"
 
-        if self.args['mst'] not in (None, ""):
+        if self.args['mst'] not in self.FalseList:
             try:
                 OUTMSTFILE = open(outmstFile, 'w')
                 OUTMSTDISTANCEFILE = open(outmst2File, 'w')
@@ -1737,7 +1790,7 @@ class IDSS():
 
     #################################################### OUTPUT SECTION ####################################################
     def output(self, filteredArray, OUTFILE, OUTPAIRSFILE, OUTMSTFILE, OUTMSTDISTANCEFILE, maxEdges):
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(13, 1, "Now printing output file... ")
             self.scr.addstr(1, 40, "STEP: Output files...         ")
             self.scr.refresh()
@@ -1747,7 +1800,7 @@ class IDSS():
         OUTPAIRSFILE.write("*Node data\n")
         OUTPAIRSFILE.write("ID AssemblageSize X Y Easting Northing\n")
         count = 0
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(1, 40, "STEP: Printing list of nodes....     ")
             self.scr.refresh()
         ## note this assumes the use of UTM coordinates (northing and easting)
@@ -1756,7 +1809,7 @@ class IDSS():
             y = 0
             northing = 0
             easting = 0
-            if self.args['xyfile'] not in (None, ""):
+            if self.args['xyfile'] not in self.FalseList:
                 x = float(self.xAssemblage[l]) / 1000000.0
                 y = (float(self.largestY) - float(self.yAssemblage[l])) / 100000.0
                 easting = self.xAssemblage[l]
@@ -1766,18 +1819,18 @@ class IDSS():
                 northing) + "\n"
             OUTFILE.write(msg)
             OUTPAIRSFILE.write(msg)
-            if self.args['mst'] not in (None, ""):
+            if self.args['mst'] not in self.FalseList:
                 OUTMSTFILE.write(msg)
                 OUTMSTDISTANCEFILE.write(msg)
 
         OUTFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
         OUTPAIRSFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
 
-        if self.args['mst'] not in (None, ""):
+        if self.args['mst'] not in self.FalseList:
             OUTMSTFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
             OUTMSTDISTANCEFILE.write("*Node properties\nID AssemblageSize X Y Easting Northing\n")
 
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(1, 40, "STEP: Printing list of nodes attributes... ")
             self.scr.refresh()
         for l in self.assemblages:
@@ -1785,7 +1838,7 @@ class IDSS():
             northing = 0
             x = 0
             y = 0
-            if self.args['xyfile'] not in (None, ""):
+            if self.args['xyfile'] not in self.FalseList:
                 x = float(self.xAssemblage[l]) / 1000000
                 y = (float(self.largestY) - float(self.yAssemblage[l])) / 100000
                 easting = self.xAssemblage[l]
@@ -1794,16 +1847,16 @@ class IDSS():
                 northing) + "\n"
             OUTFILE.write(msg)
             OUTPAIRSFILE.write(msg)
-            if self.args['mst'] not in (None, ""):
+            if self.args['mst'] not in self.FalseList:
                 OUTMSTFILE.write(msg)
                 OUTMSTDISTANCEFILE.write(msg)
 
         ## This prints out counts of the edges as they appear in ALL of the solutions
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(1, 40, "STEP: Going through and counting pairs...     ")
             self.scr.refresh()
         OUTPAIRSFILE.write("*Tie data\nFrom To Edge Count\n")
-        if self.args['mst'] not in (None, ""):
+        if self.args['mst'] not in self.FalseList:
             OUTMSTFILE.write("*Tie data\nFrom To Edge End Weight ID\n")
             OUTMSTDISTANCEFILE.write("*Tie data\nFrom To Edge End Weight ID\n")
 
@@ -1834,7 +1887,7 @@ class IDSS():
             OUTPAIRSFILE.write(msg)
 
         OUTFILE.write("*Tie data\nFrom To Edge Weight Network End pValue pError meanSolutionDistance\n")
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(1, 40, "STEP: Eliminating duplicates...     ")
             self.scr.addstr(1, 40, "STEP: Printing edges...     ")
             self.scr.refresh()
@@ -1846,16 +1899,16 @@ class IDSS():
         pairwise = {}
         pairwiseError = {}
         for network in filteredArray:
-            if self.args['screen'] not in (None, ""):
+            if self.args['screen'] not in self.FalseList:
                 self.scr.addstr(14, 1, "Now on solution: ")
                 self.scr.addstr(14, 18, str(network.graph["GraphID"]))
                 #print "now on solution: ", network["GraphID"],"\n"
-            if self.args['largestonly'] not in (None, "") and len(network.edges()) == maxEdges - 1:
+            if self.args['largestonly'] not in self.FalseList and len(network.edges()) == maxEdges - 1:
                 edgeCount = len(network.edges())
                 groupDistance = 0
                 meanDistance = 0.0
                 eCount = 0
-                if self.args['xyfile'] not in (None, ""):
+                if self.args['xyfile'] not in self.FalseList:
                     for e in network.edges_iter():
                         pairname = e[0] + "*" + e[1]
                         groupDistance += self.distanceBetweenAssemblages[pairname]
@@ -1967,7 +2020,7 @@ class IDSS():
                 for newEdge in edgesToAdd:
                     a1,a2 = newEdge.split("*")
                     weight = self.sumOfDifferencesBetweenPairs[newEdge]
-                    if weight in (None, 0, False):
+                    if weight in self.FalseList:
                         weight=0.000000000001
                     output_graph.add_path([a1, a2], weight=weight, inverseweight=(1/weight))
         return output_graph
@@ -2030,7 +2083,7 @@ class IDSS():
         ################################################# FILTERING  ####################################
 
         filteredarray = []
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(1, 40, "STEP: Filter to get uniques... ")
         logger.debug("--- Filtering solutions so we only end up with the unique ones.")
         logger.debug("--- Start with %d solutions.", len(end_solutions))
@@ -2058,7 +2111,7 @@ class IDSS():
 
         logger.debug("End with %d solutions.", len(filteredarray))
         filterCount = len(filteredarray)
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(11, 1, "End with filterCount solutions.")
 
         return filteredarray
@@ -2069,7 +2122,7 @@ class IDSS():
         except ImportError:
             raise ImportError(
                 "This function needs Graphviz and either PyGraphviz or Pydot. Please install GraphViz from http://www.graphviz.org/")
-        if self.args['inputfile'] in (None, ""):
+        if self.args['inputfile'] in self.FalseList:
             sys.exit("Inputfile is a required input value: --inputfile=../testdata/testdata.txt")
 
     def addOptions(self, oldargs):
@@ -2084,7 +2137,7 @@ class IDSS():
 
     def isSeriation(self, nnetwork):
 
-        if self.args['screen'] not in (None, ""):
+        if self.args['screen'] not in self.FalseList:
             self.scr.addstr(1, 40, "STEP: Testing to see if this is a valid solution  ....      ")
             self.scr.refresh()
 
@@ -2138,7 +2191,7 @@ class IDSS():
         for s in seriationList:
             #print "Seriation test: ", s
             test = re.compile('DU|DM*U').search(s)
-            if test not in (None,""):
+            if test not in self.FalseList:
                 error +=1
 
         if error > 0:
@@ -2309,7 +2362,7 @@ class IDSS():
                 traceback.print_exc()           # Print the exception
                 os.system("reset")
 
-        if self.args['continuity'] in (None, False, 0) and self.args['frequency'] in (None, False, 0):
+        if self.args['continuity'] in self.FalseList and self.args['frequency'] in self.FalseList and self.args['occurrence'] in self.FalseList:
             sys.exit(
                 "You must specify --continuity=1 and/or frequency=1 to set the kind(s) of seriations you would like.")
 
@@ -2327,7 +2380,7 @@ class IDSS():
             logger.error("Cannot open %s. Error: %s", filename, e.strerror)
 
             print("Cannot open %s. Error. %s ", filename, e.strerror)
-            if self.args['screen'] not in (None, ""):
+            if self.args['screen'] not in self.FalseList:
                 curses.endwin()
                 curses.resetty()
             sys.exit("Quitting due to errors.")
@@ -2339,19 +2392,19 @@ class IDSS():
             sys.exit("There was a problem with parsing the input file. Check it and try again.")
 
         ############################################################################################################
-        if self.args['outputdirectory'] not in (None, ""):
+        if self.args['outputdirectory'] not in self.FalseList:
             self.outputDirectory = self.args['outputdirectory']
         else:
             self.outputDirectory = "../output/"
         ############################################################################################################
         logger.debug("Going to open pairwise file it is exists.")
-        if self.args['pairwisefile'] not in (None, ""):
+        if self.args['pairwisefile'] not in self.FalseList:
             self.openPairwiseFile(args['pairwisefile'])
 
         ############################################################################################################
         logger.debug("Going to open XY file if it exists.")
 
-        if self.args['xyfile'] not in (None, ""):
+        if self.args['xyfile'] not in self.FalseList:
             self.openXYFile(args['xyfile'])
         else:
             for ass in self.assemblages:
@@ -2376,7 +2429,7 @@ class IDSS():
         logger.debug("on specified confidence interval, if in the arguments.")
 
         if self.args['bootstrapCI'] is not None:
-            if self.args['bootstrapSignificance'] not in (None, ""):
+            if self.args['bootstrapSignificance'] not in self.FalseList:
                 confidenceInterval = self.args['bootstrapSignificance']
             else:
                 confidenceInterval = 0.95
@@ -2385,6 +2438,14 @@ class IDSS():
         ###########################################################################################################
         ### setup the output files. Do this now so that if it fails, its not AFTER all the seriation stuff
         OUTFILE, OUTPAIRSFILE, OUTMSTFILE, OUTMSTDISTANCEFILE = self.setupOutput()
+
+        ###########################################################################################################
+        ### If occurrence seriation, collapse all the identical solutions (shouldnt be a problem for the frequency set but I suppose it could be
+        if self.args['occurrence'] not in self.FalseList:
+            self.aggregateIdenticalAssemblages()
+        if len(self.assemblages)<3:
+            print "Problem: you only have 2 assemblages (perhaps after consolidation). There is no point in continuing. "
+            sys.exit()
 
         ###########################################################################################################
         logger.debug("Now pre-calculating all the combinations between pairs of assemblages. ")
@@ -2403,7 +2464,7 @@ class IDSS():
         maxNodes = 3
         notPartOfSeriationsList = []
 
-        if self.args['frequency'] not in (None, False, 0):
+        if self.args['frequency'] not in self.FalseList or self.args['occurrence'] not in self.FalseList:
             ###########################################################################################################
             logger.debug("Calculate all the valid triples.")
             triples = self.findAllValidTriples()
@@ -2454,7 +2515,7 @@ class IDSS():
                 logger.debug("Step number:  %d", currentMaxSeriationSize)
                 logger.debug("_______________________________________________________________________________________")
 
-                if self.args['screen'] not in (None, ""):
+                if self.args['screen'] not in self.FalseList:
                     self.scr.addstr(4, 0, "Step number:                                    ")
                     msg = "Step number:   %d" % currentMaxSeriationSize
                     self.scr.addstr(4, 0, msg)
@@ -2511,7 +2572,7 @@ class IDSS():
                             maxNodes = len(s)
                         currentTotal = len(newNetworks)
 
-                if self.args['screen'] not in (None, ""):
+                if self.args['screen'] not in self.FalseList:
                     msg = "Current Max Nodes:  %d " % maxNodes
                     self.scr.addstr(6, 0, msg)
                     msg = "Total number of seriation solutions and sub-solutions: %d" % self.solutionCount
@@ -2534,7 +2595,7 @@ class IDSS():
             all_solutions += end_solutions
             ###########################################################################################################
             frequencyArray = self.filterSolutions(end_solutions, all_solutions)
-            #if self.args['allsolutions'] not in (None, ""):
+            #if self.args['allsolutions'] not in self.FalseList:
             #frequencyArray = self.filterInclusiveSolutions(all_solutions,end_solutions)
             #else:
             #    frequencyArray = self.filterInclusiveSolutions(end_solutions)
@@ -2543,7 +2604,7 @@ class IDSS():
             logger.debug("Process complete at seriation size %d with %d solutions after filtering.",
                          self.maxSeriationSize, len(frequencyArray))
 
-            if self.args['verbose'] not in (None,0,False):
+            if self.args['verbose'] not in self.FalseList:
                 ## determine time elapsed
                 #time.sleep(5)
                 timeNow = time.time()
@@ -2553,7 +2614,7 @@ class IDSS():
             #################################################### OUTPUT SECTION ####################################################
             self.output(frequencyArray, OUTFILE, OUTPAIRSFILE, OUTMSTFILE, OUTMSTDISTANCEFILE, maxNodes)
 
-            if self.args['atlas'] not in (None, False, 0):
+            if self.args['atlas'] not in self.FalseList:
                 self.createAtlasOfSolutions(frequencyArray, "frequency")
 
             sumGraphByWeight = self.sumGraphsByWeight(frequencyArray)
@@ -2562,10 +2623,10 @@ class IDSS():
             sumGraphByCount = self.sumGraphsByCount(frequencyArray)
             self.sumGraphOutput(sumGraphByCount, self.outputDirectory + self.inputFile[0:-4] + "-sumgraph-by-count")
 
-            if self.args['excel'] not in (None, False, 0):
+            if self.args['excel'] not in self.FalseList:
                 excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "frequency")
 
-            if self.args['frequencyseriation'] not in (None, False, 0):
+            if self.args['frequencyseriation'] not in self.FalseList:
                 excelFileName,textFileName=self.outputExcel(frequencyArray, self.outputDirectory+self.inputFile[0:-4], "frequency")
                 seriation = frequencySeriationMaker()
                 self.args={'inputfile':textFileName,'pdf':1}
@@ -2574,19 +2635,19 @@ class IDSS():
             #################################################### MinMax Graph ############################################
 
             minMaxGraphByWeight = self.createMinMaxGraphByWeight(input_graph=sumGraphByWeight, weight='weight')
-            if self.args["xyfile"] not in (None, False, 0):
+            if self.args["xyfile"] not in self.FalseList:
                 pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
                 print "Geographic p-value for the frequency seriation minmax solution: ", pscore
 
             minMaxGraphByCount = self.createMinMaxGraphByCount(input_graph=sumGraphByCount, weight='weight')
-            if self.args['graphs'] not in (None, False, 0):
+            if self.args['graphs'] not in self.FalseList:
                 self.graphOutput(minMaxGraphByWeight,
                                  self.outputDirectory + self.inputFile[0:-4] + "-minmax-by-weight.png")
                 self.graphOutput(minMaxGraphByCount,
                                  self.outputDirectory + self.inputFile[0:-4] + "-minmax-by-count.png")
 
             #################################################### MST SECTION ####################################################
-            if self.args['mst'] not in (None, False, 0):
+            if self.args['mst'] not in self.FalseList:
                 outputFile = self.outputDirectory + self.inputFile[0:-4] + ".vna"
                 # Need to have the shapefile flag and the XY file in order to create a valid shapefile.
                 if self.args['shapefile'] is not None and self.args['xyfile'] is not None:
@@ -2598,7 +2659,7 @@ class IDSS():
                 #minimumSpanningTree(all_solutions,xAssemblage,yAssemblage,distanceBetweenAssemblages,assemblageSize,outputDirectory,inputFile)
             #################################################### END SECTION ####################################################
 
-            if self.args['verbose'] not in (None,0,False):
+            if self.args['verbose'] not in self.FalseList:
                 print "Seriation complete."
                 print "Maximum size of seriation: %d" % maxNodes
                 print "Number of frequency seriation solutions at last step: %d" % len(frequencyArray)
@@ -2611,7 +2672,7 @@ class IDSS():
                 if len(notPartOfSeriationsList) == 0:
                     print "*** All assemblages used in frequency seriations.***"
 
-        if self.args['continuity'] not in (None, False, 0):
+        if self.args['continuity'] not in self.FalseList:
             # experimental
             continuityArray = self.continunityMaximizationSeriation()
             #self.outputGraphArray(array)
@@ -2623,19 +2684,19 @@ class IDSS():
             self.graphOutput(minMaxGraphByWeight, self.inputFile[0:-4] + "-continuity-minmax-by-weight.png")
             minMaxGraphByCount = self.createMinMaxGraphByCount(input_graph=sGraphByCount, weight='weight')
             self.graphOutput(minMaxGraphByCount, self.inputFile[0:-4] + "-continuity-minmax-by-count.png")
-            if self.args['atlas'] not in (None, False, 0):
+            if self.args['atlas'] not in self.FalseList:
                 self.createAtlasOfSolutions(continuityArray, "continuity")
 
-            if self.args['excel'] not in (None, False, 0):
+            if self.args['excel'] not in self.FalseList:
                 self.outputExcel(continuityArray, self.outputDirectory+self.inputFile[0:-4], "continuity")
 
-            if self.args['frequencyseriation'] not in (None, False, 0):
+            if self.args['frequencyseriation'] not in self.FalseList:
                 excelFileName,textFileName=self.outputExcel(continuityArray, self.outputDirectory+self.inputFile[0:-4], "continuity")
                 seriation = frequencySeriationMaker()
                 argument={'inputfile':textFileName}
                 seriation.makeGraph(argument)
 
-            if self.args['verbose'] not in (None,0,False):
+            if self.args['verbose'] not in self.FalseList:
                 ## determine time elapsed
                 #time.sleep(5)
                 timeNow = time.time()
@@ -2649,12 +2710,12 @@ class IDSS():
             filteredSet=self.filterInclusiveSolutions(validSeriations)
             #print "Filtered set:", filteredSet
             self.createAtlasOfSolutions(filteredSet, "Unique_Valid_Seriations")
-            if self.args['excel'] not in (None, False, 0):
+            if self.args['excel'] not in self.FalseList:
                 excelFileName,textFileName=self.outputExcel(filteredSet, self.outputDirectory+self.inputFile[0:-4], "valid_continuity")
                 seriation = frequencySeriationMaker()
                 argument={'inputfile':textFileName}
                 seriation.makeGraph(argument)
-            if self.args['xyfile'] not in (None, False, 0):
+            if self.args['xyfile'] not in self.FalseList:
                 pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
                 print "Geographic p-value for the continuity seriation minmax solution: ", pscore
 
@@ -2662,10 +2723,10 @@ class IDSS():
         #time.sleep(5)
         timeNow = time.time()
         timeElapsed = timeNow - self.start
-        if self.args['verbose'] not in (None,0,False):
+        if self.args['verbose'] not in self.FalseList:
             print "Time elapsed for completion of program: %d seconds" % timeElapsed
 
-        if self.args['graphs'] not in (None, False, 0):
+        if self.args['graphs'] not in self.FalseList:
             plt.show() # display
 
         ## say goodbye and clean up the screen stuff #########################
@@ -2728,7 +2789,7 @@ if __name__ == "__main__":
                         help="If you do not use type names as the first line of the input file, use this option to read the data.")
     parser.add_argument('--frequencyseriation', default=None, help="Generates graphical output for the results in a frequency seriation form.")
     parser.add_argument('--verbose',default=True, help='Provides output for your information')
-
+    parser.add_argument('--occurrence', default=None, help="Treats data as just occurrence information and produces valid occurrence solutions.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
