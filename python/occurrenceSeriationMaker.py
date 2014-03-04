@@ -124,7 +124,6 @@ class occurrenceSeriationMaker():
                 if len(row) > 1:
                     index += 1
                     row = map(str, row)
-                    #print self.args
                     if self.args['multiple'] in (None, 'False', '0'):
                         self.seriationNumber=1
                         label=row[0]
@@ -136,6 +135,7 @@ class occurrenceSeriationMaker():
                         self.labels.append(label)
                         row.pop(0)
                         row.pop(0)
+                    #print row
                     row = map(float, row)
                     newrow=[]
                     rowtext=""
@@ -409,7 +409,6 @@ class occurrenceSeriationMaker():
         self.addOptions(args)
         self.setupOutput()
         self.processSeriationData()
-
 
     def addOptions(self, oldargs):
         self.args = {'debug': None, 'bootstrapCI': None, 'bootstrapSignificance': None,
