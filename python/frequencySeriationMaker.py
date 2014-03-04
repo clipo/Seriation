@@ -51,7 +51,7 @@ class frequencySeriationMaker():
         self.barScale=200
         self.seriationNumber=0
         self.args={}
-
+        self.FalseList=[None,0,False,"None","0","False"]
 
     def processSeriationData(self):
         try:
@@ -71,7 +71,7 @@ class frequencySeriationMaker():
             else:      ## ignore the first row here. we just need the assemblage info
                 row = map(str, row)
                 if len(row)>0:
-                    if self.args['multiple'] in (None, 'False', '0'):
+                    if self.args['multiple'] in self.FalseList:
                         sernum=1
                         label=row[0]
                     else:
@@ -105,7 +105,7 @@ class frequencySeriationMaker():
             ## first row is the header row with the type names.
             if count==0:
                 row = map(str,row)
-                if self.args['multiple'] in (None, 'False', "0"):
+                if self.args['multiple'] in self.FalseList:
                     row.pop(0)
                 else:
                     row.pop(0)
@@ -121,7 +121,7 @@ class frequencySeriationMaker():
                     index += 1
                     row = map(str, row)
                     #print self.args
-                    if self.args['multiple'] in (None, 'False', '0'):
+                    if self.args['multiple'] in self.FalseList:
                         self.seriationNumber=1
                         label=row[0]
                         self.labels.append(label)
@@ -365,6 +365,7 @@ if __name__ == "__main__":
 
 
     seriation = frequencySeriationMaker()
+    args['multiple']=False
     seriation.makeGraph(args)
 
 ''''
