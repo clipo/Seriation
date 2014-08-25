@@ -2501,7 +2501,7 @@ class IDSS():
             pickle.dump(self.typeFrequencyUpperCI,open('.p/typeFrequencyUpperCI.p','wb'))
             pickle.dump(self.typeFrequencyLowerCI,open('.p/typeFrequencyLowerCI.p','wb'))
 
-            while currentMaxSeriationSize < self.maxSeriationSize:
+            while currentMaxSeriationSize <= self.maxSeriationSize:
                 currentMaxSeriationSize += 1
                 ### first time through copy the triples, else get the previous new ones.
                 if currentMaxSeriationSize == 3:  ## first time through. Just copy the triples to the working arrays
