@@ -4,6 +4,13 @@
 # This work is licensed under the terms of the Apache Software License, Version 2.0.  See the file LICENSE for details.
 __author__ = 'carllipo'
 
+## NOTE the library base for this program is the anaconda distribution of python. There are some extra
+## libraries needed:
+##      svglib
+##      reportlab
+##      curses       for windows use:http://www.lfd.uci.edu/~gohlke/pythonlibs/#curses
+##      svgwrite
+
 import csv
 from datetime import datetime
 import operator
