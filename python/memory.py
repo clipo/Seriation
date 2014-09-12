@@ -2,7 +2,12 @@ __author__ = 'carllipo'
 
 import argparse
 import sys
-import resource
+import os
+if os.name != 'nt':
+    try:
+        import resources
+    except IOError, msg:
+        print "cannot load resources module on a windows machine."
 
 class Memory():
     def __init__(self):

@@ -13,7 +13,7 @@ import logging as logger
 import itertools
 import math
 import random as rnd
-import curses
+import curses  # for windows use:http://www.lfd.uci.edu/~gohlke/pythonlibs/#curses
 from itertools import chain
 import traceback
 import collections
@@ -37,7 +37,8 @@ import xlsxwriter
 from networkx.algorithms.isomorphism.isomorph import graph_could_be_isomorphic as isomorphic
 import MST
 import shapefile
-import memory
+if os.name != 'nt':
+    import memory
 from frequencySeriationMaker import frequencySeriationMaker
 import seriationEvaluation
 from occurrenceSeriationMaker import occurrenceSeriationMaker
@@ -54,7 +55,8 @@ class IDSS():
         self.inputfile = ""
         self.solutionCount=0
         self.outputDirectory = ""
-        self.mem = memory.Memory()
+        if os.name != "nt":
+            self.mem = memory.Memory()
         self.start = time.time()
         self.assemblageSize = {}
         self.assemblageFrequencies = {}
@@ -2591,7 +2593,8 @@ class IDSS():
                     self.scr.addstr(8, 43, "                                           ")
                     msg = "Number of seriation solutions at this step: %d" % currentTotal
                     self.scr.addstr(8, 0, msg)
-                    msg = "Memory used:        " + str(self.mem.memory())
+                    if os.name != "nt":
+                        msg = "Memory used:        " + str(self.mem.memory())
                     self.scr.addstr(9, 0, msg)
                     self.scr.refresh()
 
