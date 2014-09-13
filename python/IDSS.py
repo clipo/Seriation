@@ -2503,13 +2503,24 @@ class IDSS():
             if not os.path.exists(".p"):
                 os.makedirs(".p")
             ## pickle the stuff I need for parallel processing
-            pickle.dump(self.validComparisonsHash,open('.p/validComparisonsHash.p','wb'))
-            pickle.dump(self.pairGraph,open('.p/pairGraph.p','wb'))
-            pickle.dump(self.assemblages,open('.p/assemblages.p','wb'))
-            pickle.dump(self.args,open('.p/args.p','wb'))
-            pickle.dump(self.typeFrequencyUpperCI,open('.p/typeFrequencyUpperCI.p','wb'))
-            pickle.dump(self.typeFrequencyLowerCI,open('.p/typeFrequencyLowerCI.p','wb'))
-
+            ch = open('.p/validComparisonsHash.p', 'wb')
+            pickle.dump(self.validComparisonsHash,ch)
+            ch.close()
+            pg=open('.p/pairGraph.p','wb')
+            pickle.dump(self.pairGraph,pg)
+            pg.close
+            ass=open('.p/assemblages.p','wb')
+            pickle.dump(self.assemblages,ass)
+            ass.close()
+            a=open('.p/args.p','wb')
+            pickle.dump(self.args,a)
+            a.close()
+            fuci=open('.p/typeFrequencyUpperCI.p','wb')
+            pickle.dump(self.typeFrequencyUpperCI,fuci)
+            fuci.close()
+            flci=open('.p/typeFrequencyLowerCI.p','wb')
+            pickle.dump(self.typeFrequencyLowerCI,flci)
+            flci.close()
             while currentMaxSeriationSize <= self.maxSeriationSize:
                 currentMaxSeriationSize += 1
                 ### first time through copy the triples, else get the previous new ones.
