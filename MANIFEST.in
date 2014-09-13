@@ -1,0 +1,4 @@
+__author__ = 'clipo'
+
+recursive-include app/templates *
+recursive-include app/static *

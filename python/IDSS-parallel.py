@@ -22,9 +22,9 @@ from datetime import datetime
 import os
 import re
 #from pathos.multiprocessing import ProcessingPool as Pool
-from functools import partial
-import copy_reg, copy, pickle
-import parmap
+#from functools import partial
+#import copy_reg, copy, pickle
+import pickle
 
 import multiprocessing
 import numpy as np
@@ -41,109 +41,6 @@ import shapefile
 import memory
 from frequencySeriationMaker import frequencySeriationMaker
 import seriationEvaluation
-
-
-def checkForValidAdditions(nnetwork,validComparisonsHash,filter_list,pairGraph,assemblages,args,typeFrequencyUpperCI,typeFrequencyLowerCI):
-    array_of_new_networks = []  ## a list of all the valid new networks that we run into
-    maxnodes = len(nnetwork.nodes())
-
-    for assEnd in ("End1", "End2"):
-        if assEnd == "End1":
-            otherEnd = "End2"
-        else:
-            otherEnd = "End1"
-
-        endAssemblage = nnetwork.graph[assEnd]
-
-        list1 = validComparisonsHash[endAssemblage]
-        list2 = nnetwork.nodes()
-        validAssemblages = list(filter_list(list1, list2))
-
-        ######################################################################################
-        for testAssemblage in validAssemblages:
-            if assEnd == "End1":
-                path = nx.shortest_path(nnetwork, nnetwork.graph["End1"], nnetwork.graph["End2"])
-                innerNeighbor = path[1]
-            elif assEnd == "End2":
-                path = nx.shortest_path(nnetwork, nnetwork.graph["End2"], nnetwork.graph["End1"])
-                innerNeighbor = path[1]
-            else: ## sanity check
-                sys.exit("Quitting due to errors.")
-            ## Sanity check
-            if innerNeighbor is None:
-                sys.exit("Quitting due to errors.")
-            c = pairGraph.get_edge_data(innerNeighbor, endAssemblage)
-            comparison = c['weight']
-            comparisonMap = ""
-            oneToColumns = range(len(assemblages[testAssemblage]))
-
-            error = 0  ## set the error check to 0
-            for i in oneToColumns:
-                c = ""
-                p = nx.shortest_path(nnetwork, nnetwork.graph[assEnd], nnetwork.graph[otherEnd])
-                newVal = assemblages[testAssemblage][i]
-                previousAssemblage = testAssemblage
-                for compareAssemblage in p:
-                    oldVal = assemblages[compareAssemblage][i]
-                    if args['bootstrapCI'] not in (None, ""):
-                        upperCI_test = typeFrequencyUpperCI[previousAssemblage][i]
-                        lowerCI_test = typeFrequencyLowerCI[previousAssemblage][i]
-                        upperCI_end = typeFrequencyUpperCI[compareAssemblage][i]
-                        lowerCI_end = typeFrequencyLowerCI[compareAssemblage][i]
-
-                        if upperCI_test < lowerCI_end:
-                            c += "D"
-                        elif lowerCI_test > upperCI_end:
-                            c += "U"
-                        else:
-                            c += "M"
-                    else:
-                        logger.debug("Outer value: %f Inner value: %f", oldVal, newVal)
-                        if newVal < oldVal:
-                            c += "U"
-                            c1 = "U"
-                        elif newVal > oldVal:
-                            c += "D"
-                            c1 = "U"
-                        elif newVal == oldVal:
-                            c += "M"
-                            c1 = "U"
-                            sys.exit("got null value in comparison of value for type %d in the comparison of %s", i,
-                                     compareAssemblage)
-                        newVal = oldVal
-
-                    previousAssemblage = compareAssemblage
-
-                test = re.compile('DU|DM*U').search(c)
-                if test not in (None, ""):
-                    error += 1
-
-            if error == 0:
-                name = str(random.randint(1,1000000000000000))
-                new_network = nnetwork.copy()
-                new_network.graph["GraphID"] = name
-                new_network.graph["name"] = name
-                path = nx.shortest_path(nnetwork, nnetwork.graph["End1"], nnetwork.graph["End2"])
-
-                new_network.add_node(testAssemblage, name=testAssemblage, end=1, site="end")
-                new_network.add_node(endAssemblage, name=endAssemblage, site="middle", end=0)
-                new_network.add_edge(testAssemblage, endAssemblage, weight=comparisonMap, end=1, site="end",
-                                     GraphID=name)
-
-                new_network.graph[assEnd] = testAssemblage
-                path = nx.shortest_path(new_network, new_network.graph["End1"], new_network.graph["End2"])
-
-                ## copy this solution to the new array of networks
-                array_of_new_networks.append(new_network)
-
-                if len(new_network) > maxnodes:
-                    maxnodes = len(new_network)
-
-    if len(array_of_new_networks) > 0:
-        return array_of_new_networks
-    else:
-        return False
-
 
 
 class IDSS():
@@ -629,7 +526,6 @@ class IDSS():
 
 
     def checkForValidAdditionsToNetwork(self, nnetwork):
-
         logger.debug(
             "######################Starting check for solution %s with %s nodes ######################################",
             nnetwork.graph['GraphID'], len(nnetwork))
@@ -2358,6 +2254,14 @@ class IDSS():
             all_solutions = []
             all_solutions = all_solutions + triples  ## add the triples to the intial solution
 
+            ## pickle the stuff I need for parallel processing
+            pickle.dump(self.validComparisonsHash,open('validComparisonsHash.p','wb'))
+            pickle.dump(self.pairGraph,open('validComparisonsHash.p','wb'))
+            pickle.dump(self.assemblages,open('assemblages.p','wb'))
+            pickle.dump(self.args,open('args.p','wb'))
+            pickle.dump(self.typeFrequencyUpperCI,open('typeFrequencyUpperCI.p','wb'))
+            pickle.dump(self.typeFrequencyLowerCI,open('typeFrequencyLowerCI.p','wb'))
+
             while currentMaxSeriationSize < self.maxSeriationSize:
                 currentMaxSeriationSize += 1
                 ### first time through copy the triples, else get the previous new ones.
@@ -2399,12 +2303,6 @@ class IDSS():
                 ## look through the set of existing valid networks.
                 validNewNetworks = []
 
-                case = networks
-                listz = parmap.map(checkForValidAdditions, case, self.validComparisonsHash,self.filter_list,self.pairGraph,self.assemblages,
-                                  self.args,self.typeFrequencyUpperCI,self.typeFrequencyLowerCI)
-
-                #partial_check =  partial(seriationEvaluation.checkForValidAdditions(network,self.validComparisonsHash,self.filter_list,self.pairGraph,self.assemblages,
-                #                  self.args,self.typeFrequencyUpperCI,self.typeFrequencyLowerCI),networks)
 
                 try:
                     cpus = multiprocessing.cpu_count()
@@ -2412,14 +2310,13 @@ class IDSS():
                     cpus = 2   # arbitrary default
                 pool = multiprocessing.Pool(processes=cpus)
 
-                result = pool.map(listz, networks)
+                result = pool.map(seriationEvaluation.checkForValidAdditions, networks)
 
                 #validNewNetworks = [x for x in result if not x is False]
 
                 for s in result:
                     if s is not False:
                         validNewNetworks.append(s)
-                        newNetworks += len(validNewNetworks)
                         self.solutionCount += len(validNewNetworks)
                         print("Added %d new solutions. Solution count is now:  %d", len(validNewNetworks),self.solutionCount)
                         if self.currentMaxNodes > maxNodes:

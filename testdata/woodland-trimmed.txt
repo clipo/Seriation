@@ -1,3 +1,4 @@
+Assemblage_Name	Type_1	Type_2	Type_3	Type_4	Type_5	Type_6	Type_7	Type_8	Type_9	Type_10	Type_11	Type_12	Type_13	Type_14	Type_15	Type_16	Type_17	Type_18
 8FR4-10-1	0	1	2	0	0	0	0	0	0	0	0	3	9	2	1	0	0	97
 8GD13-Above-Shell	7	0	6	0	0	4	0	0	0	0	0	0	10	6	0	0	3	602
 8FR4-10-3	0	0	1	0	0	1	0	0	0	0	0	1	0	0	0	0	0	98
