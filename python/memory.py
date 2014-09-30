@@ -5,7 +5,7 @@ import sys
 import os
 if os.name != 'nt':
     try:
-        import resources
+        import resource
     except IOError, msg:
         print "cannot load resources module on a windows machine."
 
