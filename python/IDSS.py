@@ -2497,30 +2497,30 @@ class IDSS():
             currentTotal = len(triples)
             solutions = []
             all_solutions = []
-            all_solutions = all_solutions + triples  ## add the triples to the intial solution
+            all_solutions = all_solutions + triples  ## add the triples to the initial solution
 
             ## create a directory for the processing of the pickle files if it doesnt exist already
             if not os.path.exists(".p"):
                 os.makedirs(".p")
             ## pickle the stuff I need for parallel processing
             ch = open('.p/validComparisonsHash.p', 'wb')
-            pickle.dump(self.validComparisonsHash,ch)
-            ch.close()
+            pickle.dump(self.validComparisonsHash,open('.p/validComparisonsHash.p', 'wb'))
+            #ch.close()
             pg=open('.p/pairGraph.p','wb')
-            pickle.dump(self.pairGraph,pg)
-            pg.close
+            pickle.dump(self.pairGraph,open('.p/pairGraph.p','wb'))
+            #pg.close
             ass=open('.p/assemblages.p','wb')
-            pickle.dump(self.assemblages,ass)
-            ass.close()
+            pickle.dump(self.assemblages,open('.p/assemblages.p','wb'))
+            #ass.close()
             a=open('.p/args.p','wb')
-            pickle.dump(self.args,a)
-            a.close()
+            pickle.dump(self.args,open('.p/args.p','wb'))
+            #a.close()
             fuci=open('.p/typeFrequencyUpperCI.p','wb')
-            pickle.dump(self.typeFrequencyUpperCI,fuci)
-            fuci.close()
+            pickle.dump(self.typeFrequencyUpperCI,open('.p/typeFrequencyUpperCI.p','wb'))
+            #fuci.close()
             flci=open('.p/typeFrequencyLowerCI.p','wb')
-            pickle.dump(self.typeFrequencyLowerCI,flci)
-            flci.close()
+            pickle.dump(self.typeFrequencyLowerCI,open('.p/typeFrequencyLowerCI.p','wb'))
+            #flci.close()
             while currentMaxSeriationSize <= self.maxSeriationSize:
                 currentMaxSeriationSize += 1
                 ### first time through copy the triples, else get the previous new ones.
