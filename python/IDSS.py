@@ -91,6 +91,7 @@ class IDSS():
         self.FalseList=[None,0,False,"None","0","False"]
         logger.debug("Start time:  %s ", self.start)
         self.scr = None
+        self.args={}
 
     def saveGraph(self, graph, filename):
         nx.write_gml(graph, filename)
@@ -1203,7 +1204,7 @@ class IDSS():
                 nlist.append(G)
 
         UU = nx.disjoint_union_all(graphs) # union the nonisomorphic graphs
-        pos = nx.graphviz_layout(UU, prog="twopi", root=args['graphroot'])
+        pos = nx.graphviz_layout(UU, prog="twopi", root=self.args['graphroot'])
         # color nodes the same in each connected subgraph
         C = nx.connected_component_subgraphs(UU)
         for g in C:
@@ -2253,7 +2254,7 @@ class IDSS():
             edges +=1
             fromAssemblage = e[0]
             toAssemblage = e[1]
-            solutionDistance += sqrt(pow((int(self.xAssemblage[fromAssemblage])-int(self.xAssemblage[toAssemblage])),2)
+            solutionDistance += math.sqrt(pow((int(self.xAssemblage[fromAssemblage])-int(self.xAssemblage[toAssemblage])),2)
                                 +pow((int(self.yAssemblage[fromAssemblage])-int(self.yAssemblage[toAssemblage])),2))
             assemblagesInSolution.append(fromAssemblage)
             assemblagesInSolution.append(toAssemblage)
@@ -2277,7 +2278,7 @@ class IDSS():
                     if p1 != p2:
                         test = True
                 #print "Pair: ", p1, "-", p2
-                testDistance += sqrt(pow((int(self.xAssemblage[p1])-int(self.xAssemblage[p2])),2)
+                testDistance += math.sqrt(pow((int(self.xAssemblage[p1])-int(self.xAssemblage[p2])),2)
                             +pow((int(self.yAssemblage[p1])-int(self.yAssemblage[p2])),2))
                 #print "Test Distance: ", testDistance
 
@@ -2775,72 +2776,72 @@ class IDSS():
 
         return frequencyArray, continuityArray, notPartOfSeriationsList
 
+    def parse_arguments(self):
+        parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
+        parser.add_argument('--debug', '-d', default=None, help='Sets the DEBUG flag for massive amounts of annotated output.')
+        parser.add_argument('--bootstrapCI', '-b', default=None,
+                            help="Sets whether you want to use the bootstrap confidence intervals for the comparisons between assemblage type frequencies. Set's to on or off.")
+        parser.add_argument('--bootstrapSignificance', '-bs', default=0.95, type=float,
+                            help="The significance to which the confidence intervals are calculated. Default is 0.95.")
+        parser.add_argument('--filtered','-f', default=1,
+                            help="The script will complete by checking to see if smaller valid solutions are included in the larger sets. If not, they are added to the final set. Default is true. ")
+        parser.add_argument('--largestonly','-lo', default=None,
+                            help="If set, the results will only include the results from the last and largest successful series of solutions. Smaller solutions will be excluded. Default is false.")
+        parser.add_argument('--individualfileoutput', default=None,
+                            help="If true, a .VNA files will be created for every solution.")
+        parser.add_argument('--threshold', default=None,
+                            help="Sets the maximum difference between the frequencies of types that will be examine. This has the effect of keeping one from evaluating trivial solutions or solutions in which there is limited warrant for establishing continuity. Default is false.")
+        parser.add_argument('--noscreen', default=None,
+                            help="If true, there will be no text output (i.e., runs silently). Default is false.")
+        parser.add_argument('--xyfile', default=None,
+                            help="Enter the name of the XY file that contains the name of the assemblage and the X and Y coordinates for each.")
+        parser.add_argument('--pairwisefile', default=None,
+                            help="If you have precalculated the bootstrap comparative p-value, enter the name of the file here and it will be used as the basis of the graphical output for showing significance of comparisons. Default is false.")
+        parser.add_argument('--mst', default=None,
+                            help="If true, will produce a minimum spanning tree diagram from the set of final solutions.")
+        parser.add_argument('--stats', default=None,
+                            help="(Not implemented). If true, a histogram of the solutions will be shown in terms of the #s of time pairs are included. Default is false.")
+        parser.add_argument('--screen', default=True,
+                            help="Sets whether the output will be sent all to the screen or not. Default is false. When true, the screen output is all captured through curses.")
+        parser.add_argument('--allsolutions', default=None,
+                            help="If set, all of the valid solutions are produced even if they are subsets of larger solutions.")
+        parser.add_argument('--inputfile',
+                            help="<REQUIRED> Enter the name of the data file with the assemblage data to process.")
+        parser.add_argument('--outputdirectory', default=None,
+                            help="If you want the output to go someplace other than the /output directory, specify that here.")
+        parser.add_argument('--shapefile', default=None,
+                            help="Produces a shapefile as part of the output. You must have specified the XYfile as well.")
+        parser.add_argument('--graphs', default=None,
+                            help="If true, the program will display the graphs that are created. If not, the graphs are just saved as .png files.")
+        parser.add_argument('--frequency', default=None,
+                            help="Conduct a standard frequency seriation analysis. Default is None.")
+        parser.add_argument('--continuity', default=None, help="Conduct a continuity seriation analysis. Default is None.")
+        parser.add_argument('--graphroot', default=None,
+                            help="The root of the graph figures (i.e., name of assemblage you want to treat as one end in the graphs.")
+        parser.add_argument('--continuityroot', default=None,
+                            help="If you have a outgroup or root of the graph, set that here.")
+        parser.add_argument('--atlas', default=None,
+                            help="If you want to have a figure that shows all of the results independently, set that here.")
+        parser.add_argument('--excel', default=None,
+                            help="Will create excel files with the assemblages in seriation order.")
+        parser.add_argument('--noheader',default=None,
+                            help="If you do not use type names as the first line of the input file, use this option to read the data.")
+        parser.add_argument('--frequencyseriation', default=None, help="Generates graphical output for the results in a frequency seriation form.")
+        parser.add_argument('--verbose',default=True, help='Provides output for your information')
+        parser.add_argument('--occurrence', default=None, help="Treats data as just occurrence information and produces valid occurrence solutions.")
+        parser.add_argument('--occurrenceseriation', default=None, help="Generates graphical output for occurrence seriation.")
+        try:
+            self.args = vars(parser.parse_args())
+        except IOError, msg:
+            parser.error(str(msg))
+            sys.exit()
 
 if __name__ == "__main__":
 
-
-    parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
-    parser.add_argument('--debug', '-d', default=None, help='Sets the DEBUG flag for massive amounts of annotated output.')
-    parser.add_argument('--bootstrapCI', '-b', default=None,
-                        help="Sets whether you want to use the bootstrap confidence intervals for the comparisons between assemblage type frequencies. Set's to on or off.")
-    parser.add_argument('--bootstrapSignificance', '-bs', default=0.95, type=float,
-                        help="The significance to which the confidence intervals are calculated. Default is 0.95.")
-    parser.add_argument('--filtered','-f', default=1,
-                        help="The script will complete by checking to see if smaller valid solutions are included in the larger sets. If not, they are added to the final set. Default is true. ")
-    parser.add_argument('--largestonly','-lo', default=None,
-                        help="If set, the results will only include the results from the last and largest successful series of solutions. Smaller solutions will be excluded. Default is false.")
-    parser.add_argument('--individualfileoutput', default=None,
-                        help="If true, a .VNA files will be created for every solution.")
-    parser.add_argument('--threshold', default=None,
-                        help="Sets the maximum difference between the frequencies of types that will be examine. This has the effect of keeping one from evaluating trivial solutions or solutions in which there is limited warrant for establishing continuity. Default is false.")
-    parser.add_argument('--noscreen', default=None,
-                        help="If true, there will be no text output (i.e., runs silently). Default is false.")
-    parser.add_argument('--xyfile', default=None,
-                        help="Enter the name of the XY file that contains the name of the assemblage and the X and Y coordinates for each.")
-    parser.add_argument('--pairwisefile', default=None,
-                        help="If you have precalculated the bootstrap comparative p-value, enter the name of the file here and it will be used as the basis of the graphical output for showing significance of comparisons. Default is false.")
-    parser.add_argument('--mst', default=None,
-                        help="If true, will produce a minimum spanning tree diagram from the set of final solutions.")
-    parser.add_argument('--stats', default=None,
-                        help="(Not implemented). If true, a histogram of the solutions will be shown in terms of the #s of time pairs are included. Default is false.")
-    parser.add_argument('--screen', default=True,
-                        help="Sets whether the output will be sent all to the screen or not. Default is false. When true, the screen output is all captured through curses.")
-    parser.add_argument('--allsolutions', default=None,
-                        help="If set, all of the valid solutions are produced even if they are subsets of larger solutions.")
-    parser.add_argument('--inputfile',
-                        help="<REQUIRED> Enter the name of the data file with the assemblage data to process.")
-    parser.add_argument('--outputdirectory', default=None,
-                        help="If you want the output to go someplace other than the /output directory, specify that here.")
-    parser.add_argument('--shapefile', default=None,
-                        help="Produces a shapefile as part of the output. You must have specified the XYfile as well.")
-    parser.add_argument('--graphs', default=None,
-                        help="If true, the program will display the graphs that are created. If not, the graphs are just saved as .png files.")
-    parser.add_argument('--frequency', default=None,
-                        help="Conduct a standard frequency seriation analysis. Default is None.")
-    parser.add_argument('--continuity', default=None, help="Conduct a continuity seriation analysis. Default is None.")
-    parser.add_argument('--graphroot', default=None,
-                        help="The root of the graph figures (i.e., name of assemblage you want to treat as one end in the graphs.")
-    parser.add_argument('--continuityroot', default=None,
-                        help="If you have a outgroup or root of the graph, set that here.")
-    parser.add_argument('--atlas', default=None,
-                        help="If you want to have a figure that shows all of the results independently, set that here.")
-    parser.add_argument('--excel', default=None,
-                        help="Will create excel files with the assemblages in seriation order.")
-    parser.add_argument('--noheader',default=None,
-                        help="If you do not use type names as the first line of the input file, use this option to read the data.")
-    parser.add_argument('--frequencyseriation', default=None, help="Generates graphical output for the results in a frequency seriation form.")
-    parser.add_argument('--verbose',default=True, help='Provides output for your information')
-    parser.add_argument('--occurrence', default=None, help="Treats data as just occurrence information and produces valid occurrence solutions.")
-    parser.add_argument('--occurrenceseriation', default=None, help="Generates graphical output for occurrence seriation.")
-    try:
-        args = vars(parser.parse_args())
-    except IOError, msg:
-        parser.error(str(msg))
-        sys.exit()
-
     seriation = IDSS()
+    seriation.parse_arguments()
 
-    frequencyResults, continuityResults, exceptionList = seriation.seriate(args)
+    frequencyResults, continuityResults, exceptionList = seriation.seriate(seriation.args)
 
 ''''
 From the command line:
