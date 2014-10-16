@@ -2140,16 +2140,7 @@ class IDSS():
         if self.args['inputfile'] in self.FalseList:
             sys.exit("Inputfile is a required input value: --inputfile=../testdata/testdata.txt")
 
-    def addOptions(self, oldargs):
-        args = {'debug': None, 'bootstrapCI': None, 'bootstrapSignificance': None,
-                'filtered': None, 'largestonly': None, 'individualfileoutput': None, 'xyfile':None,
-                'excel': None, 'threshold': None, 'noscreen': None, 'xyfile': None, 'pairwisefile': None, 'mst': None,
-                'stats': None, 'screen': None, 'allsolutions': None, 'inputfile': None, 'outputdirectory': None,
-                'shapefile': None, 'frequency': None, 'continuity': None, 'graphs': None, 'graphroot': None,
-                'continuityroot': None, 'verbose':None, 'occurrenceseriation':None,
-                'occurrence':None,'frequencyseriation':None, 'pdf':None, 'atlas':None}
-        for a in oldargs:
-            self.args[a] = oldargs[a]
+
 
 
     def isSeriation(self, nnetwork):
@@ -2340,8 +2331,8 @@ class IDSS():
         #print "length of final solution set: ", len(solutionSet)
         return solutionSet
 
-    def seriate(self, args):
-        self.addOptions(args)
+    def seriate(self,args):
+
         self.checkMinimumRequirements()
         #####################################DEBUG OUTPUT#############################################################
         if self.args['debug'] is not None:
@@ -2355,7 +2346,7 @@ class IDSS():
         logger.debug("Arguments: %s", self.args)
 
         ##################################################################################################
-        if (args['screen'] is not None) and (args['debug'] is None ):
+        if (self.args['screen'] is not None) and (self.args['debug'] is None ):
             ## Set up the screen display (default).
             ## the debug option should not use this since it gets messy
             try:
@@ -2426,13 +2417,13 @@ class IDSS():
         ############################################################################################################
         logger.debug("Going to open pairwise file it is exists.")
         if self.args['pairwisefile'] not in self.FalseList:
-            self.openPairwiseFile(args['pairwisefile'])
+            self.openPairwiseFile(self.args['pairwisefile'])
 
         ############################################################################################################
         logger.debug("Going to open XY file if it exists.")
 
         if self.args['xyfile'] not in self.FalseList:
-            self.openXYFile(args['xyfile'])
+            self.openXYFile(self.args['xyfile'])
         else:
             for ass in self.assemblages:
                 self.xAssemblage[ass] = 0.0
@@ -2446,7 +2437,7 @@ class IDSS():
         logger.debug("Assume threshold is 1.0 unless its specified in arguments.")
         threshold = 1.0
         if self.args['threshold'] is not None:
-            threshold = float(args['threshold'])
+            threshold = float(self.args['threshold'])
 
         logger.debug("Going to create list of valid pairs for comparisons.")
         self.thresholdDetermination(threshold)
@@ -2776,7 +2767,17 @@ class IDSS():
 
         return frequencyArray, continuityArray, notPartOfSeriationsList
 
+    def addOptions(self):
+        self.args = {'debug': None, 'bootstrapCI': None, 'bootstrapSignificance': None,
+                'filtered': None, 'largestonly': None, 'individualfileoutput': None, 'xyfile':None,
+                'excel': None, 'threshold': None, 'noscreen': None, 'xyfile': None, 'pairwisefile': None, 'mst': None,
+                'stats': None, 'screen': None, 'allsolutions': None, 'inputfile': None, 'outputdirectory': None,
+                'shapefile': None, 'frequency': None, 'continuity': None, 'graphs': None, 'graphroot': None,
+                'continuityroot': None, 'verbose':None, 'occurrenceseriation':None,
+                'occurrence':None,'frequencyseriation':None, 'pdf':None, 'atlas':None}
+
     def parse_arguments(self):
+        self.addOptions()
         parser = argparse.ArgumentParser(description='Conduct an iterative deterministic seriation analysis')
         parser.add_argument('--debug', '-d', default=None, help='Sets the DEBUG flag for massive amounts of annotated output.')
         parser.add_argument('--bootstrapCI', '-b', default=None,
@@ -2835,13 +2836,12 @@ class IDSS():
         except IOError, msg:
             parser.error(str(msg))
             sys.exit()
+        return self.args
 
 if __name__ == "__main__":
-
     seriation = IDSS()
-    seriation.parse_arguments()
-
-    frequencyResults, continuityResults, exceptionList = seriation.seriate(seriation.args)
+    args = seriation.parse_arguments()
+    frequencyResults, continuityResults, exceptionList = seriation.seriate(args)
 
 ''''
 From the command line:
