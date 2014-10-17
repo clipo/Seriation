@@ -125,14 +125,20 @@ class frequencySeriationMaker():
                         self.seriationNumber=1
                         label=row[0]
                         self.labels.append(label)
+                        #print "row before: ", row
                         row.pop(0)
+                        #print "row after: ", row
+                        row = map(float, row)
                     else:
                         self.seriationNumber=float(row[0])
                         label = row[1]
                         self.labels.append(label)
+                        #print "Row first: ", row
                         row.pop(0)
                         row.pop(0)
-                    row = map(float, row)
+                        #print "row after: ", row
+                        #print "row!", row[3:]
+                        row = map(float, row)
                     self.numberOfClasses = len(row)
                     self.countOfAssemblages += 1
                     self.outputAssemblageRow(label,row)
@@ -329,6 +335,7 @@ class frequencySeriationMaker():
 
     def setupOutput(self):
         self.openFile=self.args['inputfile']
+        #print "File: ", self.openFile
         self.outputFile= self.args['inputfile'][0:-4]+".svg"
         self.dwg = svgwrite.Drawing(self.outputFile, profile='tiny')
 

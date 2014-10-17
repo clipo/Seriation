@@ -2726,7 +2726,8 @@ class IDSS():
             if self.args['frequencyseriation'] not in self.FalseList:
                 excelFileName,textFileName=self.outputExcel(continuityArray, self.outputDirectory+self.inputFile[0:-4], "continuity")
                 seriation = frequencySeriationMaker()
-                argument={'inputfile':textFileName}
+                argument={'inputfile':textFileName, 'multiple':True}
+                print "going to break now"
                 seriation.makeGraph(argument)
 
             if self.args['verbose'] not in self.FalseList:
@@ -2746,8 +2747,9 @@ class IDSS():
             if self.args['excel'] not in self.FalseList:
                 excelFileName,textFileName=self.outputExcel(filteredSet, self.outputDirectory+self.inputFile[0:-4], "valid_continuity")
                 seriation = frequencySeriationMaker()
-                argument={'inputfile':textFileName}
+                argument={'inputfile':textFileName, 'multiple':True}
                 seriation.makeGraph(argument)
+
             if self.args['xyfile'] not in self.FalseList:
                 pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
                 print "Geographic p-value for the continuity seriation minmax solution: ", pscore
