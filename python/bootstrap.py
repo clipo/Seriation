@@ -240,25 +240,23 @@ if __name__ == "__main__":
     sampleSizeEval.conductAnalysis(args)
 
 ''''
-From the command line:
 
-python ./frequencySeriationMaker.py --inputfile=../testdata/pfg.txt"
+## a quick class that generates bootstrap analysis for assemblages. It looks at the slope of the change in richness as one increases
+## sample size to the original values. It then plots the richness value as a function of sample sizes.
 
-if you want to use this based on the original data that doesn't have a first column with the seriation number (as is true for the IDSS output), you
-need to specify that its a single input.
+To use from the command line:
 
-python ./frequencySeriationMaker.py --multiple=0 --inputfile=../testdata/testdata-two-branches.txt
+python ./boostrap.py --inputfile=../testdata/pfg.txt"
 
 As a module:
 
-from frequencySeriationMaker import frequencySeriationMaker
+from boostrap import sampleSizeEvaluation
 
-seriation = frequencySeriationMaker()
+eval = sampleSizeEvaluation()
 
 args={'inputfile':'../testdata/pfg-cpl-seriations.txt','debug':1 }
 
-seriation.makeGraph(args)
-
+eval.conductAnalysis(args)
 
 
 
