@@ -13,11 +13,12 @@ import numpy
 import uuid
 from graph_tool.all import *
 
+
 class SeriationGraph():
 
     def __index__(self):
         self.ID = uuid.uuid4().urn
-        self.graph = graph_tool.Graph(directed=False)
+        self.graph = gt.Graph(directed=False)
         self.nodeHash = {}
         self.edgeHash = {}
         nameProp = self.graph.new_graph_property("string")
@@ -46,7 +47,7 @@ class SeriationGraph():
         for p in propertyHash:
             prop = self.graph.graph_properties[p]=propertyHash[p]
 
-    def get_graph_properties(self,property):
+    def get_graph_property(self,property):
         return self.graph.graph_properties[property]
 
     def add_node(self,ID,name):
@@ -63,7 +64,7 @@ class SeriationGraph():
         typeHash["connectedTo"]="string"
         self.set_graph_properties(typeHash)
 
-    def get_node_properties(self,v,property):
+    def get_node_property(self,v,property):
         return v.vertex_properties[property]
 
     def create_node_properties(self,v,propertyTypeHash):
@@ -79,6 +80,15 @@ class SeriationGraph():
 
     def get_node_name(self,v):
         return v.vertex_properties["Name"]
+
+    def get_nodes(self):
+        return self.nodeHash
+
+    def get_node_name_list(self):
+        nodes = []
+        for n in self.nodeHash:
+            nodes.append(n)
+        return n
 
     def add_edge(self,v1,v2):
         e = self.graph.add_edge(v1,v2)
@@ -103,12 +113,22 @@ class SeriationGraph():
     def set_edge_properties(self,e,propertyHash):
         for p in propertyHash:
             e.edge_properties[p]=propertyHash[p]
+    def get_edge(self,v1,v2):
+        return self.edgeHash(str(v1)+"*"+str(v2))
 
-    def get_edge_properties(self,e,property):
+    def get_edge_property(self,e,property):
         return e.edge_properties[property]
 
     def find_path(self, v1,v2):
-        vlist,elist = gt.shortest_path(self.graph,v1,v2)
+        n1 = self.nodeHash[v1]
+        n2 = self.nodeHash[v2]
+        vlist,elist = gt.shortest_path(self.graph,n1,n2)
         return vlist, elist
 
+    def get_minimum_spanning_tree(self):
+        spanningWeight = self.graph.new_edge_property("double")
+        for e in self.graph.edges():
+            spanningWeight[e]=e.edge_property("Weight")
+
+        return gt.min_spanning_tree(self.graph,weights=spanningWeight)
 

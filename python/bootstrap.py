@@ -17,6 +17,9 @@ from matplotlib import pyplot as plt
 from scipy import stats
 import operator
 
+### you will need to install scikits-bootstrap
+### git clone http://github.com/cgevans/scikits-bootstrap
+
 
 class sampleSizeEvaluation():
 
@@ -232,7 +235,6 @@ if __name__ == "__main__":
     except IOError, msg:
         parser.error(str(msg))
         sys.exit()
-
 
     sampleSizeEval = sampleSizeEvaluation()
     sampleSizeEval.conductAnalysis(args)
