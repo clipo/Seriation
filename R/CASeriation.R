@@ -1,6 +1,6 @@
 library("devtools")
-install_github("gianmarcoalberti/CAseriation")
-library(CAseriation)
+install_github("gianmarcoalberti/CASeriation")
+library(CASeriation)
 
 # read data from choosen table
 mydata <- read.table(file="./pfg-cpl-headers.txt", row.names=1, header=T)
