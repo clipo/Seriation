@@ -57,9 +57,10 @@ class IDSS():
 
     def __init__(self):
         self.pairGraph = nx.Graph(is_directed=False)
+        self.nodeSizeFactor = 500 # factor to scale the size of the nodes when drawing
         self.solutionCount=0
         self.args={}
-        self.inputfile = ""
+        self.inputFile = ""
         self.solutionCount=0
         self.outputDirectory = ""
         if os.name != "nt":
@@ -151,6 +152,7 @@ class IDSS():
                     self.totalAssemblageSize += rowtotal
                     self.countOfAssemblages += 1
         self.maxSeriationSize = self.countOfAssemblages
+        self.nodeSizeFactor *= self.countOfAssemblages
         return True
 
     def aggregateIdenticalAssemblages(self):
@@ -846,7 +848,7 @@ class IDSS():
         plt.savefig(filename, dpi=75)
         self.saveGraph(sGraph, filename + ".gml")
         if self.args['shapefile'] is not None and self.args['xyfile'] is not None:
-            self.createShapefile(M, filename + ".shp")
+            self.createShapefile(M, self.outputDirectory + filename + ".shp")
 
 
     def checkForValidAdditionsToNetworkParallel(self,nnetwork):
@@ -1066,42 +1068,6 @@ class IDSS():
                 return True
         return False
 
-    def MST(self, sGraph, filename):
-
-        plt.rcParams['text.usetex'] = False
-        plt.figure(filename, figsize=(8, 8))
-        M = nx.minimum_spanning_tree(sGraph)
-
-        os.environ["PATH"] += ":/usr/local/bin:"
-        pos = nx.graphviz_layout(M)
-        #pos=nx.graphviz_layout(M,prog="twopi",root=args['graphroot'])
-        edgewidth = []
-        weights = nx.get_edge_attributes(M, 'weight')
-        for w in weights:
-            edgewidth.append(weights[w])
-        maxValue = max(edgewidth)
-        widths = []
-        for w in edgewidth:
-            widths.append(((maxValue - w) + 1) * 5)
-        assemblageSizes = []
-        sizes = nx.get_node_attributes(M, 'size')
-        for s in sizes:
-            assemblageSizes.append(sizes[s])
-        nx.draw_networkx_edges(M, pos, alpha=0.3, width=widths)
-        sizes = nx.get_node_attributes(M, 'size')
-        nx.draw_networkx_nodes(M, pos, node_size=assemblageSizes, node_color='w', alpha=0.4)
-        nx.draw_networkx_edges(M, pos, alpha=0.4, node_size=0, width=1, edge_color='k')
-        nx.draw_networkx_labels(M, pos, fontsize=10)
-        font = {'fontname': 'Helvetica',
-                'color': 'k',
-                'fontweight': 'bold',
-                'fontsize': 10}
-        plt.axis('off')
-        plt.savefig(filename, dpi=75)
-        self.saveGraph(sGraph, filename + ".gml")
-        if self.args['shapefile'] is not None and self.args['xyfile'] is not None:
-            self.createShapefile(M, filename + ".shp")
-
     def sumGraphsByWeight(self, filteredarray):
         sumGraph = nx.Graph(is_directed=False)
         # First add all the nodes to the sumgraph
@@ -1113,7 +1079,7 @@ class IDSS():
                 xCoordinate = self.xAssemblage[name]
                 yCoordinate = self.yAssemblage[name]
             sumGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
-                              size=self.assemblageSize[name]/self.totalAssemblageSize*10)
+                              size=self.assemblageSize[name]/self.totalAssemblageSize*self.nodeSizeFactor)
 
         ## first find global max weight and global min weight
         globalMaxWeight=0
@@ -1155,7 +1121,7 @@ class IDSS():
                     xCoordinate = self.xAssemblage[name]
                     yCoordinate = self.yAssemblage[name]
                 sumGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
-                                  size=self.assemblageSize[name]/self.totalAssemblageSize*10)
+                                  size=self.assemblageSize[name]/self.totalAssemblageSize*self.nodeSizeFactor)
 
             maxWeight = 0
             for e in g.edges_iter():
@@ -1536,7 +1502,7 @@ class IDSS():
         gmlfilename = self.outputDirectory + sumgraphfilename + ".gml"
         self.saveGraph(sumGraph, gmlfilename)
         if self.args['shapefile'] is not None and self.args['xyfile'] is not None:
-            self.createShapefile(sumGraph, newfilename[0:-4] + ".shp")
+            self.createShapefile(sumGraph, self.outputDirectory + newfilename[0:-4] + ".shp")
         plt.figure(newfilename, figsize=(8, 8))
         os.environ["PATH"] += ":/usr/local/bin:"
         pos = nx.graphviz_layout(sumGraph)
@@ -1556,7 +1522,7 @@ class IDSS():
         #print sizes
         for s in sizes:
             #print sizes[s]
-            assemblageSizes.append(sizes[s]/self.totalAssemblageSize*10)
+            assemblageSizes.append(sizes[s]/self.totalAssemblageSize*self.nodeSizeFactor)
         nx.draw_networkx_edges(sumGraph, pos, alpha=0.3, width=widths)
         sizes = nx.get_node_attributes(sumGraph, 'size')
         nx.draw_networkx_nodes(sumGraph, pos, node_size=assemblageSizes, node_color='w', alpha=0.4)
@@ -1578,7 +1544,7 @@ class IDSS():
         for a in self.assemblages:
             if a not in nodeList:
                 sumGraph.add_node(a, name=a, xCoordinate=self.xAssemblage[a], yCoordinate=self.yAssemblage[a],
-                                  size=self.assemblageSize[a]/self.totalAssemblageSize*10)
+                                  size=self.assemblageSize[a]/self.totalAssemblageSize*self.nodeSizeFactor)
         sumgraphOutputFile = self.outputDirectory + sumgraphfilename + ".vna"
         SUMGRAPH = open(sumgraphOutputFile, 'w')
         SUMGRAPH.write("*Node data\n")
@@ -1629,7 +1595,7 @@ class IDSS():
         sizes = nx.get_node_attributes(sumGraph, 'size')
         #print sizes
         for s in sizes:
-            assemblageSizes.append(sizes[s]/self.totalAssemblageSize*10)
+            assemblageSizes.append(sizes[s]/self.totalAssemblageSize*self.nodeSizeFactor)
         nx.draw_networkx_edges(sumGraph, pos, alpha=0.3, width=widths)
         sizes = nx.get_node_attributes(sumGraph, 'size')
         nx.draw_networkx_nodes(sumGraph, pos, node_size=assemblageSizes, node_color='w', alpha=0.4)
@@ -1848,7 +1814,7 @@ class IDSS():
         ## first add all of the nodes
         for name in self.assemblages:
             output_graph.add_node(name, name=name, label=name, xCoordinate=self.xAssemblage[name],
-                    yCoordinate=self.yAssemblage[name], size=self.assemblageSize[name]/self.totalAssemblageSize*100)
+                    yCoordinate=self.yAssemblage[name], size=self.assemblageSize[name]/self.totalAssemblageSize*self.nodeSizeFactor)
 
         pairsHash={}
 
@@ -1922,11 +1888,11 @@ class IDSS():
             if ass1 not in output_graph.nodes():
                 output_graph.add_node(ass1, name=ass1, xCoordinate=self.xAssemblage[ass1],
                                       yCoordinate=self.yAssemblage[ass1],
-                                      size=self.assemblageSize[ass1]/self.totalAssemblageSize*100)
+                                      size=self.assemblageSize[ass1]/self.totalAssemblageSize*self.nodeSizeFactor)
             if ass2 not in output_graph.nodes():
                 output_graph.add_node(ass2, name=ass2, xCoordinate=self.xAssemblage[ass2],
                                       yCoordinate=self.yAssemblage[ass2],
-                                      size=self.assemblageSize[ass2]/self.totalAssemblageSize*100)
+                                      size=self.assemblageSize[ass2]/self.totalAssemblageSize*self.nodeSizeFactor)
             if nx.has_path(output_graph, ass1, ass2) == False or matchOnThisLevel == True:
                 matchOnThisLevel = True   ## setting this true allows us to match the condition that at least one match was
                 ## made at this level
@@ -1937,7 +1903,8 @@ class IDSS():
 
     def filterSolutions(self, end_solutions, all_solutions):
         ################################################# FILTERING  ####################################
-        # now do some weeding. Basically start with the last network ( largest), and work backwards to smaller and smaller solutions. Ignore any
+        # now do some weeding. Basically start with the last network ( largest),
+        #  and work backwards to smaller and smaller solutions. Ignore any
         # network that is already represented larger since these are trivial (e.g., A->B->C->D already covers
         # A->C->D.) That should then leave all the unique maximum solutions (or so it seems)
         ################################################# FILTERING  ####################################
@@ -2123,7 +2090,7 @@ class IDSS():
                 #print "TEST is less than solutionDistance: ",testDistance
                 pvalueScore += 1
             x.append(testDistance)
-        filename=self.inputfile[0:-4]+"-geographic-distance.png"
+        filename=self.outputDirectory+self.inputFile[0:-4]+"-geographic-distance.png"
         f=plt.figure(filename, figsize=(8, 8))
         #f=plt.figure("Geographic Distance", figsize=(8, 8))
         num_bins = 20
@@ -2148,7 +2115,7 @@ class IDSS():
 
         if pvalue == 0:
             pvalue ="0.000"
-        return pvalue
+        return pvalue, solutionDistance, mean(x)
 
     #Prints everything in set b that's not in set a
     def difference(self, a, b):
@@ -2517,8 +2484,12 @@ class IDSS():
             #print self.args
             minMaxGraphByWeight = self.createMinMaxGraphByWeight(input_graph=sumGraphByWeight, weight='weight')
             if self.args['xyfile'] not in self.FalseList:
-                pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
+                pscore, distance, geodistance = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
                 print "Geographic p-value for the frequency seriation minmax solution: ", pscore
+                filename=self.outputDirectory + "geography.txt"
+                with open(filename, "a") as myfile:
+                    text=self.inputFile[0:-4]+"\t"+str(pscore)+"\t"+str(distance)+"\t"+ str(geodistance)+"\n"
+                    myfile.write(text)
 
             minMaxGraphByCount = self.createMinMaxGraphByCount(input_graph=sumGraphByCount, weight='weight')
             #if self.args['graphs'] not in self.FalseList:
@@ -2560,11 +2531,11 @@ class IDSS():
             sGraphByCount = self.sumGraphsByCount(continuityArray)
             sGraphByWeight = self.sumGraphsByWeight(continuityArray)
             self.graphOutput(sGraphByCount, self.inputFile[0:-4] + "-continuity-sumgraph.png")
-            self.MST(sGraphByCount, self.inputFile[0:-4] + "-mst-of-min.png")
+            self.MST(sGraphByCount, self.outputDirectory + self.inputFile[0:-4] + "-mst-of-min.png")
             minMaxGraphByWeight = self.createMinMaxGraphByWeight(input_graph=sGraphByWeight, weight='weight')
-            self.graphOutput(minMaxGraphByWeight, self.inputFile[0:-4] + "-continuity-minmax-by-weight.png")
+            self.graphOutput(minMaxGraphByWeight, self.outputDirectory +  self.inputFile[0:-4] + "-continuity-minmax-by-weight.png")
             minMaxGraphByCount = self.createMinMaxGraphByCount(input_graph=sGraphByCount, weight='weight')
-            self.graphOutput(minMaxGraphByCount, self.inputFile[0:-4] + "-continuity-minmax-by-count.png")
+            self.graphOutput(minMaxGraphByCount, self.outputDirectory + self.inputFile[0:-4] + "-continuity-minmax-by-count.png")
             if self.args['atlas'] not in self.FalseList:
                 self.createAtlasOfSolutions(continuityArray, "continuity")
 
@@ -2599,8 +2570,12 @@ class IDSS():
                 seriation.makeGraph(argument)
 
             if self.args['xyfile'] not in self.FalseList:
-                pscore = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
+                pscore ,distance, geodistance= self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
                 print "Geographic p-value for the continuity seriation minmax solution: ", pscore
+                filename=self.outputDirectory + "geography.txt"
+                with open(filename, "a") as myfile:
+                    text=self.inputFile[0:-4]+"\t"+str(pscore)+"\t"+str(distance)+"\t"+str(geodistance)+"\n"
+                    myfile.write(text)
 
         ## determine time elapsed
         #time.sleep(5)
