@@ -1921,10 +1921,12 @@ class IDSS():
             #print ass1, "-", ass2, "---",value
             if ass1 not in output_graph.nodes():
                 output_graph.add_node(ass1, name=ass1, xCoordinate=self.xAssemblage[ass1],
-                                      yCoordinate=self.yAssemblage[ass1], size=self.assemblageSize[ass1]/self.totalAssemblageSize*100)
+                                      yCoordinate=self.yAssemblage[ass1],
+                                      size=self.assemblageSize[ass1]/self.totalAssemblageSize*100)
             if ass2 not in output_graph.nodes():
                 output_graph.add_node(ass2, name=ass2, xCoordinate=self.xAssemblage[ass2],
-                                      yCoordinate=self.yAssemblage[ass2], size=self.assemblageSize[ass2]/self.totalAssembalgeSize*100)
+                                      yCoordinate=self.yAssemblage[ass2],
+                                      size=self.assemblageSize[ass2]/self.totalAssemblageSize*100)
             if nx.has_path(output_graph, ass1, ass2) == False or matchOnThisLevel == True:
                 matchOnThisLevel = True   ## setting this true allows us to match the condition that at least one match was
                 ## made at this level
