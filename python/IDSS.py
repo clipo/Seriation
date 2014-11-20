@@ -109,7 +109,7 @@ class IDSS():
     def openFile(self, filename):
         try:
             logger.debug("trying to open: %s ", filename)
-            file = open(filename, 'r')
+            file = open(filename, 'rU')
         except csv.Error as e:
             logger.error("Cannot open %s. Error: %s", filename, e)
             sys.exit('file %s does not open: %s') % ( filename, e)
@@ -2421,7 +2421,6 @@ class IDSS():
 
         ############################################################################################################
         logger.debug("Going to open XY file if it exists.")
-
         if self.args['xyfile'] not in self.FalseList:
             self.openXYFile(self.args['xyfile'])
         else:
