@@ -2115,7 +2115,7 @@ class IDSS():
 
         if pvalue == 0:
             pvalue ="0.000"
-        return pvalue, solutionDistance, mean(x)
+        return pvalue, solutionDistance, mean(x), std(x)
 
     #Prints everything in set b that's not in set a
     def difference(self, a, b):
@@ -2484,11 +2484,12 @@ class IDSS():
             #print self.args
             minMaxGraphByWeight = self.createMinMaxGraphByWeight(input_graph=sumGraphByWeight, weight='weight')
             if self.args['xyfile'] not in self.FalseList:
-                pscore, distance, geodistance = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
+                pscore, distance, geodistance, sd_geodistance = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
                 print "Geographic p-value for the frequency seriation minmax solution: ", pscore
                 filename=self.outputDirectory + "geography.txt"
                 with open(filename, "a") as myfile:
-                    text=self.inputFile[0:-4]+"\t"+str(pscore)+"\t"+str(distance)+"\t"+ str(geodistance)+"\n"
+                    text=self.inputFile[0:-4]+"\t"+str(pscore)+"\t"+str(distance)+"\t"+str(geodistance)+"\t" \
+                         + str(sd_geodistance)+"\t"+str(self.totalAssemblageSize)+"\n"
                     myfile.write(text)
 
             minMaxGraphByCount = self.createMinMaxGraphByCount(input_graph=sumGraphByCount, weight='weight')
@@ -2570,11 +2571,12 @@ class IDSS():
                 seriation.makeGraph(argument)
 
             if self.args['xyfile'] not in self.FalseList:
-                pscore ,distance, geodistance= self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
+                pscore ,distance, geodistance, sd_geodistance = self.calculateGeographicSolutionPValue(minMaxGraphByWeight)
                 print "Geographic p-value for the continuity seriation minmax solution: ", pscore
                 filename=self.outputDirectory + "geography.txt"
                 with open(filename, "a") as myfile:
-                    text=self.inputFile[0:-4]+"\t"+str(pscore)+"\t"+str(distance)+"\t"+str(geodistance)+"\n"
+                    text=self.inputFile[0:-4]+"\t"+str(pscore)+"\t"+str(distance)+"\t"+str(geodistance)+"\t" \
+                         + str(sd_geodistance)+"\t"+str(self.totalAssemblageSize)+"\n"
                     myfile.write(text)
 
         ## determine time elapsed
