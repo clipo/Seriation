@@ -92,6 +92,7 @@ class IDSS():
         logger.debug("Start time:  %s ", self.start)
         self.scr = None
         self.args={}
+        self.totalAssemblageSize = 0 ## total for all assemblages
 
     def saveGraph(self, graph, filename):
         nx.write_gml(graph, filename)
@@ -147,6 +148,7 @@ class IDSS():
                     self.assemblageFrequencies[label] = freq
                     self.assemblageValues[label] = values
                     self.assemblageSize[label] = rowtotal
+                    self.totalAssemblageSize += rowtotal
                     self.countOfAssemblages += 1
         self.maxSeriationSize = self.countOfAssemblages
         return True
@@ -1100,126 +1102,89 @@ class IDSS():
         if self.args['shapefile'] is not None and self.args['xyfile'] is not None:
             self.createShapefile(M, filename + ".shp")
 
-
-    def minimumSpanningTree(self, networks, sumGraph, outputDirectory, inputFile):
-        try:
-            from networkx import graphviz_layout
-        except ImportError:
-            raise ImportError("This function needs Graphviz and either PyGraphviz or Pydot")
-
-        newfilename = outputDirectory + inputFile[0:-4] + "-mst.png"
-        plt.figure(newfilename, figsize=(8, 8))
-
-        graphs = []
-        megaGraph = nx.Graph(is_directed=False)
-        graphCount = 0
-        for net in networks:
-            graphCount += 1
-            g = nx.Graph(is_directed=False)
-            for nodey in net.nodes(data=True):
-                xCoordinate = 0
-                yCoordinate = 0
-                name = nodey[0]
+    def sumGraphsByWeight(self, filteredarray):
+        sumGraph = nx.Graph(is_directed=False)
+        # First add all the nodes to the sumgraph
+        for node in self.assemblages:
+            xCoordinate = 0
+            yCoordinate = 0
+            name = node
+            if self.args['xyfile'] is not None:
                 xCoordinate = self.xAssemblage[name]
                 yCoordinate = self.yAssemblage[name]
-                megaGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
-                                   size=self.assemblageSize[name])
+            sumGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
+                              size=self.assemblageSize[name]/self.totalAssemblageSize*10)
 
-            count = 0
-            for e in net.edges_iter():
-                d = net.get_edge_data(*e)
+        ## first find global max weight and global min weight
+        globalMaxWeight=0
+        globalMinWeight=1000
+        for g in filteredarray:
+            for e in g.edges():
                 fromAssemblage = e[0]
                 toAssemblage = e[1]
-                g.add_node(fromAssemblage, label=fromAssemblage, x=xCoordinate, y=yCoordinate,
-                           name=fromAssemblage, size=self.assemblageSize[name])
-                g.add_node(toAssemblage, label=toAssemblage, x=xCoordinate, y=yCoordinate,
-                           name=toAssemblage, size=self.assemblageSize[name])
+                currentWeight = self.sumOfDifferencesBetweenPairs[fromAssemblage+"*"+toAssemblage]
+                if currentWeight>globalMaxWeight:
+                    globalMaxWeight=currentWeight
+                if currentWeight<globalMinWeight:
+                    globalMinWeight=currentWeight
 
-                weight = d['weight'] + 1
-                distance = self.distanceBetweenAssemblages[fromAssemblage + "*" + toAssemblage]
-                #count = megaGraph.get_edge_data(fromAssemblage,toAssemblage,'weight'
-                count += 1
-                megaGraph.add_path([fromAssemblage, toAssemblage], weight=count,
-                                   distance=distance,
-                                   size=(self.assemblageSize[fromAssemblage], self.assemblageSize[toAssemblage]))
+        ## Now create the summary graph by going through the edges of all the graphs
+        for g in filteredarray:
+            ## go through all the edges for each graph
+            for e in g.edges_iter():
+                d = g.get_edge_data(*e)
+                # get the pair of data
+                fromAssemblage = e[0]
+                toAssemblage = e[1]
+                currentWeight = self.sumOfDifferencesBetweenPairs[fromAssemblage+"*"+toAssemblage]
+                normalizedWeight = ((globalMaxWeight-currentWeight)/((globalMaxWeight-globalMinWeight)+1))+1
+                sumGraph.add_path([fromAssemblage, toAssemblage], sumDiffWeight=currentWeight, weight=normalizedWeight, inverseweight=(1/normalizedWeight))
 
-                g.add_path([fromAssemblage, toAssemblage],
-                           xy1=(self.xAssemblage[fromAssemblage], self.yAssemblage[fromAssemblage]),
-                           xy2=(self.xAssemblage[toAssemblage], self.yAssemblage[toAssemblage]),
-                           weight=weight,
-                           meanDistance=distance,
-                           size=(self.assemblageSize[fromAssemblage], self.assemblageSize[toAssemblage]))
-            graphs.append(g)
-        plt.rcParams['text.usetex'] = False
-        mst = nx.minimum_spanning_tree(megaGraph, weight='weight')
-        os.environ["PATH"] += ":/usr/local/bin:"
-        pos = nx.graphviz_layout(mst)
-        edgewidth = []
-        weights = nx.get_edge_attributes(mst, 'inverseweight')
-        for w in weights:
-            edgewidth.append(weights[w])
+        return sumGraph
 
-        maxValue = max(edgewidth)
-        widths = []
-        for w in edgewidth:
-            widths.append(((maxValue - w) + 1) * 5)
+    def sumGraphsByCount(self, filteredarray):
+        sumGraph = nx.Graph(is_directed=False)
+        ## go through all the graphs
+        for g in filteredarray:
+            ## go through all the edges for each graph
+            for node in g.nodes(data=True):
+                xCoordinate = 0
+                yCoordinate = 0
+                name = node[0]
+                if self.args['xyfile'] is not None:
+                    xCoordinate = self.xAssemblage[name]
+                    yCoordinate = self.yAssemblage[name]
+                sumGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
+                                  size=self.assemblageSize[name]/self.totalAssemblageSize*10)
 
-        color = nx.get_edge_attributes(mst, 'color')
-        colorList = []
-        for c in color:
-            colorList.append(color[c])
-        colors = []
-        colorMax = max(colorList)
-        for c in colorList:
-            colors.append(c / colorMax)
-        assemblageSizes = []
-        sizes = nx.get_node_attributes(mst, 'size')
-        #print sizes
-        for s in sizes:
-            #print sizes[s]
-            assemblageSizes.append(sizes[s])
-        nx.draw_networkx_edges(mst, pos, alpha=0.3, width=widths, edge_color=colorList)
-        sizes = nx.get_node_attributes(mst, 'size')
-        nx.draw_networkx_nodes(mst, pos, node_size=assemblageSizes, node_color='w', alpha=0.4)
-        nx.draw_networkx_edges(mst, pos, alpha=0.4, node_size=0, width=1, edge_color='k')
-        nx.draw_networkx_labels(mst, pos, fontsize=10)
-        font = {'fontname': 'Helvetica',
-                'color': 'k',
-                'fontweight': 'bold',
-                'fontsize': 10}
+            maxWeight = 0
+            for e in g.edges_iter():
+                d = g.get_edge_data(*e)
+                fromAssemblage = e[0]
+                toAssemblage = e[1]
+                exists = False
+                currentWeight = 1
+                for e in sumGraph.edges():
+                    dd = sumGraph.get_edge_data(*e)
+                    if fromAssemblage in e and toAssemblage in e:   ## if exists
+                        exists = True
+                    currentWeight = 1
+                    if exists is True:
+                        currentWeight += 1
 
-        plt.axis('off')
-        plt.savefig(newfilename, dpi=75)
-        if self.args['shapefile'] is not None and self.args['xyfile'] is not None:
-            self.createShapefile(mst, outputDirectory + inputFile[0:-4] + "-mst.shp")
-        self.saveGraph(mst, newfilename + ".gml")
-        atlasFile = outputDirectory + inputFile[0:-4] + "-atlas.png"
-        plt.figure(atlasFile, figsize=(8, 8))
-        UU = nx.Graph(is_directed=False)
-        # do quick isomorphic-like check, not a true isomorphism checker
-        nlist = [] # list of nonisomorphic graphs
-        for G in graphs:
-            # check against all nonisomorphic graphs so far
-            if not self.iso(G, nlist):
-                nlist.append(G)
+                if currentWeight > maxWeight:
+                    maxWeight = currentWeight
+                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight)
 
-        UU = nx.disjoint_union_all(graphs) # union the nonisomorphic graphs
-        pos = nx.graphviz_layout(UU, prog="twopi", root=self.args['graphroot'])
-        # color nodes the same in each connected subgraph
-        C = nx.connected_component_subgraphs(UU)
-        for g in C:
-            c = [random.random()] * nx.number_of_nodes(g) # random color...
-            nx.draw(g,
-                    pos,
-                    node_size=40,
-                    node_color=c,
-                    vmin=0.0,
-                    vmax=1.0,
-                    alpha=.2,
-                    font_size=7,
-            )
-        plt.savefig(atlasFile, dpi=250)
-        self.saveGraph(UU, atlasFile + ".gml")
+            for e in sumGraph.edges_iter():
+                d = sumGraph.get_edge_data(*e)
+                currentWeight = int(d['weight'])
+                inverseWeight = (maxWeight + 1) - currentWeight
+                fromAssemblage = e[0]
+                toAssemblage = e[1]
+                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight, inverseweight=inverseWeight)
+
+        return sumGraph
 
 
     def finalGoodbye(self):
@@ -1412,128 +1377,6 @@ class IDSS():
                 UU = nx.disjoint_union(UU, G) # union the nonisomorphic graphs
         return UU
 
-    def outputGraphArray(self, array):
-        num = 0
-        os.environ["PATH"] += ":/usr/local/bin:"
-        for g in array:
-            num += 1
-            pos = nx.graphviz_layout(g, prog="twopi", root=['graphroot'])
-            gfile = self.outputDirectory + self.inputFile[0:-4] + "-min-sol-" + str(num) + ".png"
-            filename = self.outputDirectory + self.inputFile[0:-4] + "-min-sol-" + str(num) + ".gml"
-            self.saveGraph(g, filename)
-            edgewidth = []
-            weights = nx.get_edge_attributes(g, 'weight')
-            for w in weights:
-                edgewidth.append(weights[w])
-
-            maxValue = max(edgewidth)
-            widths = []
-            for w in edgewidth:
-                widths.append(((maxValue - w) + 1) * 5)
-
-            assemblageSizes = []
-            sizes = nx.get_node_attributes(g, 'size')
-            #print sizes
-            for s in sizes:
-                assemblageSizes.append(sizes[s])
-            nx.draw_networkx_edges(g, pos, alpha=0.3, width=widths)
-            sizes = nx.get_node_attributes(g, 'size')
-            nx.draw_networkx_nodes(g, pos, node_size=assemblageSizes, node_color='w', alpha=0.4)
-            nx.draw_networkx_edges(g, pos, alpha=0.4, node_size=0, width=1, edge_color='k')
-            nx.draw_networkx_labels(g, pos, fontsize=10)
-            font = {'fontname': 'Helvetica',
-                    'color': 'k',
-                    'fontweight': 'bold',
-                    'fontsize': 10}
-            plt.axis('off')
-            plt.savefig(gfile, dpi=75)
-            plt.figure(gfile, figsize=(8, 8))
-
-
-    def sumGraphsByWeight(self, filteredarray):
-        sumGraph = nx.Graph(is_directed=False)
-
-        # First add all the nodes to the sumgraph
-        for node in self.assemblages:
-            xCoordinate = 0
-            yCoordinate = 0
-            name = node
-            if self.args['xyfile'] is not None:
-                xCoordinate = self.xAssemblage[name]
-                yCoordinate = self.yAssemblage[name]
-            sumGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,size=self.assemblageSize[name])
-
-        ## first find global max weight and global min weight
-        globalMaxWeight=0
-        globalMinWeight=1000
-        for g in filteredarray:
-            for e in g.edges():
-                fromAssemblage = e[0]
-                toAssemblage = e[1]
-                currentWeight = self.sumOfDifferencesBetweenPairs[fromAssemblage+"*"+toAssemblage]
-                if currentWeight>globalMaxWeight:
-                    globalMaxWeight=currentWeight
-                if currentWeight<globalMinWeight:
-                    globalMinWeight=currentWeight
-
-        ## Now create the summary graph by going through the edges of all the graphs
-        for g in filteredarray:
-            ## go through all the edges for each graph
-            for e in g.edges_iter():
-                d = g.get_edge_data(*e)
-                # get the pair of data
-                fromAssemblage = e[0]
-                toAssemblage = e[1]
-                currentWeight = self.sumOfDifferencesBetweenPairs[fromAssemblage+"*"+toAssemblage]
-                normalizedWeight = ((globalMaxWeight-currentWeight)/((globalMaxWeight-globalMinWeight)+1))+1
-                sumGraph.add_path([fromAssemblage, toAssemblage], sumDiffWeight=currentWeight, weight=normalizedWeight, inverseweight=(1/normalizedWeight))
-
-        return sumGraph
-
-    def sumGraphsByCount(self, filteredarray):
-        sumGraph = nx.Graph(is_directed=False)
-        ## go through all the graphs
-        for g in filteredarray:
-            ## go through all the edges for each graph
-            for node in g.nodes(data=True):
-                xCoordinate = 0
-                yCoordinate = 0
-                name = node[0]
-                if self.args['xyfile'] is not None:
-                    xCoordinate = self.xAssemblage[name]
-                    yCoordinate = self.yAssemblage[name]
-                sumGraph.add_node(name, name=name, xCoordinate=xCoordinate, yCoordinate=yCoordinate,
-                                  size=self.assemblageSize[name])
-
-            maxWeight = 0
-            for e in g.edges_iter():
-                d = g.get_edge_data(*e)
-                fromAssemblage = e[0]
-                toAssemblage = e[1]
-                exists = False
-                currentWeight = 1
-                for e in sumGraph.edges():
-                    dd = sumGraph.get_edge_data(*e)
-                    if fromAssemblage in e and toAssemblage in e:   ## if exists
-                        exists = True
-                    currentWeight = 1
-                    if exists is True:
-                        currentWeight += 1
-
-                if currentWeight > maxWeight:
-                    maxWeight = currentWeight
-                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight)
-
-            for e in sumGraph.edges_iter():
-                d = sumGraph.get_edge_data(*e)
-                currentWeight = int(d['weight'])
-                inverseWeight = (maxWeight + 1) - currentWeight
-                fromAssemblage = e[0]
-                toAssemblage = e[1]
-                sumGraph.add_path([fromAssemblage, toAssemblage], weight=currentWeight, inverseweight=inverseWeight)
-
-        return sumGraph
-
     def calculateSumOfDifferences(self, assemblage1, assemblage2):
         diff = 0
         for type in range(0, self.numberOfClasses):
@@ -1713,7 +1556,7 @@ class IDSS():
         #print sizes
         for s in sizes:
             #print sizes[s]
-            assemblageSizes.append(sizes[s])
+            assemblageSizes.append(sizes[s]/self.totalAssemblageSize*10)
         nx.draw_networkx_edges(sumGraph, pos, alpha=0.3, width=widths)
         sizes = nx.get_node_attributes(sumGraph, 'size')
         nx.draw_networkx_nodes(sumGraph, pos, node_size=assemblageSizes, node_color='w', alpha=0.4)
@@ -1735,7 +1578,7 @@ class IDSS():
         for a in self.assemblages:
             if a not in nodeList:
                 sumGraph.add_node(a, name=a, xCoordinate=self.xAssemblage[a], yCoordinate=self.yAssemblage[a],
-                                  size=self.assemblageSize[a])
+                                  size=self.assemblageSize[a]/self.totalAssemblageSize*10)
         sumgraphOutputFile = self.outputDirectory + sumgraphfilename + ".vna"
         SUMGRAPH = open(sumgraphOutputFile, 'w')
         SUMGRAPH.write("*Node data\n")
@@ -1786,7 +1629,7 @@ class IDSS():
         sizes = nx.get_node_attributes(sumGraph, 'size')
         #print sizes
         for s in sizes:
-            assemblageSizes.append(sizes[s])
+            assemblageSizes.append(sizes[s]/self.totalAssemblageSize*10)
         nx.draw_networkx_edges(sumGraph, pos, alpha=0.3, width=widths)
         sizes = nx.get_node_attributes(sumGraph, 'size')
         nx.draw_networkx_nodes(sumGraph, pos, node_size=assemblageSizes, node_color='w', alpha=0.4)
@@ -2005,7 +1848,7 @@ class IDSS():
         ## first add all of the nodes
         for name in self.assemblages:
             output_graph.add_node(name, name=name, label=name, xCoordinate=self.xAssemblage[name],
-                    yCoordinate=self.yAssemblage[name], size=self.assemblageSize[name])
+                    yCoordinate=self.yAssemblage[name], size=self.assemblageSize[name]/self.totalAssemblageSize*100)
 
         pairsHash={}
 
@@ -2078,10 +1921,10 @@ class IDSS():
             #print ass1, "-", ass2, "---",value
             if ass1 not in output_graph.nodes():
                 output_graph.add_node(ass1, name=ass1, xCoordinate=self.xAssemblage[ass1],
-                                      yCoordinate=self.yAssemblage[ass1], size=self.assemblageSize[ass1])
+                                      yCoordinate=self.yAssemblage[ass1], size=self.assemblageSize[ass1]/self.totalAssemblageSize*100)
             if ass2 not in output_graph.nodes():
                 output_graph.add_node(ass2, name=ass2, xCoordinate=self.xAssemblage[ass2],
-                                      yCoordinate=self.yAssemblage[ass2], size=self.assemblageSize[ass2])
+                                      yCoordinate=self.yAssemblage[ass2], size=self.assemblageSize[ass2]/self.totalAssembalgeSize*100)
             if nx.has_path(output_graph, ass1, ass2) == False or matchOnThisLevel == True:
                 matchOnThisLevel = True   ## setting this true allows us to match the condition that at least one match was
                 ## made at this level
@@ -2236,6 +2079,7 @@ class IDSS():
         return seriationList
 
     def calculateGeographicSolutionPValue(self,graph):
+
         bootstrap=1000
         solutionDistance=0
         assemblagesInSolution=[]
@@ -2277,16 +2121,19 @@ class IDSS():
                 #print "TEST is less than solutionDistance: ",testDistance
                 pvalueScore += 1
             x.append(testDistance)
-
-        f=plt.figure("Geographic Distance", figsize=(8, 8))
+        filename=self.inputfile[0:-4]+"-geographic-distance.png"
+        f=plt.figure(filename, figsize=(8, 8))
+        #f=plt.figure("Geographic Distance", figsize=(8, 8))
         num_bins = 20
         # the histogram of the data
         n, bins, patches = plt.hist(x, num_bins, facecolor='green', alpha=0.5)
 
         plt.axvline(solutionDistance, color='r', linestyle='dashed', linewidth=2)
-        plt.xlabel('Geographic Distance')
+        figure_label = self.inputFile[0:-4]
+        plt.xlabel(figure_label)
         plt.ylabel('Count')
         plt.title(r'Histogram of Summed Geographic Distance')
+        plt.savefig(filename, dpi=75)
 
         # Tweak spacing to prevent clipping of ylabel
         plt.subplots_adjust(left=0.15)
@@ -2672,11 +2519,11 @@ class IDSS():
                 print "Geographic p-value for the frequency seriation minmax solution: ", pscore
 
             minMaxGraphByCount = self.createMinMaxGraphByCount(input_graph=sumGraphByCount, weight='weight')
-            if self.args['graphs'] not in self.FalseList:
-                self.graphOutput(minMaxGraphByWeight,
-                                 self.outputDirectory + self.inputFile[0:-4] + "-minmax-by-weight.png")
-                self.graphOutput(minMaxGraphByCount,
-                                 self.outputDirectory + self.inputFile[0:-4] + "-minmax-by-count.png")
+            #if self.args['graphs'] not in self.FalseList:
+            self.graphOutput(minMaxGraphByWeight,
+                        self.outputDirectory + self.inputFile[0:-4] + "-minmax-by-weight.png")
+            self.graphOutput(minMaxGraphByCount,
+                        self.outputDirectory + self.inputFile[0:-4] + "-minmax-by-count.png")
 
             #################################################### MST SECTION ####################################################
             if self.args['mst'] not in self.FalseList:
@@ -2812,7 +2659,7 @@ class IDSS():
         parser.add_argument('--outputdirectory', default=None,
                             help="If you want the output to go someplace other than the /output directory, specify that here.")
         parser.add_argument('--shapefile', default=None,
-                            help="Produces a shapefile as part of the output. You must have specified the XYfile as well.")
+                            help="Produces a shapefile as part of the output. You must have specified the --xyfile (coordinates for each point) as well.")
         parser.add_argument('--graphs', default=None,
                             help="If true, the program will display the graphs that are created. If not, the graphs are just saved as .png files.")
         parser.add_argument('--frequency', default=None,
