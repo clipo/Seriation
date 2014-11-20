@@ -259,7 +259,7 @@ class IDSS():
         return True
 
     def openXYFile(self, filename):
-        logger.debug("Opening pairwise file %s", filename)
+        logger.debug("Opening XY file %s", filename)
         ## open the xy file
         try:
             xyf = open(filename, 'r')
@@ -271,8 +271,8 @@ class IDSS():
         for row in reader:
             label = row[0]
             self.xyAssemblages.append(label)
-            self.yAssemblage[label] = row[1]
-            self.xAssemblage[label] = row[2]
+            self.yAssemblage[label] = float(row[1])
+            self.xAssemblage[label] = float(row[2])
 
         assemblagePairs = self.all_pairs(self.xyAssemblages)
         ## Go through all of the combinations
