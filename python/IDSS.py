@@ -51,6 +51,7 @@ import seriationEvaluation
 from occurrenceSeriationMaker import occurrenceSeriationMaker
 
 
+
 class IDSS():
     color = ["b", "r", "m", "y", "k", "w", (0.976, 0.333, 0.518), (0.643, 0.416, 0.894),
              (0.863, 0.66, 0.447), (0.824, 0.412, 0.118)]
@@ -817,6 +818,7 @@ class IDSS():
     def MST(self, sGraph, filename):
 
         plt.rcParams['text.usetex'] = False
+        plt.rcParams['font.family']='sans-serif'
         plt.figure(filename, figsize=(8, 8))
         M = nx.minimum_spanning_tree(sGraph)
 
@@ -839,10 +841,11 @@ class IDSS():
         sizes = nx.get_node_attributes(M, 'size')
         nx.draw_networkx_nodes(M, pos, node_size=assemblageSizes, node_color='w', alpha=0.4)
         nx.draw_networkx_edges(M, pos, alpha=0.4, node_size=0, width=1, edge_color='k')
-        nx.draw_networkx_labels(M, pos, fontsize=10)
+        nx.draw_networkx_labels(M, pos, fontsize=10,font_family='sans-serif', fontname='Helvetica')
         font = {'fontname': 'Helvetica',
                 'color': 'k',
                 'fontweight': 'bold',
+                'font_family':'sans-serif',
                 'fontsize': 10}
         plt.axis('off')
         plt.savefig(filename, dpi=75)
@@ -1236,6 +1239,7 @@ class IDSS():
         return False
 
     def createAtlasOfSolutions(self, filteredarray, type):
+        plt.rcParams['font.family']='sans-serif'
         plt.figure(self.inputFile[0:-4] + "-" + str(type) + "-atlas.png", figsize=(8, 8))
         num = 0
         for g in filteredarray:
@@ -1265,6 +1269,8 @@ class IDSS():
                     vmin=0.0,
                     vmax=1.0,
                     alpha=.2,
+                    font_family='sans-serif',
+                    fontname='Helvetica',
                     font_size=7,
                     with_labels=True,
                     labels=names
@@ -1498,6 +1504,7 @@ class IDSS():
 
         ## Now make the graphic for set of graphs
         plt.rcParams['text.usetex'] = False
+        plt.rcParams['font.family']='sans-serif'
         newfilename = self.outputDirectory + sumgraphfilename
         gmlfilename = self.outputDirectory + sumgraphfilename + ".gml"
         self.saveGraph(sumGraph, gmlfilename)
@@ -1525,10 +1532,11 @@ class IDSS():
             assemblageSizes.append(sizes[s]/self.totalAssemblageSize*self.nodeSizeFactor)
         nx.draw_networkx_edges(sumGraph, pos, alpha=0.3, width=widths)
         sizes = nx.get_node_attributes(sumGraph, 'size')
-        nx.draw_networkx_nodes(sumGraph, pos, node_size=assemblageSizes, node_color='w', alpha=0.4)
+        nx.draw_networkx_nodes(sumGraph, pos, node_size=assemblageSizes, font_family='sans-serif',node_color='w', alpha=0.4)
         nx.draw_networkx_edges(sumGraph, pos, alpha=0.4, node_size=0, width=1, edge_color='k')
-        nx.draw_networkx_labels(sumGraph, pos, fontsize=10)
+        nx.draw_networkx_labels(sumGraph, pos, font_family='sans-serif', fontname='Helvetica', fontsize=10)
         font = {'fontname': 'Helvetica',
+                'font_family':'sans-serif',
                 'color': 'k',
                 'fontweight': 'bold',
                 'fontsize': 10}
@@ -1578,6 +1586,7 @@ class IDSS():
         self.saveGraph(sumGraph, sumgraphfilename + ".gml")
         plt.figure(newfilename, figsize=(8, 8))
         plt.rcParams['text.usetex'] = False
+        plt.rcParams['font.family']='sans-serif'
         os.environ["PATH"] += ":/usr/local/bin:"
         pos = nx.graphviz_layout(sumGraph, prog="neato")
 
@@ -1599,11 +1608,12 @@ class IDSS():
         nx.draw_networkx_edges(sumGraph, pos, alpha=0.3, width=widths)
         sizes = nx.get_node_attributes(sumGraph, 'size')
         nx.draw_networkx_nodes(sumGraph, pos, node_size=assemblageSizes, node_color='w', alpha=0.4)
-        nx.draw_networkx_edges(sumGraph, pos, alpha=0.4, node_size=0, width=1, edge_color='k')
-        nx.draw_networkx_labels(sumGraph, pos, fontsize=10)
+        nx.draw_networkx_edges(sumGraph, pos, alpha=0.4, node_size=0, font_family='sans-serif',width=1, edge_color='k')
+        nx.draw_networkx_labels(sumGraph, pos,font_family='sans-serif',fontname='Helvetica', fontsize=10)
         font = {'fontname': 'Helvetica',
                 'color': 'k',
                 'fontweight': 'bold',
+                'font_family':'sans-serif',
                 'fontsize': 10}
         plt.axis('off')
         plt.savefig(newfilename, dpi=75)
@@ -2092,6 +2102,7 @@ class IDSS():
             x.append(testDistance)
         filename=self.outputDirectory+self.inputFile[0:-4]+"-geographic-distance.png"
         f=plt.figure(filename, figsize=(8, 8))
+        plt.rcParams['font.family']='sans-serif'
         #f=plt.figure("Geographic Distance", figsize=(8, 8))
         num_bins = 20
         # the histogram of the data
@@ -2599,8 +2610,8 @@ class IDSS():
                 'filtered': None, 'largestonly': None, 'individualfileoutput': None, 'xyfile':None,
                 'excel': None, 'threshold': None, 'noscreen': None, 'xyfile': None, 'pairwisefile': None, 'mst': None,
                 'stats': None, 'screen': None, 'allsolutions': None, 'inputfile': None, 'outputdirectory': None,
-                'shapefile': None, 'frequency': None, 'continuity': None, 'graphs': None, 'graphroot': None,
-                'continuityroot': None, 'verbose':None, 'occurrenceseriation':None,
+                'shapefile': None, 'frequency': None, 'continuity': None, 'graphs': None, 'graphroot': None, ''
+                'continuityroot': None, 'verbose':None, 'occurrenceseriation':None,'occurrences':None,'frequency':None,
                 'occurrence':None,'frequencyseriation':None, 'pdf':None, 'atlas':None}
 
     def parse_arguments(self):
