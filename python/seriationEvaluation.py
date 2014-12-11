@@ -32,6 +32,7 @@ def checkForValidAdditions(nnetwork):
     args={}
     typeFrequencyUpperCI={}
     typeFrequencyLowerCI={}
+    solutionsChecked=0
 
     ## pickle the stuff I need for parallel processing
     validComparisonsHash=pickle.load(open('.p/validComparisonsHash.p','rb'))
@@ -81,6 +82,7 @@ def checkForValidAdditions(nnetwork):
             ## Sanity check
             if innerNeighbor is None:
                 sys.exit("Quitting due to errors.")
+            solutionsChecked +=1 # increment counter
             c = pairGraph.get_edge_data(innerNeighbor, endAssemblage)
             comparison = c['weight']
             comparisonMap = ""
@@ -123,7 +125,6 @@ def checkForValidAdditions(nnetwork):
                                      compareAssemblage)
                         logger.debug("Comparison %s is now %s", c1, c)
                         newVal = oldVal
-
 
                     previousAssemblage = compareAssemblage
 

@@ -1,4 +1,4 @@
-library("devtools")
+timelibrary("devtools")
 install_github("gianmarcoalberti/CAseriation")
 library(CAseriation)
 
@@ -40,7 +40,7 @@ sort.table <- function (data, dim){
 }
 
 # read data from choosen table
-mydata <- read.table(file="./pfg-cpl-headers.txt", row.names=1, header=T)
+mydata <- read.table(file="/Volumes/Macintosh HD/Users/clipo/spatialTransmission/data/namesbyyear/1910.txt", row.names=1, header=T)
 pfg <- data.frame(mydata)
 check.ca.plot(pfg,1,2)
 sort.table(pfg,1)
