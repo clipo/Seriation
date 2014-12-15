@@ -65,31 +65,31 @@ xyDistanceMatrix <- dist(xyAssemblage, method = "euclidean")
 distFit <- hclust(xyDistanceMatrix, method="ward.D2") 
 plot(distFit) # display dendogram
 
-rownames(xy)<-xy[,1]
-xyPFGPercent <- merge(x=xy, y=pfgpercent, by="row.names",all=FALSE)
-xyPFGPercent$Easting<-xyPFGPercent$Easting/1000
-xyPFGPercent$Northing<-xyPFGPercent$Northing/1000
-location<-point(xyPFGPercent,x="Easting",y="Northing")
-pfgPair <-pair(location, num.lags=9, maxdist=120)
-pfg.v<-est.variogram(location,pfgPair,'pfg') 
-library(spatstat)
-#xyPFGPercent$Easting<-xyPFGPercent$Easting/10000
-#xyPFGPercent$Northing<-xyPFGPercent$Northing/10000
-minX<-min(xyPFGPercent$Easting)
-maxX<-max(xyPFGPercent$Easting)
-minY<-min(xyPFGPercent$Northing)
-maxY<-max(xyPFGPercent$Northing)
-pfgPattern<-ppp(xyPFGPercent$Easting,xyPFGPercent$Northing,c(minX,maxX),c(minY,maxY))
-summary(pfgPattern)
-plot(density(pfgPattern))
-
-dists<-dist(xyPFGPercent[,3:4])
-summary(dists)
-breaks=seq(0,75,l=11)
-v1<-variog(coords=xyPFGPercent[,3:4],data=xyPFGPercent[,5],breaks=breaks)
-v1.summary<-cbind(c(1:10),v1$v,v1$n)
-colnames(v1.summary) <- c("lag", "semi-variance", "# of pairs")
-plot(v1,type="b",main="Variogram: Parkin_Punctate")
+# rownames(xy)<-xy[,1]
+# xyPFGPercent <- merge(x=xy, y=pfgpercent, by="row.names",all=FALSE)
+# xyPFGPercent$Easting<-xyPFGPercent$Easting/1000
+# xyPFGPercent$Northing<-xyPFGPercent$Northing/1000
+# location<-point(xyPFGPercent,x="Easting",y="Northing")
+# pfgPair <-pair(location, num.lags=9, maxdist=120)
+# pfg.v<-est.variogram(location,pfgPair,'pfg') 
+# library(spatstat)
+# #xyPFGPercent$Easting<-xyPFGPercent$Easting/10000
+# #xyPFGPercent$Northing<-xyPFGPercent$Northing/10000
+# minX<-min(xyPFGPercent$Easting)
+# maxX<-max(xyPFGPercent$Easting)
+# minY<-min(xyPFGPercent$Northing)
+# maxY<-max(xyPFGPercent$Northing)
+# pfgPattern<-ppp(xyPFGPercent$Easting,xyPFGPercent$Northing,c(minX,maxX),c(minY,maxY))
+# summary(pfgPattern)
+# plot(density(pfgPattern))
+# 
+# dists<-dist(xyPFGPercent[,3:4])
+# summary(dists)
+# breaks=seq(0,75,l=11)
+# v1<-variog(coords=xyPFGPercent[,3:4],data=xyPFGPercent[,5],breaks=breaks)
+# v1.summary<-cbind(c(1:10),v1$v,v1$n)
+# colnames(v1.summary) <- c("lag", "semi-variance", "# of pairs")
+# plot(v1,type="b",main="Variogram: Parkin_Punctate")
 
 library(aqp)
 library(cluster)
