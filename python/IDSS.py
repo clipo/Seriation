@@ -197,17 +197,37 @@ class IDSS():
             self.labels.append(newval)
             self.assemblageSize[newval]=int(sum(newarray))
 
-    def preCalculateSumOfDifferencesBetweenPairs(self):
+    def preCalculateDistancesBetweenPairs(self):
         logger.debug("Precalculate differences between pairs")
+        list_of_distances = []
         pairs = self.all_pairs(self.assemblages)
         for pair in pairs:
-            diff = self.calculateSumOfDifferences(pair[0], pair[1])
+            if self.args['distance_measure']=="RootSumDiffSquares":
+                diff = self.calculateRootSumDiffSquares(pair[0], pair[1])
+            elif self.args['distance_measure']=="SumOfDifferences":
+                diff = self.calculateSumOfDifferences(pair[0], pair[1])
+            else:
+                diff = self.calculateRootSumDiffSquares(pair[0], pair[1])
+            list_of_distances.append(diff)
             key1 = pair[0] + "*" + pair[1]
             key2 = pair[1] + "*" + pair[0]
             self.sumOfDifferencesBetweenPairs[key1] = diff
             self.sumOfDifferencesBetweenPairs[key2] = diff
             if diff == 0:
                 logger.info("Potential problem:  %s and %s are identical in their frequencies. ", pair[0],pair[1])
+        ## graph results
+        figure_label = self.inputFile[0:-4]
+        plt.xlabel("Square Root of Sum of Differences Squared")
+        plt.ylabel('Count')
+        plt.title(figure_label)
+        hist, bins = np.histogram(list_of_distances, bins=10)
+        width = 0.7 * (bins[1] - bins[0])
+        center = (bins[:-1] + bins[1:]) / 2
+        plt.bar(center, hist, align='center', width=width)
+        if self.args("graphs") not in self.validComparisonsHash:
+            plt.show()
+        filename=self.outputDirectory + self.inputFile[0:-4] + "-distanceHistogram.png"
+        plt.savefig(filename, dpi=75)
 
     def preCalculateComparisons(self):
         logger.debug("Precalculating the comparisons between all pairs of assemblages...")
@@ -928,10 +948,16 @@ class IDSS():
     def calculateSumOfDifferences(self, assemblage1, assemblage2):
         diff = 0
         for type in range(0, self.numberOfClasses):
+            diff += abs(float(self.assemblageFrequencies[assemblage1][type]) - float(
+                self.assemblageFrequencies[assemblage2][type]))
+        return diff
+
+    def calculateRootSumDiffSquares(self, assemblage1, assemblage2):
+        diff = 0
+        for type in range(0, self.numberOfClasses):
             diff += pow((float(self.assemblageFrequencies[assemblage1][type]) - float(
                 self.assemblageFrequencies[assemblage2][type])),2)
         return pow(diff,0.5)
-
 
     def iso_filter_graphs(self, list):
         newlist = []
@@ -944,7 +970,6 @@ class IDSS():
                     addList = False
             if addList == True:
                 newlist.append(g)
-
         return newlist
 
     def continunityMaximizationSeriation(self):
@@ -963,7 +988,12 @@ class IDSS():
             ## now find the smallest neighbor from the rest of the assemblages.
             for potentialNeighbor in self.assemblages:
                 if potentialNeighbor is not ass:
-                    diff = self.calculateSumOfDifferences(potentialNeighbor, ass)
+                    if self.args['distance_measure']=="RootSumDiffSquares":
+                       diff = self.calculateRootSumDiffSquares(potentialNeighbor, ass)
+                    elif self.args['distance_measure']=="SumOfDifferences":
+                        diff = self.calculateSumOfDifferences(potentialNeighbor, ass)
+                    else:
+                        diff = self.calculateRootSumDiffSquares(potentialNeighbor, ass)
                     if diff < minMatch:
                         minMatch = diff
                         newNeighbor = potentialNeighbor
@@ -998,8 +1028,13 @@ class IDSS():
                     ## go through the other assemblages (not already in the graph.
                     for assemblage in self.assemblages:
                         if assemblage not in current_graph.nodes():
-                            #print "assemblage: ", assemblage, " is not in : ", current_graph.nodes()
-                            diff = self.calculateSumOfDifferences(endAssemblage, assemblage)
+                            #print "assemblage: ", assemblage, " is not in : ", current_graph.nodes()e)
+                            if self.args['distance_measure']=="RootSumDiffSquares":
+                                diff = self.calculateRootSumDiffSquares(endAssemblage, assemblage)
+                            elif self.args['distance_measure']=="SumOfDifferences":
+                                diff = self.calculateSumOfDifferences(endAssemblage, assemblage)
+                            else:
+                                diff = self.calculateRootSumDiffSquares(endAssemblage, assemblage)
                             if diff < endMinMatch[assEnd]:
                                 endMinMatch[assEnd] = diff
                                 currentMinimumMatch[assEnd] = assemblage
@@ -1035,7 +1070,12 @@ class IDSS():
                 ## find out if there are others that have the same minimum value
                 for b in self.assemblages:
                     if b not in current_graph.nodes() and b not in assemblagesMatchedToEnd:
-                        diff = self.calculateSumOfDifferences(b, endAssemblage)
+                        if self.args['distance_measure']=="RootSumDiffSquares":
+                            diff = self.calculateRootSumDiffSquares(b, endAssemblage)
+                        elif self.args['distance_measure']=="SumOfDifferences":
+                            diff = self.calculateSumOfDifferences(b, endAssemblage)
+                        else:
+                            diff = self.calculateRootSumDiffSquares(b, endAssemblage)
                         if diff == globalMinMatch:
                             ## add this as a matched equivalent assemblage. We will then deal with more than one match
                             assemblagesMatchedToEnd.append(b)
@@ -1832,6 +1872,10 @@ class IDSS():
             for pr in allp:
                 name = pr[0] + "*" + pr[1]
                 self.distanceBetweenAssemblages[name] = 0
+        ############
+        logger.debug("Check the distance measure requested, if one")
+        if self.args['distance_measure'] not in ["RootSumDiffSquares","RootSumDiffSquares"]:
+            logger.warning( "Warning: no distance measure specified. Will use RootSumDiffSquares.")
 
         ############################################################################################################
         logger.debug("Assume threshold is 1.0 unless its specified in arguments.")
@@ -1867,7 +1911,7 @@ class IDSS():
         #####################################
 
         logger.debug("Now calculate sum of differences between all pairs")
-        self.preCalculateSumOfDifferencesBetweenPairs()
+        self.preCalculateDistancesBetweenPairs()
 
         #####################################
 
@@ -2185,7 +2229,7 @@ class IDSS():
                 'stats': None, 'screen': None, 'allsolutions': None, 'inputfile': None, 'outputdirectory': None,
                 'shapefile': None, 'frequency': None, 'continuity': None, 'graphs': None, 'graphroot': None, ''
                 'continuityroot': None, 'verbose':None, 'occurrenceseriation':None,'occurrences':None,'frequency':None,
-                'occurrence':None,'frequencyseriation':None, 'pdf':None, 'atlas':None}
+                'occurrence':None,'frequencyseriation':None, 'pdf':None, 'atlas':None, 'distance_measure':"RootSumDiffSquares"}
 
     def parse_arguments(self):
         self.addOptions()
@@ -2242,6 +2286,8 @@ class IDSS():
         parser.add_argument('--verbose',default=True, help='Provides output for your information')
         parser.add_argument('--occurrence', default=None, help="Treats data as just occurrence information and produces valid occurrence solutions.")
         parser.add_argument('--occurrenceseriation', default=None, help="Generates graphical output for occurrence seriation.")
+        parser.add_argument('--distance_measure', default="RootSumDiffSquares", help="Set the distance measure used to compare two assemblages and their type frequencies. Options are RootSumDiffSquares (default) or RootSumDiffSquares.")
+
         try:
             self.args = vars(parser.parse_args())
         except IOError, msg:
