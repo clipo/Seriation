@@ -105,36 +105,44 @@ dueling.dendrograms(tFit, dFit, lab.1='Types', lab.2='Geographic Distance')
 
 typeFit <- hclust(dist(pfgpercent[order(row.names(pfgpercent)),]), "ward.D2")
 distFit <- hclust(dist(xyAssemblage[order(row.names(xyAssemblage)),]), "ward.D2")
-# And the plot:
-layout(matrix(1:5,nrow=1),width=c(5,.75,3,.75,5))
+p.1 <- as.phylo(typeFit)
+p.2 <- as.phylo(distFit)
 
-# The first dendrogram:
-l <- length(typeFit$order)
-# The matrix to draw the arrows:
-cbind((1:l)[order(typeFit$order)],(1:l)[order(distFit$order)]) -> ord_arrow
-# The two vectors of ordered leave labels:
-typeFit$labels[typeFit$order]->leaves1
-distFit$labels[distFit$order]->leaves2
+# graphically compare two dendrograms
+dueling.dendrograms(ladderize(p.1), ladderize(p.2), lab.1='Type % Distance', lab.2='Geographic Distance')
 
-# The first dendrogram:
-par(mar=c(3,3,3,0))
-plot(as.dendrogram(typeFit),horiz=TRUE,leaflab="none", ylim=c(0,l), main="Type % Distance")
-
-# The first serie of labels (i draw them separately because, for the second serie, I didn't find a simple way to draw them nicely on the cluster):
-par(mar=c(3,0,3,0))
-plot(NA, bty="n",axes=FALSE,xlim=c(0,1), ylim=c(0,l),ylab="",xlab="")
-sapply(1:l,function(x)text(x=0,y=x,labels=leaves1[x], pos=4, cex=0.8))
-
-# The arrows:
-par(mar=c(3,0,3,0))
-plot(NA, bty="n",axes=FALSE,xlim=c(0,1), ylim=c(0,l),ylab="",xlab="")
-apply(ord_arrow,1,function(x){arrows(0,x[1],1,x[2],code=3, length=0.05, col="blue")})
-
-# The second serie of labels:
-par(mar=c(3,0,3,0))
-plot(NA, bty="n",axes=FALSE, xlim=c(0,1), ylim=c(0,l), ylab="",xlab="")
-sapply(1:l,function(x)text(x=1,y=x,labels=leaves2[x], pos=2, cex=0.8))
-
-# And the second dendrogram (to reverse it I reversed the xlim vector:
-par(mar=c(3,0,3,3))
-plot(as.dendrogram(distFit),horiz=TRUE, xlim=c(0,max(dist(xyAssemblage))), leaflab="none", ylim=c(0,l), main="Geographic Distance")
+#dueling.dendrograms(p.1, p.2, lab.1='Type % Distance', lab.2='Geographic Distance')
+# 
+# # And the plot:
+# layout(matrix(1:5,nrow=1),width=c(5,.75,3,.75,5))
+# 
+# # The first dendrogram:
+# l <- length(typeFit$order)
+# # The matrix to draw the arrows:
+# cbind((1:l)[order(typeFit$order)],(1:l)[order(distFit$order)]) -> ord_arrow
+# # The two vectors of ordered leave labels:
+# typeFit$labels[typeFit$order]->leaves1
+# distFit$labels[distFit$order]->leaves2
+# 
+# # The first dendrogram:
+# par(mar=c(3,3,3,0))
+# plot(as.dendrogram(typeFit),horiz=TRUE,leaflab="none", ylim=c(0,l), main="Type % Distance")
+# 
+# # The first serie of labels (i draw them separately because, for the second serie, I didn't find a simple way to draw them nicely on the cluster):
+# par(mar=c(3,0,3,0))
+# plot(NA, bty="n",axes=FALSE,xlim=c(0,1), ylim=c(0,l),ylab="",xlab="")
+# sapply(1:l,function(x)text(x=0,y=x,labels=leaves1[x], pos=4, cex=0.8))
+# 
+# # The arrows:
+# par(mar=c(3,0,3,0))
+# plot(NA, bty="n",axes=FALSE,xlim=c(0,1), ylim=c(0,l),ylab="",xlab="")
+# apply(ord_arrow,1,function(x){arrows(0,x[1],1,x[2],code=3, length=0.05, col="blue")})
+# 
+# # The second serie of labels:
+# par(mar=c(3,0,3,0))
+# plot(NA, bty="n",axes=FALSE, xlim=c(0,1), ylim=c(0,l), ylab="",xlab="")
+# sapply(1:l,function(x)text(x=1,y=x,labels=leaves2[x], pos=2, cex=0.8))
+# 
+# # And the second dendrogram (to reverse it I reversed the xlim vector:
+# par(mar=c(3,0,3,3))
+# plot(as.dendrogram(distFit),horiz=TRUE, xlim=c(0,max(dist(xyAssemblage))), leaflab="none", ylim=c(0,l), main="Geographic Distance")
