@@ -227,13 +227,14 @@ class spatialAnalysis():
 
             quadrat_members=[]
             x_size = int((xmax - xmin)/blocks)
-            for xscale in range(1,blocks):
+
+            for xscale in range(1,blocks+1):
                 x_size = int((xmax - xmin)/xscale)
-                print "x_size is: ", x_size
+                print "block is: ", blocks, "x_size is: ", x_size
                 xstart = xmin
                 xend= xstart + x_size
 
-                for yscale in range(1,blocks):
+                for yscale in range(1,blocks+1):
 
                     y_size = int((ymax - ymin)/yscale)
                     #print "y_size is: ", y_size
